@@ -1,5 +1,9 @@
-"""The Flask console on the Vault's own screen. Routes only.
+"""The Flask console on the Vault's own screen.
 
-Renders the plain-language reasons carried by HabitScore, Verdict and
-RestoreResult. It never re-derives them. Bound to 127.0.0.1, never the LAN.
+Routes and template context only. The console renders plain-language data from
+the backend modules and never re-derives detection or recovery logic.
 """
+
+from .app import create_app
+
+__all__ = ["create_app"]
