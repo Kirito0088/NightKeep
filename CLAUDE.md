@@ -105,6 +105,7 @@ a root-level `types.py` shadows the standard library's `types` module. See
 - **The simulator** hard-codes a path check and refuses to run outside the demo folder, uses a known key with a matching decrypt script, does not spread, and only **echoes** recovery-killing command text. It never executes `vssadmin`, `wbadmin` or `bcdedit`.
 - **No real personal data anywhere, ever.** Names come from a fixed invented pool. The district is invented.
 - **No Aadhaar-shaped numbers, ever.** No field named `aadhaar_no`. Aadhaar is stored as a seeded yes/no per member only.
+- **Every console screen carries "Prototype on invented data. Not a live government system." in its top strip.** A rebuild of the console that drops this line is a regression. See ADR-0005.
 
 ---
 
@@ -126,10 +127,26 @@ All of these are constants in **one file, `mock_pds/conventions.py`**. Every gen
 | Mobile | Masked, e.g. `98XXXXXX41` |
 | Names | Realistic Marathi names with a middle name (father's or husband's given name), e.g. "Sunita Ramesh Kadam" |
 | District | Invented: **Kesargaon** district, talukas **Kesargaon** and **Nandori**. Never a real district |
+| Card status | `Active` or `Suspended`. Seeded per card; a small minority suspended |
+| Card type | The scheme's own official name (`Priority Household` for NFSA-PHH, `Antyodaya` for AAY, `Kesari` for Kesari (APL)). **No colour is printed.** No sourced colour convention exists yet. See ADR-0005 |
+| Address | A generated street-level line: plot/house number and a locality name from a fixed invented pool, plus the card's taluka. No real street data |
+| Village | Distinct from taluka, drawn from a fixed invented pool per taluka |
+| Card issue date | A seeded date, plausible for an active card |
+| Transaction status | `Collected` or `Part collected` on an ePoS row. Seeded so most rows are `Collected` |
+
+See ADR-0005 for why these six were added after the mockups.
 
 ---
 
 ## UI direction
+
+**The console is built from the mockups, not from this section alone.** The
+seven screens exist as a Claude Design canvas, "Nightkeep Prototype Screens":
+https://claude.ai/artifact/Gye9zkkioeiLxXLUgiMbMw, with its full change
+history and the reasoning behind every decision recorded at
+`docs/design/mockup-log.md`. Before writing or changing a console template,
+read the matching artboard(s) from that canvas and the relevant section of
+the log. This section is a summary for orientation, not a substitute.
 
 Seven screens, and only these. Anything else (architecture write-up, research, demo video, threat model) goes on the separate project website, not in the console.
 
@@ -168,6 +185,7 @@ Recorded as ADRs in `docs/adr/`. These beat the plain document precedence order.
 | 0002 | Flask + Jinja + hand-written CSS for the console, not Streamlit |
 | 0003 | 12-digit numeric ration card numbers, not `RC-` IDs |
 | 0004 | Code lives in a `nightkeep/` package inside the repo root, not at the root |
+| 0005 | Six PDS fields (card status, card type, address, village, issue date, transaction status) added from the mockups; console built from the Claude Design canvas, not from prose alone |
 
 Resolved without an ADR, because the newer document already says so: the product is **Nightkeep** (not QuirkGuard); the console binds to `127.0.0.1` only (MVP.md section 8 reverses SOLUTION_DESIGN's LAN web page); there are **6** erratic jobs (not 3); learning is **7** simulated days plus **3** guard days (not 5 nights); one simulated day is **30 s** (not 20 s).
 
@@ -180,6 +198,7 @@ Resolved without an ADR, because the newer document already says so: the product
 - Use `/tdd` at pre-agreed seams. Use `/code-review` when a feature is done.
 - **Never add a `Co-Authored-By` line to a commit.**
 - If you are about to build something outside the approved ticket, stop and ask.
+- **When a ticket touches data shape (`mock_pds`) or the console UI, check the mockups first.** Read the relevant artboard(s) from the "Nightkeep Prototype Screens" canvas (https://claude.ai/artifact/Gye9zkkioeiLxXLUgiMbMw) and `docs/design/mockup-log.md` before inventing a field, a label or a layout. The mockups are the reference judges will compare the build against, not a nice-to-have.
 
 ## Agent skills
 

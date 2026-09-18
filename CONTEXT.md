@@ -17,14 +17,15 @@ A third register, **counter-clerk language**, is what appears on the main path o
 |---|---|
 | **PDS** | Public Distribution System. The national foodgrain distribution scheme. |
 | **District PDS server** | The machine in the district supply office that runs the district's own PDS software, its database, its exports and its nightly jobs. This is the machine the problem statement says gets hit. In this prototype it is Laptop A. |
-| **Ration card** | The household unit of entitlement. Identified by a 12-digit number with no prefix and no dashes, e.g. `110300512847`. Never an `RC-` ID. See ADR-0003. |
+| **Ration card** | The household unit of entitlement. Identified by a 12-digit number with no prefix and no dashes, e.g. `110300512847`. Never an `RC-` ID. See ADR-0003. Carries a **card status** (Active or Suspended), a **card type** (the scheme's own name, never a colour, see ADR-0005), an address and an **issue date**. |
+| **Village** | The settlement a card's household lives in, distinct from and nested under its **taluka**. |
 | **Member** | A person on a ration card. Has a name, sex, age, relation to head, and an e-KYC status. |
 | **Head of household** | The member a card is registered to. Other members state their relation to this person. |
 | **FPS** | Fair Price Shop. The village-level shop that issues grain. Identified by an 11-digit numeric shop ID, e.g. `27030300145`, and a shop name. Say **FPS** or **fair price shop**, not "store" or "outlet". |
 | **Scheme** | Which entitlement a card falls under. Exactly three: `AAY` (Antyodaya), `NFSA-PHH` (Priority Household), `Kesari (APL)`. Never an invented category. |
 | **Entitlement** | The monthly grain a card may draw. PHH: 5 kg per member per month, issued in Maharashtra as 3 kg rice and 2 kg wheat per member. AAY: 35 kg per card per month regardless of family size, plus 1 kg sugar. |
 | **Allotment month** | The month a transaction draws against, which is not always the month it happens in. A transaction carries both its own date and its allotment month. |
-| **ePoS transaction** | One issue of grain at a shop, recorded on the electronic point-of-sale device. Carries date and time, allotment month, commodity, quantity in kg to 3 decimals, and authentication mode. |
+| **ePoS transaction** | One issue of grain at a shop, recorded on the electronic point-of-sale device. Carries date and time, allotment month, commodity, quantity in kg to 3 decimals, authentication mode, and a **transaction status** (Collected or Part collected). |
 | **Authentication mode** | How the beneficiary proved identity at the counter. Exactly four: Biometric, Iris, OTP, Nominee. |
 | **e-KYC status** | Whether a member's identity verification is complete. Done or Pending. |
 | **Aadhaar seeded** | Whether a member's Aadhaar has been linked to the card. **A yes/no only.** No Aadhaar number is ever generated or stored, and no field is named `aadhaar_no`. |
@@ -108,3 +109,5 @@ The console's main path does not use the system vocabulary above. It is written 
 - **Zero em-dashes in UI copy.** A full stop or a comma.
 
 The translation happens **inside the module that knows why**, not in the template. `HabitScore`, `Verdict` and `RestoreResult` arrive at the console carrying reasons already written in this register. The console renders those strings and never re-derives them. That one decision is what keeps the UI simple.
+
+This register is not invented here; it is worked out, screen by screen, in the "Nightkeep Prototype Screens" Claude Design canvas and recorded at `docs/design/mockup-log.md`. When writing console copy, match the canvas's wording rather than paraphrasing this section.
