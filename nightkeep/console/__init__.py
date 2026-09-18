@@ -3,3 +3,7 @@
 Renders the plain-language reasons carried by HabitScore, Verdict and
 RestoreResult. It never re-derives them. Bound to 127.0.0.1, never the LAN.
 """
+
+from nightkeep.console.app import RationCardPresentation, create_app
+
+__all__ = ["create_app", "RationCardPresentation"]

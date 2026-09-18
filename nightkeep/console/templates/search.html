@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}Ration Card Search{% endblock %}
+{% block page_heading %}Ration Card Search{% endblock %}
+
+{% block content %}
+<div class="screen-split-layout">
+  <!-- Upper Left: Search Filter Form -->
+  <section class="panel-block search-form-section" aria-labelledby="search-form-heading">
+    <div class="panel-header">
+      <h2 id="search-form-heading">Search Filters</h2>
+    </div>
+    <div class="panel-body">
+      <form method="get" action="{{ url_for('search_cards') }}" class="search-form">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="card_no" class="form-label">Ration card number</label>
+            <input
+              type="text"
+              id="card_no"
+              name="card_no"
+              class="form-control"
+              value="{{ query.card_no }}"
+              placeholder="e.g. 110300512847"
+              autocomplete="off"
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="head_of_family" class="form-label">Head of family</label>
+            <input
+              type="text"
+              id="head_of_family"
+              name="head_of_family"
+              class="form-control"
+              value="{{ query.head_of_family }}"
+              placeholder="e.g. Sunita Ramesh Kadam"
+              autocomplete="off"
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="taluka" class="form-label">Taluka</label>
+            <select id="taluka" name="taluka" class="form-control">
+              <option value="">All Talukas</option>
+              {% for t in talukas %}
+                <option value="{{ t }}" {% if query.taluka == t %}selected{% endif %}>{{ t }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="fps" class="form-label">Fair Price Shop</label>
+            <input
+              type="text"
+              id="fps"
+              name="fps"
+              class="form-control"
+              value="{{ query.fps }}"
+              placeholder="e.g. 27030300145 or shop name"
+              autocomplete="off"
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="scheme" class="form-label">Scheme</label>
+            <select id="scheme" name="scheme" class="form-control">
+              <option value="">All Schemes</option>
+              {% for s in schemes %}
+                <option value="{{ s }}" {% if query.scheme == s %}selected{% endif %}>{{ s }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="status" class="form-label">Status</label>
+            <select id="status" name="status" class="form-control">
+              <option value="">All Statuses</option>
+              {% for st in statuses %}
+                <option value="{{ st }}" {% if query.status == st %}selected{% endif %}>{{ st }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-actions">
+            <a href="{{ url_for('search_cards') }}" class="btn btn-secondary btn-reset">Reset Filters</a>
+            <button type="submit" class="btn btn-primary">Search</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- Upper Right: Side Summary Area -->
+  <aside class="side-summary-column" aria-label="District Summary and Data Safety">
+    <!-- Block A: District Figures -->
+    <section class="panel-block" aria-labelledby="district-figures-heading">
+      <div class="panel-header">
+        <h2 id="district-figures-heading">District Figures</h2>
+      </div>
+      <div class="panel-body">
+        <ul class="figures-list">
+          <li class="figure-item">
+            <span class="figure-value">{{ district_figures.ration_cards }}</span>
+            <span class="figure-label">ration cards</span>
+          </li>
+          <li class="figure-item">
+            <span class="figure-value">{{ district_figures.fps_count }}</span>
+            <span class="figure-label">fair price shops</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Block B: Data Safety -->
+    <section class="panel-block" aria-labelledby="data-safety-heading">
+      <div class="panel-header">
+        <h2 id="data-safety-heading">Data Safety</h2>
+      </div>
+      <div class="panel-body">
+        <div class="data-safety-status-box">
+          <span class="data-safety-badge">Protected</span>
+          <p class="data-safety-description">
+            All 5,000 records protected. Continuous monitoring active.
+          </p>
+          <a href="{{ url_for('nightkeep_home') }}" class="btn btn-secondary">Open Data Safety</a>
+        </div>
+      </div>
+    </section>
+  </aside>
+</div>
+
+<!-- Lower Section: Search Results Table -->
+<section class="results-section" aria-labelledby="results-heading">
+  <div class="results-header">
+    <h2 id="results-heading">Search Results</h2>
+    <span class="results-count">{{ records|length }} records found</span>
+  </div>
+
+  <div class="table-responsive">
+    <table class="pds-table">
+      <caption>Ration card beneficiary records matching search criteria</caption>
+      <thead>
+        <tr>
+          <th scope="col">Card Number</th>
+          <th scope="col">Head of Family</th>
+          <th scope="col">Taluka / Village</th>
+          <th scope="col">Fair Price Shop</th>
+          <th scope="col">Scheme</th>
+          <th scope="col">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if records %}
+          {% for record in records %}
+            <tr>
+              <td class="tabular-number">
+                <a href="/card/{{ record.card_no }}" class="card-number-link">{{ record.card_no }}</a>
+              </td>
+              <td>{{ record.head_of_family }}</td>
+              <td>{{ record.taluka }} / {{ record.village }}</td>
+              <td>{{ record.fps_id }} ({{ record.fps_name }})</td>
+              <td>{{ record.scheme }}</td>
+              <td>
+                <span class="status-badge status-badge-{{ record.status|lower }}">
+                  {{ record.status }}
+                </span>
+              </td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="6" class="empty-results-cell">
+              <p class="empty-results-message">No ration cards found matching the criteria.</p>
+              <a href="{{ url_for('search_cards') }}" class="btn btn-secondary btn-reset-empty">Clear Filters</a>
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

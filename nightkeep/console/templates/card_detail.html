@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}Ration Card Detail: {{ card.card_no }}{% endblock %}
+{% block page_heading %}Ration Card Detail: {{ card.card_no }}{% endblock %}
+
+{% block page_heading_actions %}
+<a href="{{ url_for('search_cards') }}" class="btn btn-secondary btn-heading-back">Back to Search</a>
+{% endblock %}
+
+{% block breadcrumb_items %}
+<li><a href="/">Home</a></li>
+<li class="breadcrumb-separator" aria-hidden="true">/</li>
+<li><a href="{{ url_for('search_cards') }}">Ration Card Search</a></li>
+<li class="breadcrumb-separator" aria-hidden="true">/</li>
+<li aria-current="page">Card {{ card.card_no }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="card-detail-layout">
+  <!-- Section 1: Household Details Panel -->
+  <section class="panel-block card-household-section" aria-labelledby="household-heading">
+    <div class="panel-header detail-panel-header">
+      <h2 id="household-heading">Household Details</h2>
+      <span class="status-badge status-badge-{{ card.status|lower }}">{{ card.status }}</span>
+    </div>
+    <div class="panel-body">
+      <dl class="kv-grid">
+        <div class="kv-item">
+          <dt class="kv-label">Ration Card Number</dt>
+          <dd class="kv-value tabular-number">{{ card.card_no }}</dd>
+        </div>
+        <div class="kv-item">
+          <dt class="kv-label">Head of Family</dt>
+          <dd class="kv-value">{{ card.head_of_family }}</dd>
+        </div>
+        <div class="kv-item">
+          <dt class="kv-label">Card Type / Scheme</dt>
+          <dd class="kv-value">{{ card.card_type }} ({{ card.scheme }})</dd>
+        </div>
+        <div class="kv-item">
+          <dt class="kv-label">Contact Mobile</dt>
+          <dd class="kv-value tabular-number">{{ card.mobile_masked }}</dd>
+        </div>
+        <div class="kv-item">
+          <dt class="kv-label">Taluka / Village</dt>
+          <dd class="kv-value">{{ card.taluka }} / {{ card.village }}</dd>
+        </div>
+        <div class="kv-item">
+          <dt class="kv-label">Issue Date</dt>
+          <dd class="kv-value">{{ card.issue_date }}</dd>
+        </div>
+        <div class="kv-item">
+          <dt class="kv-label">Residential Address</dt>
+          <dd class="kv-value">{{ card.address }}</dd>
+        </div>
+        <div class="kv-item">
+          <dt class="kv-label">Aadhaar Seeding Status</dt>
+          <dd class="kv-value">{{ card.aadhaar_summary }}</dd>
+        </div>
+        <div class="kv-item">
+          <dt class="kv-label">Fair Price Shop</dt>
+          <dd class="kv-value">
+            <span class="tabular-number">{{ card.fps_id }}</span> ({{ card.fps_name }})
+          </dd>
+        </div>
+        <div class="kv-item">
+          <dt class="kv-label">Gas Connection</dt>
+          <dd class="kv-value">{{ card.gas_connection }}</dd>
+        </div>
+        <div class="kv-item">
+          <dt class="kv-label">Total Registered Members</dt>
+          <dd class="kv-value tabular-number">{{ card.member_count }} members</dd>
+        </div>
+      </dl>
+    </div>
+  </section>
+
+  <!-- Section 2: Monthly Entitlement Panel -->
+  <section class="panel-block entitlement-section" aria-labelledby="entitlement-heading">
+    <div class="panel-header">
+      <h2 id="entitlement-heading">Monthly Entitlement</h2>
+    </div>
+    <div class="panel-body">
+      <p class="section-lead-note">
+        Monthly foodgrain entitlement under the {{ card.scheme }} scheme. Issue price is Free under PMGKAY.
+      </p>
+      <div class="table-responsive">
+        <table class="pds-table">
+          <caption>Monthly foodgrain quota and rates for ration card {{ card.card_no }}</caption>
+          <thead>
+            <tr>
+              <th scope="col">Commodity</th>
+              <th scope="col">Monthly Allotment</th>
+              <th scope="col">Issue Price</th>
+              <th scope="col">Allotment Basis</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in card.entitlements %}
+              <tr>
+                <td><strong>{{ item.commodity }}</strong></td>
+                <td class="tabular-number">{{ "%.3f"|format(item.monthly_allotment_kg) }} kg</td>
+                <td>{{ item.rate_per_kg }}</td>
+                <td>{{ item.allotment_basis }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr class="table-summary-row">
+              <th scope="row">Total Monthly Grain</th>
+              <td class="tabular-number"><strong>{{ "%.3f"|format(total_entitlement_kg) }} kg</strong></td>
+              <td>Free under PMGKAY</td>
+              <td>{{ card.member_count }} registered family members</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 3: Family Members Table -->
+  <section class="panel-block members-section" aria-labelledby="members-heading">
+    <div class="panel-header detail-panel-header">
+      <h2 id="members-heading">Family Members</h2>
+      <span class="results-count">{{ card.member_count }} members registered</span>
+    </div>
+    <div class="panel-body">
+      <div class="table-responsive">
+        <table class="pds-table">
+          <caption>Registered household members for ration card {{ card.card_no }}</caption>
+          <thead>
+            <tr>
+              <th scope="col">Sr No</th>
+              <th scope="col">Member Name</th>
+              <th scope="col">Relation to Head</th>
+              <th scope="col">Sex</th>
+              <th scope="col">Age</th>
+              <th scope="col">Aadhaar Seeded</th>
+              <th scope="col">e-KYC Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for member in card.members %}
+              <tr>
+                <td class="tabular-number">{{ member.sr_no }}</td>
+                <td><strong>{{ member.name }}</strong></td>
+                <td>{{ member.relation_to_head }}</td>
+                <td>{{ member.sex }}</td>
+                <td class="tabular-number">{{ member.age }}</td>
+                <td>
+                  {% if member.aadhaar_seeded %}
+                    <span class="status-indicator-positive">Yes</span>
+                  {% else %}
+                    <span class="status-indicator-neutral">No</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="status-badge status-badge-{{ 'active' if member.ekyc_status == 'Done' else 'suspended' }}">
+                    {{ member.ekyc_status }}
+                  </span>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 4: ePoS Collection History -->
+  <section class="panel-block transactions-section" aria-labelledby="transactions-heading">
+    <div class="panel-header detail-panel-header">
+      <h2 id="transactions-heading">ePoS Collection History</h2>
+      <span class="results-count">{{ card.transactions|length }} recorded transactions</span>
+    </div>
+    <div class="panel-body">
+      <div class="table-responsive">
+        <table class="pds-table">
+          <caption>Recent electronic Point of Sale transaction history for ration card {{ card.card_no }}</caption>
+          <thead>
+            <tr>
+              <th scope="col">Date &amp; Time</th>
+              <th scope="col">Allotment Month</th>
+              <th scope="col">Commodity / Quantity</th>
+              <th scope="col">Fair Price Shop</th>
+              <th scope="col">Authentication Mode</th>
+              <th scope="col">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for tx in card.transactions %}
+              <tr>
+                <td class="tabular-number">{{ tx.occurred_at }}</td>
+                <td class="tabular-number">{{ tx.allotment_month }}</td>
+                <td>{{ tx.commodity_summary }}</td>
+                <td class="tabular-number">{{ tx.fps_id }}</td>
+                <td>{{ tx.auth_mode }}</td>
+                <td>
+                  <span class="status-badge status-badge-{{ 'active' if tx.status == 'Collected' else 'suspended' }}">{{ tx.status }}</span>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Page Footer Actions -->
+  <div class="detail-actions-bar">
+    <a href="{{ url_for('search_cards') }}" class="btn btn-secondary">Back to Ration Card Search</a>
+  </div>
+</div>
+{% endblock %}

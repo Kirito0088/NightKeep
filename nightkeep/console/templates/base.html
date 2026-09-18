@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Ration Card Search{% endblock %} - District Supply Office, Thane</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <!-- Accessibility Skip Link -->
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <!-- Chrome 1: Blue Utility Strip -->
+  <aside class="utility-strip" aria-label="Accessibility and System Notice">
+    <div class="utility-strip-left">
+      <a href="#main-content" class="screen-reader-link">Screen Reader Access</a>
+      <div class="text-resize-controls" aria-label="Text Size Controls">
+        <button type="button" aria-label="Decrease text size">A-</button>
+        <button type="button" aria-label="Normal text size">A</button>
+        <button type="button" aria-label="Increase text size">A+</button>
+      </div>
+      <span class="language-indicator">English / मराठी</span>
+    </div>
+    <div class="utility-strip-right">
+      <span class="utility-disclaimer">Prototype on invented data. Not a live government system.</span>
+    </div>
+  </aside>
+
+  <!-- Chrome 2: Saffron-White-Green Hairline -->
+  <div class="tricolor-hairline" role="presentation" aria-hidden="true">
+    <div class="tricolor-saffron"></div>
+    <div class="tricolor-white"></div>
+    <div class="tricolor-green"></div>
+  </div>
+
+  <!-- Chrome 3: Header with Dept Seal and Bilingual Titles -->
+  <header class="site-header">
+    <div class="dept-seal-placeholder" aria-label="Department Seal Placeholder" role="img">
+      [DEPT SEAL]
+    </div>
+    <div class="header-title-block">
+      <div class="office-title-marathi" lang="mr">जिल्हा पुरवठा कार्यालय, ठाणे</div>
+      <div class="office-title-english">District Supply Office, Thane</div>
+    </div>
+  </header>
+
+  <!-- Chrome 4: Navy Navigation Bar with Active Orange Tab -->
+  <nav class="site-nav" aria-label="Primary Navigation">
+    <ul class="nav-list">
+      <li class="nav-item">
+        <a href="{{ url_for('search_cards') }}" class="nav-link {% if active_page != 'safety' %}active{% endif %}" {% if active_page != 'safety' %}aria-current="page"{% endif %}>Ration Card Search</a>
+      </li>
+      <li class="nav-item">
+        <a href="{{ url_for('nightkeep_home') }}" class="nav-link {% if active_page == 'safety' %}active{% endif %}" {% if active_page == 'safety' %}aria-current="page"{% endif %}>Data Safety</a>
+      </li>
+    </ul>
+  </nav>
+
+  <!-- Chrome 5: Breadcrumb -->
+  <nav aria-label="Breadcrumb" class="breadcrumb-container">
+    <ol class="breadcrumb-list">
+      {% block breadcrumb_items %}
+      <li><a href="/">Home</a></li>
+      <li class="breadcrumb-separator" aria-hidden="true">/</li>
+      <li aria-current="page">Ration Card Search</li>
+      {% endblock %}
+    </ol>
+  </nav>
+
+  <!-- Chrome 6: White Page Heading Band -->
+  <div class="page-heading-band">
+    <div class="page-heading-inner">
+      <h1>{% block page_heading %}Ration Card Search{% endblock %}</h1>
+      <div class="page-heading-actions">
+        {% block page_heading_actions %}{% endblock %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Semantic Content -->
+  <main id="main-content" class="main-content">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

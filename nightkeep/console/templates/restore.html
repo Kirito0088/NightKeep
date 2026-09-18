@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Get my records back{% endblock %}
+{% block page_heading %}Get my records back{% endblock %}
+
+{% block breadcrumb_items %}
+<li><a href="/">Home</a></li>
+<li class="breadcrumb-separator" aria-hidden="true">/</li>
+<li><a href="{{ url_for('nightkeep_home') }}">Data Safety</a></li>
+<li class="breadcrumb-separator" aria-hidden="true">/</li>
+<li aria-current="page">Restore Records</li>
+{% endblock %}
+
+{% block content %}
+<div class="restore-screen-layout">
+  <!-- Target and Selected Clean Point Summary -->
+  <div class="restore-summary-banner" role="region" aria-label="Restore Target Summary">
+    <div class="restore-summary-content">
+      <div class="restore-summary-badge">RESTORE WIZARD</div>
+      <h2 class="restore-summary-title">{{ restore.headline }}</h2>
+      <p class="restore-summary-description">
+        Restoring <strong>{{ restore.records_count }} ration cards</strong> for District Supply Office, Thane from the verified clean backup at <strong>{{ restore.clean_point }}</strong> preserved on the Vault.
+      </p>
+    </div>
+  </div>
+
+  <!-- Three-step workflow stepper -->
+  <section class="panel-block restore-steps-section" aria-labelledby="restore-steps-heading">
+    <div class="panel-header">
+      <h2 id="restore-steps-heading">Restore Progress</h2>
+    </div>
+    <div class="panel-body">
+      <ol class="restore-steps-list">
+        {% for step in restore.steps %}
+          <li class="restore-step-item {% if step.status == 'completed' %}restore-step-completed{% elif step.status == 'active' %}restore-step-active{% endif %}">
+            <div class="restore-step-indicator">
+              {% if step.status == 'completed' %}
+                <span class="restore-step-check" aria-hidden="true">Done</span>
+              {% else %}
+                <span class="restore-step-num" aria-hidden="true">{{ step.step_number }}</span>
+              {% endif %}
+            </div>
+            <div class="restore-step-body">
+              <span class="restore-step-title">Step {{ step.step_number }}: {{ step.title }}</span>
+              <span class="restore-step-desc">{{ step.description }}</span>
+            </div>
+            <div class="restore-step-status">
+              {% if step.status == 'completed' %}
+                <span class="status-badge status-badge-active">Completed</span>
+              {% elif step.status == 'active' %}
+                <span class="status-badge status-badge-incident">Current Step</span>
+              {% endif %}
+            </div>
+          </li>
+        {% endfor %}
+      </ol>
+    </div>
+  </section>
+
+  <!-- Five Plain-Language Verification Checks -->
+  <section class="panel-block verification-section" aria-labelledby="verification-heading">
+    <div class="panel-header">
+      <h2 id="verification-heading">Safety Verification (Five Checks Passed)</h2>
+      <span class="status-badge status-badge-active">5 of 5 Verified</span>
+    </div>
+    <div class="panel-body">
+      <ul class="verification-checks-list">
+        {% for check in restore.checks %}
+          <li class="verification-check-item">
+            <span class="verification-check-badge status-badge status-badge-active">{{ check.status }}</span>
+            <span class="verification-check-text">{{ check.statement }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </section>
+
+  <!-- Loss Window Advisory -->
+  <section class="panel-block loss-window-section" aria-labelledby="loss-window-heading">
+    <div class="panel-header">
+      <h2 id="loss-window-heading">Loss Window Advisory</h2>
+      <span class="status-badge status-badge-suspended">{{ restore.loss_window_entries }} entries to re-check</span>
+    </div>
+    <div class="panel-body">
+      <div class="loss-window-box">
+        <p class="loss-window-headline">
+          <strong>{{ restore.loss_window_entries }} counter entries</strong> were recorded between the clean backup ({{ restore.clean_point }}) and the attack stop.
+        </p>
+        <p class="loss-window-detail">
+          {{ restore.loss_window_detail }}
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Step 3: Authorization PIN and Restore Confirmation -->
+  <section class="panel-block restore-confirm-section" aria-labelledby="restore-confirm-heading">
+    <div class="panel-header">
+      <h2 id="restore-confirm-heading">Step 3: Authorisation and Confirmation</h2>
+    </div>
+    <div class="panel-body">
+      <div class="restore-form-block">
+        <div class="form-group pin-form-group">
+          <label for="restore_pin" class="form-label">Supervisor authorisation PIN</label>
+          <input
+            type="password"
+            id="restore_pin"
+            name="restore_pin"
+            class="form-control pin-input"
+            maxlength="6"
+            placeholder="Enter supervisor PIN"
+            autocomplete="off"
+          >
+          <span class="form-help-text">
+            Authorisation from the District Supply Officer or inspector is required before restoring records to the office computer.
+          </span>
+        </div>
+
+        <div class="restore-actions-bar">
+          <button type="button" class="btn btn-primary btn-restore-confirm" id="restore-confirm-btn">
+            Restore records to office computer
+          </button>
+          <a href="{{ url_for('nightkeep_alert') }}" class="btn btn-secondary btn-cancel-restore">
+            Return to Incident Alert
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+
+{% block title %}Ration Card Search (System Protected){% endblock %}
+{% block page_heading %}Ration Card Search{% endblock %}
+
+{% block breadcrumb_items %}
+<li><a href="/">Home</a></li>
+<li class="breadcrumb-separator" aria-hidden="true">/</li>
+<li><a href="{{ url_for('search_cards') }}">Ration Card Search</a></li>
+<li class="breadcrumb-separator" aria-hidden="true">/</li>
+<li aria-current="page">System Protected</li>
+{% endblock %}
+
+{% block content %}
+<div class="locked-screen-layout">
+  <!-- Primary Incident Banner -->
+  <div class="locked-alert-banner" role="alert" aria-live="assertive">
+    <div class="locked-alert-content">
+      <div class="locked-alert-badge">SYSTEM NOTICE</div>
+      <h2 class="locked-alert-title">Ration card records cannot be opened</h2>
+      <p class="locked-alert-description">
+        The system detected an abnormal program attempting to modify database files. Records have been locked in place to protect beneficiary data.
+      </p>
+    </div>
+  </div>
+
+  <!-- Search Form and Side Summary Grid (Preserves Screen 1 layout structure) -->
+  <div class="screen-split-layout">
+    <!-- Upper Left: Disabled Search Form -->
+    <section class="panel-block search-form-section form-disabled-section" aria-labelledby="locked-search-heading">
+      <div class="panel-header">
+        <h2 id="locked-search-heading">Search Filters</h2>
+        <span class="status-badge status-badge-suspended">Search Unavailable</span>
+      </div>
+      <div class="panel-body">
+        <form method="get" action="{{ url_for('pds_locked') }}" class="search-form">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="card_no" class="form-label">Ration card number</label>
+              <input
+                type="text"
+                id="card_no"
+                name="card_no"
+                class="form-control"
+                placeholder="Search currently unavailable"
+                disabled
+              >
+            </div>
+
+            <div class="form-group">
+              <label for="head_of_family" class="form-label">Head of family</label>
+              <input
+                type="text"
+                id="head_of_family"
+                name="head_of_family"
+                class="form-control"
+                placeholder="Search currently unavailable"
+                disabled
+              >
+            </div>
+
+            <div class="form-group">
+              <label for="taluka" class="form-label">Taluka</label>
+              <select id="taluka" name="taluka" class="form-control" disabled>
+                <option value="">All Talukas</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="fps" class="form-label">Fair Price Shop</label>
+              <input
+                type="text"
+                id="fps"
+                name="fps"
+                class="form-control"
+                placeholder="Search currently unavailable"
+                disabled
+              >
+            </div>
+
+            <div class="form-group">
+              <label for="scheme" class="form-label">Scheme</label>
+              <select id="scheme" name="scheme" class="form-control" disabled>
+                <option value="">All Schemes</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="status" class="form-label">Status</label>
+              <select id="status" name="status" class="form-control" disabled>
+                <option value="">All Statuses</option>
+              </select>
+            </div>
+
+            <div class="form-actions">
+              <button type="button" class="btn btn-primary" disabled>Search Unavailable</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Upper Right: Side Summary Area -->
+    <aside class="side-summary-column" aria-label="District Summary and Data Safety">
+      <!-- District Figures -->
+      <section class="panel-block" aria-labelledby="locked-figures-heading">
+        <div class="panel-header">
+          <h2 id="locked-figures-heading">District Figures</h2>
+        </div>
+        <div class="panel-body">
+          <ul class="figures-list">
+            <li class="figure-item">
+              <span class="figure-value">{{ district_figures.ration_cards }}</span>
+              <span class="figure-label">ration cards</span>
+            </li>
+            <li class="figure-item">
+              <span class="figure-value">{{ district_figures.fps_count }}</span>
+              <span class="figure-label">fair price shops</span>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Data Safety Block -->
+      <section class="panel-block" aria-labelledby="locked-data-safety-heading">
+        <div class="panel-header">
+          <h2 id="locked-data-safety-heading">Data Safety</h2>
+        </div>
+        <div class="panel-body">
+          <div class="data-safety-status-box">
+            <span class="status-badge status-badge-incident">Protected Lock Active</span>
+            <p class="data-safety-description">
+              Records locked in place. Safe copies are preserved on the isolated Vault.
+            </p>
+            <a href="{{ url_for('nightkeep_home') }}" class="btn btn-secondary btn-open-safety">Open Data Safety</a>
+          </div>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <!-- Empty Results Table Section -->
+  <section class="results-section locked-results-section" aria-labelledby="locked-results-heading">
+    <div class="results-header">
+      <h2 id="locked-results-heading">Search Results</h2>
+      <span class="results-count">0 records available</span>
+    </div>
+
+    <div class="table-responsive">
+      <table class="pds-table">
+        <caption>Ration card beneficiary records unavailable</caption>
+        <thead>
+          <tr>
+            <th scope="col">Card Number</th>
+            <th scope="col">Head of Family</th>
+            <th scope="col">Taluka / Village</th>
+            <th scope="col">Fair Price Shop</th>
+            <th scope="col">Scheme</th>
+            <th scope="col">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td colspan="6" class="empty-results-cell locked-empty-cell">
+              <p class="locked-empty-headline">Ration card records cannot be opened</p>
+              <p class="locked-empty-subtext">Database access is suspended to prevent file damage.</p>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Lower Split: What the office does next (Left) + Simulated Ransom Note (Right) -->
+  <div class="locked-bottom-grid">
+    <!-- What the office does next -->
+    <section class="panel-block office-actions-panel" aria-labelledby="office-next-heading">
+      <div class="panel-header">
+        <h2 id="office-next-heading">What the office does next</h2>
+      </div>
+      <div class="panel-body">
+        <ol class="action-steps-list">
+          <!-- Step 1 (Highlighted in red per mockup-log v10) -->
+          <li class="action-step-item action-step-highlight">
+            <div class="action-step-number" aria-hidden="true">1</div>
+            <div class="action-step-text">
+              <p class="action-step-title">Do not restart the office computer.</p>
+              <p class="action-step-reason">Restarting can wipe the evidence and can let the locking program start again.</p>
+            </div>
+          </li>
+
+          <!-- Step 2 -->
+          <li class="action-step-item">
+            <div class="action-step-number" aria-hidden="true">2</div>
+            <div class="action-step-text">
+              <p class="action-step-title">Disconnect the network cable.</p>
+              <p class="action-step-detail">Keep this computer separated until the district technician arrives.</p>
+            </div>
+          </li>
+
+          <!-- Step 3 -->
+          <li class="action-step-item">
+            <div class="action-step-number" aria-hidden="true">3</div>
+            <div class="action-step-text">
+              <p class="action-step-title">Inform the District Supply Office IT team.</p>
+              <p class="action-step-detail">Safe copies remain protected on the Vault. Use the Data Safety screen to check your records are safe.</p>
+            </div>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- Simulated Ransom Note Artifact -->
+    <section class="panel-block ransom-note-panel" aria-labelledby="ransom-note-heading">
+      <div class="panel-header">
+        <h2 id="ransom-note-heading">Simulated Ransom Note (Demonstration Artifact)</h2>
+      </div>
+      <div class="panel-body">
+        <div class="ransom-note-box" aria-label="Detected Demonstration Artifact Content">
+          <pre class="ransom-note-pre"><code>=== PROTOTYPE DEMONSTRATION ARTIFACT ===
+File: README_LOCKED.txt (simulated)
+
+All files in this directory have been locked.
+Personal ID: NIGHTKEEP-SIM-2026
+Do not modify files or restart the machine.
+Contact: simulator@demo.internal
+
+=== END DEMONSTRATION ARTIFACT ===</code></pre>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

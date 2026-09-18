@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Data Safety Alert{% endblock %}
+{% block page_heading %}Data Safety{% endblock %}
+
+{% block breadcrumb_items %}
+<li><a href="/">Home</a></li>
+<li class="breadcrumb-separator" aria-hidden="true">/</li>
+<li><a href="{{ url_for('nightkeep_home') }}">Data Safety</a></li>
+<li class="breadcrumb-separator" aria-hidden="true">/</li>
+<li aria-current="page">Incident Alert</li>
+{% endblock %}
+
+{% block content %}
+<div class="alert-screen-layout">
+  <!-- Primary Incident Banner (Banner parity with Screen 3 and Screen 4) -->
+  <div class="alert-incident-banner" role="alert" aria-live="assertive">
+    <div class="alert-incident-content">
+      <div class="alert-incident-badge">{{ alert.status_badge }}</div>
+      <h2 class="alert-incident-title">{{ alert.headline }}</h2>
+      <p class="alert-incident-description">
+        Nightkeep detected abnormal activity and protected your database. Safe copies are preserved on the isolated Vault.
+      </p>
+    </div>
+  </div>
+
+  <!-- Incident Summary Figures Section -->
+  <section class="panel-block alert-summary-section" aria-labelledby="alert-summary-heading">
+    <div class="panel-header">
+      <h2 id="alert-summary-heading">Incident Summary</h2>
+    </div>
+    <div class="panel-body">
+      <div class="alert-summary-grid">
+        {% for figure in alert.figures %}
+          <div class="alert-stat-card">
+            <span class="alert-stat-value tabular-number">{{ figure.value }}</span>
+            <span class="alert-stat-label">{{ figure.label }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <!-- Incident Timeline Section -->
+  <section class="panel-block alert-timeline-section" aria-labelledby="alert-timeline-heading">
+    <div class="panel-header">
+      <h2 id="alert-timeline-heading">Incident Timeline</h2>
+    </div>
+    <div class="panel-body">
+      <ol class="timeline-list">
+        {% for item in alert.timeline %}
+          <li class="timeline-item">
+            <div class="timeline-time tabular-number">{{ item.time }}</div>
+            <div class="timeline-content">
+              <p class="timeline-title">{{ item.title }}</p>
+              <p class="timeline-detail">{{ item.detail }}</p>
+            </div>
+          </li>
+        {% endfor %}
+      </ol>
+    </div>
+  </section>
+
+  <!-- What to do now Action Panel -->
+  <section class="panel-block alert-actions-panel" aria-labelledby="what-to-do-heading">
+    <div class="panel-header">
+      <h2 id="what-to-do-heading">What to do now</h2>
+    </div>
+    <div class="panel-body">
+      <ol class="action-steps-list">
+        {% for action in alert.actions %}
+          <li class="action-step-item {% if action.is_highlighted %}action-step-highlight{% endif %}">
+            <div class="action-step-number" aria-hidden="true">{{ action.number }}</div>
+            <div class="action-step-text">
+              <p class="action-step-title">{{ action.title }}</p>
+              <p class="{% if action.is_highlighted %}action-step-reason{% else %}action-step-detail{% endif %}">
+                {{ action.detail }}
+              </p>
+              {% if action.number == 3 %}
+                <div class="step-primary-action">
+                  <a href="{{ url_for('restore_wizard') }}" class="btn btn-primary btn-restore-action">Get my records back</a>
+                </div>
+              {% endif %}
+            </div>
+          </li>
+        {% endfor %}
+      </ol>
+    </div>
+  </section>
+
+  <!-- For the IT person Entry Point -->
+  <section class="panel-block it-person-section" aria-labelledby="it-person-heading">
+    <div class="panel-header">
+      <h2 id="it-person-heading">For the IT person</h2>
+    </div>
+    <div class="panel-body it-panel-body">
+      <p class="it-panel-text">
+        Technical incident diagnostics, process attribution records, and Vault recovery manifests are available for authorized staff.
+      </p>
+      <button type="button" class="btn btn-secondary btn-it-access">Open IT View</button>
+    </div>
+  </section>
+</div>
+{% endblock %}
