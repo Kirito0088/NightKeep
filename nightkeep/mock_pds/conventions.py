@@ -13,7 +13,7 @@ them invented.
 """
 
 import random
-from datetime import date, timedelta
+from datetime import date, time, timedelta
 
 from nightkeep.mock_pds._names import (  # noqa: F401  (re-exported)
     FEMALE_FIRST_NAMES,
@@ -64,6 +64,11 @@ ISSUE_PRICE_TEXT = "Free under PMGKAY"
 AUTH_MODES = ("Biometric", "Iris", "OTP", "Nominee")
 TRANSACTION_STATUSES = ("Collected", "Part collected")
 TRANSACTION_STATUS_WEIGHTS = (0.85, 0.15)
+# ePoS counters are open these hours. Every transaction falls inside them.
+SHOP_OPENS = time(9, 0)
+SHOP_CLOSES = time(18, 0)
+# The smallest quantity an ePoS counter issues in one transaction.
+MIN_ISSUE_KG = 0.5
 
 # --- Members ---------------------------------------------------------------
 

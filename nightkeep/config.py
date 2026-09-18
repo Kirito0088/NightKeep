@@ -212,6 +212,7 @@ class Clock:
     """The simulated clock: how long a day lasts and how many there are."""
 
     simulated_day_seconds: int
+    day_starts_at: time
     learning_days: int
     guard_days: int
 
@@ -272,6 +273,7 @@ def _read_district(reader: _Reader) -> District:
 def _read_clock(reader: _Reader) -> Clock:
     clock = Clock(
         simulated_day_seconds=reader.integer("simulated_day_seconds"),
+        day_starts_at=reader.clock_time("day_starts_at"),
         learning_days=reader.integer("learning_days"),
         guard_days=reader.integer("guard_days"),
     )

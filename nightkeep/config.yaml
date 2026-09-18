@@ -18,6 +18,9 @@ seed: 20260922
 
 clock:
   simulated_day_seconds: 30
+  # A simulated day is one shop day followed by its night: it runs from this
+  # time until the same time next morning, so every night job lands in it.
+  day_starts_at: "06:00"
   learning_days: 7
   guard_days: 3
 

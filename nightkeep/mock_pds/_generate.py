@@ -7,7 +7,7 @@ dict/set iteration order elsewhere in the process.
 
 import random
 import sqlite3
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, timedelta
 
 from nightkeep.config import District
 from nightkeep.mock_pds import conventions as c
@@ -185,44 +185,55 @@ def _generate_transactions(
     if count == 0:
         return
 
-    commodities = list(entitlement)
     allotment_month = c.current_allotment_month()
 
+    today = c.SIMULATED_TODAY
+    month_start = today.replace(day=1)
     rows = []
     for _ in range(count):
-        commodity = rng.choice(commodities)
-        ceiling = max(entitlement[commodity], 0.5)
-        quantity_kg = round(rng.uniform(0.5, ceiling), 3)
-        occurred_at = _draw_transaction_datetime(rng)
-        auth_mode = rng.choice(c.AUTH_MODES)
-        status = c.draw_transaction_status(rng)
+        day = month_start + timedelta(days=rng.randint(0, (today - month_start).days))
         rows.append(
-            (
-                card_no,
-                fps_id,
-                occurred_at.isoformat(),
-                allotment_month,
-                commodity,
-                quantity_kg,
-                auth_mode,
-                status,
-            )
+            draw_transaction(rng, card_no, fps_id, entitlement, day, allotment_month)
         )
+    insert_transactions(conn, rows)
 
+
+def draw_transaction(
+    rng: random.Random,
+    card_no: str,
+    fps_id: str,
+    entitlement: dict[str, float],
+    day: date,
+    allotment_month: str,
+) -> tuple:
+    """One ePoS row for this card at its own shop, in shop hours on day."""
+    commodity = rng.choice(list(entitlement))
+    ceiling = max(entitlement[commodity], c.MIN_ISSUE_KG)
+    quantity_kg = round(rng.uniform(c.MIN_ISSUE_KG, ceiling), 3)
+    opens = datetime.combine(day, c.SHOP_OPENS)
+    open_seconds = int(
+        (datetime.combine(day, c.SHOP_CLOSES) - opens).total_seconds()
+    )
+    occurred_at = opens + timedelta(seconds=rng.randrange(open_seconds))
+    auth_mode = rng.choice(c.AUTH_MODES)
+    status = c.draw_transaction_status(rng)
+    return (
+        card_no,
+        fps_id,
+        occurred_at.isoformat(),
+        allotment_month,
+        commodity,
+        quantity_kg,
+        auth_mode,
+        status,
+    )
+
+
+def insert_transactions(conn: sqlite3.Connection, rows: list[tuple]) -> None:
     conn.executemany(
         """INSERT INTO transactions
            (card_no, fps_id, occurred_at, allotment_month, commodity,
             quantity_kg, auth_mode, status)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
         rows,
-    )
-
-
-def _draw_transaction_datetime(rng: random.Random) -> datetime:
-    today = c.SIMULATED_TODAY
-    month_start = today.replace(day=1)
-    day_offset = rng.randint(0, max((today - month_start).days, 0))
-    day = month_start + timedelta(days=day_offset)
-    return datetime.combine(
-        day, time(rng.randint(9, 17), rng.randint(0, 59), rng.randint(0, 59))
     )

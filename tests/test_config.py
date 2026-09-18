@@ -159,3 +159,16 @@ def test_config_yaml_is_read_exactly_once_per_startup(monkeypatch):
     load_config(REPO_CONFIG)
 
     assert reads == [REPO_CONFIG]
+
+
+def test_repo_config_starts_each_simulated_day_before_the_shops_open():
+    config = load_config(REPO_CONFIG)
+
+    # A simulated day is one shop day followed by its night, so it must start
+    # after the last night job and before the shops open (09:00).
+    last_night_job = max(
+        job.start_window.latest
+        for job in vars(config.jobs).values()
+        if hasattr(job, "start_window") and job.start_window.latest < time(9, 0)
+    )
+    assert last_night_job < config.clock.day_starts_at <= time(9, 0)
