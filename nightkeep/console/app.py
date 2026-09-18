@@ -373,4 +373,14 @@ def create_app(
             total_entitlement_kg=total_entitlement_kg,
         )
 
+    @app.route("/locked", methods=["GET"])
+    def pds_locked() -> str:
+        return render_template(
+            "locked.html",
+            district_figures=figures,
+            talukas=c.TALUKAS,
+            schemes=c.SCHEMES,
+            statuses=c.CARD_STATUSES,
+        )
+
     return app

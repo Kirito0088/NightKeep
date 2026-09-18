@@ -138,6 +138,7 @@ def test_no_em_dashes_in_console_assets():
         CONSOLE_DIR / "templates" / "search.html",
         CONSOLE_DIR / "templates" / "card_detail.html",
         CONSOLE_DIR / "templates" / "card_not_found.html",
+        CONSOLE_DIR / "templates" / "locked.html",
         CONSOLE_DIR / "app.py",
         CONSOLE_DIR / "__init__.py",
         CONSOLE_DIR / "__main__.py",
@@ -342,5 +343,104 @@ def test_all_default_sample_cards_open_successfully(client):
         html = response.get_data(as_text=True)
         assert record.head_of_family in html
         assert record.card_no in html
+
+
+def test_locked_route_returns_200(client):
+    response = client.get("/locked")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert "Ration Card Search (System Protected)" in html
+
+
+def test_locked_route_has_primary_message(client):
+    response = client.get("/locked")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    # Must contain exact operational message
+    assert "Ration card records cannot be opened" in html
+
+
+def test_locked_route_has_empty_results_table(client):
+    response = client.get("/locked")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    assert "0 records available" in html
+    assert "Ration card records cannot be opened" in html
+    assert "Database access is suspended to prevent file damage." in html
+
+
+def test_locked_route_has_ransom_note(client):
+    response = client.get("/locked")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    assert "Simulated Ransom Note (Demonstration Artifact)" in html
+    assert "PROTOTYPE DEMONSTRATION ARTIFACT" in html
+    assert "README_LOCKED.txt" in html
+    assert "NIGHTKEEP-SIM-2026" in html
+
+
+def test_locked_route_has_what_the_office_does_next(client):
+    response = client.get("/locked")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    assert "What the office does next" in html
+    # Step 1 highlighted
+    assert "Do not restart the office computer." in html
+    assert "Restarting can wipe the evidence and can let the locking program start again." in html
+    # Step 2
+    assert "Disconnect the network cable." in html
+    # Step 3
+    assert "Inform the District Supply Office IT team." in html
+
+
+def test_locked_route_has_open_data_safety_and_no_dead_anchor(client):
+    response = client.get("/locked")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    assert "Open Data Safety" in html
+    # Reject dead anchor href="#" for Open Data Safety
+    assert '<a href="#" class="btn btn-secondary btn-data-safety">Open Data Safety</a>' not in html
+    assert '<a href="#"' not in html, "Found dead anchor href='#' in locked template"
+
+
+def test_locked_route_retains_government_chrome(client):
+    response = client.get("/locked")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    assert "जिल्हा पुरवठा कार्यालय, ठाणे" in html
+    assert "District Supply Office, Thane" in html
+    assert "Prototype on invented data. Not a live government system." in html
+    assert '<a href="#main-content" class="skip-link">Skip to main content</a>' in html
+    assert 'id="main-content"' in html
+
+
+def test_locked_route_no_technical_detection_terms(client):
+    response = client.get("/locked")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    # Technical detection terms must not leak to the counter clerk
+    technical_terms = [
+        "entropy",
+        "SHA-256",
+        "sha256",
+        "Habit Score",
+        "habit score",
+        "MAD",
+        "script hash",
+        "manifest",
+        "snapshot ID",
+        "watcher internals",
+        "verdict table",
+    ]
+    for term in technical_terms:
+        assert term not in html, f"Technical term '{term}' leaked to clerk-facing locked screen"
+
 
 

@@ -604,6 +604,12 @@ html, body {
   border-color: var(--color-review-amber);
 }
 
+.status-badge-incident {
+  background-color: #fdf2f2;
+  color: var(--color-incident-red);
+  border-color: var(--color-incident-red);
+}
+
 .empty-results-cell {
   text-align: center;
   padding: 24px var(--block-inner-gutter);
@@ -719,4 +725,167 @@ html, body {
 
 .not-found-actions {
   margin-top: 8px;
+}
+
+/* Screen 3: PDS Attacked State (PdsLocked) Styles */
+.locked-screen-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.locked-alert-banner {
+  border: 1px solid var(--color-incident-red);
+  background-color: #fdf2f2;
+  padding: 16px var(--block-inner-gutter);
+  border-radius: 0;
+}
+
+.locked-alert-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.locked-alert-badge {
+  align-self: flex-start;
+  background-color: var(--color-incident-red);
+  color: #ffffff;
+  font-size: var(--font-size-utility);
+  font-weight: 700;
+  padding: 2px 8px;
+  letter-spacing: 0.5px;
+}
+
+.locked-alert-title {
+  font-size: var(--font-size-status);
+  font-weight: 700;
+  color: var(--color-incident-red);
+  line-height: 1.2;
+}
+
+.locked-alert-description {
+  font-size: var(--font-size-body);
+  color: var(--color-body-text);
+  text-wrap: pretty;
+}
+
+.form-disabled-section .form-control:disabled {
+  background-color: var(--color-bg-subtle);
+  color: var(--color-secondary-text);
+  cursor: not-allowed;
+}
+
+.locked-results-section .results-count {
+  color: var(--color-incident-red);
+}
+
+.locked-empty-cell {
+  padding: 32px var(--block-inner-gutter);
+}
+
+.locked-empty-headline {
+  font-size: var(--font-size-lead);
+  font-weight: 700;
+  color: var(--color-incident-red);
+  margin-bottom: 6px;
+}
+
+.locked-empty-subtext {
+  font-size: var(--font-size-table);
+  color: var(--color-secondary-text);
+}
+
+.locked-bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 840px) {
+  .locked-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.action-steps-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.action-step-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--color-border);
+  background-color: #ffffff;
+}
+
+.action-step-number {
+  width: 24px;
+  height: 24px;
+  background-color: var(--color-primary-navy);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: var(--font-size-table);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.action-step-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.action-step-title {
+  font-size: var(--font-size-body);
+  font-weight: 700;
+  color: var(--color-body-text);
+}
+
+.action-step-reason,
+.action-step-detail {
+  font-size: var(--font-size-table);
+  color: var(--color-secondary-text);
+  text-wrap: pretty;
+}
+
+/* Step 1 Highlighted per mockup-log v10 */
+.action-step-highlight {
+  background-color: #fdf2f2;
+  border: 1px solid #f5c2c7;
+  border-left: 5px solid var(--color-incident-red);
+}
+
+.action-step-highlight .action-step-number {
+  background-color: var(--color-incident-red);
+}
+
+.action-step-highlight .action-step-title {
+  color: var(--color-incident-red);
+}
+
+.ransom-note-box {
+  background-color: #f8fafc;
+  border: 1px solid var(--color-border);
+  padding: 12px;
+}
+
+.ransom-note-pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ransom-note-pre code {
+  font-family: Consolas, Monaco, "Courier New", monospace;
+  font-size: var(--font-size-caption);
+  color: var(--color-body-text);
+  line-height: 1.4;
 }
