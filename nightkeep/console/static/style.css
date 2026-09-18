@@ -985,3 +985,160 @@ html, body {
   max-width: 800px;
   text-wrap: pretty;
 }
+
+/* Screen 5: Nightkeep Alert (Data Safety Attack Report) Styles */
+.alert-screen-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.alert-incident-banner {
+  border: 1px solid var(--color-incident-red);
+  background-color: #fdf2f2;
+  padding: 16px var(--block-inner-gutter);
+  border-radius: 0;
+}
+
+.alert-incident-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.alert-incident-badge {
+  align-self: flex-start;
+  background-color: var(--color-incident-red);
+  color: #ffffff;
+  font-size: var(--font-size-utility);
+  font-weight: 700;
+  padding: 2px 8px;
+  letter-spacing: 0.5px;
+}
+
+.alert-incident-title {
+  font-size: var(--font-size-status);
+  font-weight: 700;
+  color: var(--color-incident-red);
+  line-height: 1.2;
+}
+
+.alert-incident-description {
+  font-size: var(--font-size-body);
+  color: var(--color-body-text);
+  text-wrap: pretty;
+}
+
+.alert-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .alert-summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .alert-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.alert-stat-card {
+  display: flex;
+  flex-direction: column;
+  border-left: 3px solid var(--color-incident-red);
+  padding-left: 10px;
+}
+
+.alert-stat-value {
+  font-size: var(--font-size-status);
+  font-weight: 700;
+  color: var(--color-primary-navy);
+  line-height: 1.1;
+}
+
+.alert-stat-label {
+  font-size: var(--font-size-caption);
+  color: var(--color-secondary-text);
+  font-weight: 500;
+}
+
+/* Timeline Styles */
+.timeline-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.timeline-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.timeline-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.timeline-item:first-child {
+  padding-top: 0;
+}
+
+.timeline-time {
+  width: 80px;
+  flex-shrink: 0;
+  font-size: var(--font-size-table);
+  font-weight: 700;
+  color: var(--color-primary-navy);
+}
+
+.timeline-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.timeline-title {
+  font-size: var(--font-size-body);
+  font-weight: 700;
+  color: var(--color-body-text);
+}
+
+.timeline-detail {
+  font-size: var(--font-size-table);
+  color: var(--color-secondary-text);
+  text-wrap: pretty;
+}
+
+.step-primary-action {
+  margin-top: 10px;
+}
+
+.btn-restore-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+

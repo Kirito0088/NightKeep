@@ -104,6 +104,36 @@ class SafetyHomePresentation:
     tasks: tuple[NightTaskPresentation, ...]
 
 
+@dataclass(frozen=True)
+class IncidentFigurePresentation:
+    value: str
+    label: str
+
+
+@dataclass(frozen=True)
+class TimelineEventPresentation:
+    time: str
+    title: str
+    detail: str
+
+
+@dataclass(frozen=True)
+class AlertActionStepPresentation:
+    number: int
+    title: str
+    detail: str
+    is_highlighted: bool = False
+
+
+@dataclass(frozen=True)
+class AlertScreenPresentation:
+    headline: str
+    status_badge: str
+    figures: tuple[IncidentFigurePresentation, ...]
+    timeline: tuple[TimelineEventPresentation, ...]
+    actions: tuple[AlertActionStepPresentation, ...]
+
+
 DEFAULT_SAFETY_HOME_DATA: SafetyHomePresentation = SafetyHomePresentation(
     protection_status="Your records are safe",
     protected_cards_count="5,000",
@@ -146,6 +176,65 @@ DEFAULT_SAFETY_HOME_DATA: SafetyHomePresentation = SafetyHomePresentation(
             usually="10:00 to 17:00, Mon to Sat",
             last_night="10:15 to 16:50 (24 entries)",
             status="Normal",
+        ),
+    ),
+)
+
+
+DEFAULT_ALERT_DATA: AlertScreenPresentation = AlertScreenPresentation(
+    headline="Someone tried to lock your files. It was stopped.",
+    status_badge="STATUS: ATTACK STOPPED",
+    figures=(
+        IncidentFigurePresentation(value="37", label="files damaged"),
+        IncidentFigurePresentation(value="6s", label="Detected in 6 seconds"),
+        IncidentFigurePresentation(value="01:20", label="Clean copy from 01:20 ready"),
+        IncidentFigurePresentation(value="19", label="counter entries to re-check"),
+    ),
+    timeline=(
+        TimelineEventPresentation(
+            time="03:41:12",
+            title="Suspicious activity began",
+            detail="An abnormal program began modifying office files.",
+        ),
+        TimelineEventPresentation(
+            time="03:41:18",
+            title="Detected in 6 seconds",
+            detail="Nightkeep detected the abnormal activity and stopped the program.",
+        ),
+        TimelineEventPresentation(
+            time="03:41:19",
+            title="37 files damaged",
+            detail="File access was locked to prevent any further damage.",
+        ),
+        TimelineEventPresentation(
+            time="03:41:20",
+            title="Clean copy from 01:20 ready",
+            detail="Safe backup preserved on the Vault remains uncorrupted and ready.",
+        ),
+        TimelineEventPresentation(
+            time="03:41:21",
+            title="Office follow-up required",
+            detail="19 counter entries recorded after the clean copy need to be re-checked.",
+        ),
+    ),
+    actions=(
+        AlertActionStepPresentation(
+            number=1,
+            title="Do not restart the office computer.",
+            detail="Restarting can wipe the evidence and can let the locking program start again.",
+            is_highlighted=True,
+        ),
+        AlertActionStepPresentation(
+            number=2,
+            title="Disconnect the network cable.",
+            detail="Keep this computer separated until the district technician arrives.",
+            is_highlighted=False,
+        ),
+        AlertActionStepPresentation(
+            number=3,
+            title="Restore records using the clean copy.",
+            detail="Safe copies are preserved on the Vault. Use the clean copy from 01:20 to restore records.",
+            is_highlighted=False,
         ),
     ),
 )
@@ -369,6 +458,7 @@ def create_app(
     district_figures: dict[str, str] | None = None,
     card_details: dict[str, CardDetailPresentation] | None = None,
     safety_home_data: SafetyHomePresentation | None = None,
+    alert_data: AlertScreenPresentation | None = None,
 ) -> Flask:
     """Create and configure the Nightkeep console Flask application."""
     app = Flask(__name__)
@@ -376,6 +466,7 @@ def create_app(
     figures = district_figures if district_figures is not None else DEFAULT_DISTRICT_FIGURES
     card_details_pool = card_details if card_details is not None else DEFAULT_CARD_DETAILS
     safety_pool = safety_home_data if safety_home_data is not None else DEFAULT_SAFETY_HOME_DATA
+    alert_pool = alert_data if alert_data is not None else DEFAULT_ALERT_DATA
 
     @app.route("/", methods=["GET"])
     @app.route("/search", methods=["GET"])
@@ -458,6 +549,21 @@ def create_app(
         return render_template(
             "safety.html",
             safety=safety_pool,
+            active_page="safety",
+        )
+
+    @app.route("/alert", methods=["GET"])
+    def nightkeep_alert() -> str:
+        return render_template(
+            "alert.html",
+            alert=alert_pool,
+            active_page="safety",
+        )
+
+    @app.route("/restore", methods=["GET"])
+    def restore_wizard() -> str:
+        return render_template(
+            "restore.html",
             active_page="safety",
         )
 

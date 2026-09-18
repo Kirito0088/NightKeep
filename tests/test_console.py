@@ -140,6 +140,8 @@ def test_no_em_dashes_in_console_assets():
         CONSOLE_DIR / "templates" / "card_not_found.html",
         CONSOLE_DIR / "templates" / "locked.html",
         CONSOLE_DIR / "templates" / "safety.html",
+        CONSOLE_DIR / "templates" / "alert.html",
+        CONSOLE_DIR / "templates" / "restore.html",
         CONSOLE_DIR / "app.py",
         CONSOLE_DIR / "__init__.py",
         CONSOLE_DIR / "__main__.py",
@@ -566,6 +568,139 @@ def test_search_and_locked_open_data_safety_link_to_safety(client):
     assert locked_resp.status_code == 200
     locked_html = locked_resp.get_data(as_text=True)
     assert 'href="/safety"' in locked_html
+
+
+def test_alert_route_returns_200(client):
+    response = client.get("/alert")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert "Incident Alert" in html
+
+
+def test_alert_exact_headline_present(client):
+    response = client.get("/alert")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert "Someone tried to lock your files. It was stopped." in html
+    assert "STATUS: ATTACK STOPPED" in html
+
+
+def test_alert_four_summary_figures_present(client):
+    response = client.get("/alert")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    # All four documented figures must be present
+    assert "37 files damaged" in html
+    assert "Detected in 6 seconds" in html
+    assert "Clean copy from 01:20 ready" in html
+    assert "19 counter entries to re-check" in html
+
+    # Tabular values and labels
+    assert "37" in html
+    assert "files damaged" in html
+    assert "6s" in html
+    assert "01:20" in html
+    assert "19" in html
+    assert "counter entries to re-check" in html
+
+
+def test_alert_five_step_timeline_present(client):
+    response = client.get("/alert")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    assert "Incident Timeline" in html
+    assert "Suspicious activity began" in html
+    assert "Detected in 6 seconds" in html
+    assert "37 files damaged" in html
+    assert "Clean copy from 01:20 ready" in html
+    assert "Office follow-up required" in html
+
+    timeline_content = html.split('<ol class="timeline-list">')[1].split("</ol>")[0]
+    assert timeline_content.count('class="timeline-item"') == 5
+
+
+def test_alert_three_action_steps_present(client):
+    response = client.get("/alert")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    assert "What to do now" in html
+    # Step 1 highlighted
+    assert "Do not restart the office computer." in html
+    assert "Restarting can wipe the evidence and can let the locking program start again." in html
+    # Step 2
+    assert "Disconnect the network cable." in html
+    assert "Keep this computer separated until the district technician arrives." in html
+    # Step 3
+    assert "Restore records using the clean copy." in html
+    assert "Safe copies are preserved on the Vault." in html
+
+
+def test_alert_get_my_records_back_action(client):
+    response = client.get("/alert")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    assert "Get my records back" in html
+    assert 'href="/restore"' in html
+    assert '<a href="#"' not in html, "Found dead anchor href='#' in alert template"
+
+
+def test_alert_for_it_person_present(client):
+    response = client.get("/alert")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    assert "For the IT person" in html
+    assert "btn-it-access" in html
+    assert '<a href="#"' not in html, "Found dead anchor href='#' in alert template"
+
+
+def test_alert_retains_government_chrome(client):
+    response = client.get("/alert")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    assert "जिल्हा पुरवठा कार्यालय, ठाणे" in html
+    assert "District Supply Office, Thane" in html
+    assert "Prototype on invented data. Not a live government system." in html
+    assert '<a href="#main-content" class="skip-link">Skip to main content</a>' in html
+    assert 'id="main-content"' in html
+
+
+def test_alert_no_technical_detection_terms_in_clerk_sections(client):
+    response = client.get("/alert")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    # Inspect clerk-facing content only (preceding the IT-person section)
+    clerk_content = html.split('class="panel-block it-person-section"')[0]
+    technical_terms = [
+        "entropy",
+        "SHA-256",
+        "sha256",
+        "Habit Score",
+        "habit score",
+        "MAD",
+        "snapshot ID",
+        "verdict table",
+        "script hash",
+        "watcher internals",
+    ]
+    for term in technical_terms:
+        assert term not in clerk_content, f"Technical term '{term}' leaked to clerk-facing alert content"
+
+
+def test_restore_placeholder_route_returns_200(client):
+    response = client.get("/restore")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert "Get my records back" in html
+    assert "Restore Records" in html
+    assert "Prototype on invented data. Not a live government system." in html
+
 
 
 
