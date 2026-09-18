@@ -160,6 +160,24 @@ class RestoreWizardPresentation:
     checks: tuple[VerificationCheckPresentation, ...]
 
 
+@dataclass(frozen=True)
+class ServerAlertPresentation:
+    title: str
+    headline: str
+    actions: tuple[str, ...]
+
+
+DEFAULT_SERVER_ALERT_DATA: ServerAlertPresentation = ServerAlertPresentation(
+    title="Nightkeep Security Alert",
+    headline="A program tried to lock your files. It was paused.",
+    actions=(
+        "Do not restart the office computer.",
+        "Disconnect the network cable.",
+        "Go to the Data Safety console on the Vault machine.",
+    ),
+)
+
+
 DEFAULT_SAFETY_HOME_DATA: SafetyHomePresentation = SafetyHomePresentation(
     protection_status="Your records are safe",
     protected_cards_count="5,000",
@@ -542,6 +560,7 @@ def create_app(
     safety_home_data: SafetyHomePresentation | None = None,
     alert_data: AlertScreenPresentation | None = None,
     restore_data: RestoreWizardPresentation | None = None,
+    server_alert_data: ServerAlertPresentation | None = None,
 ) -> Flask:
     """Create and configure the Nightkeep console Flask application."""
     app = Flask(__name__)
@@ -551,6 +570,9 @@ def create_app(
     safety_pool = safety_home_data if safety_home_data is not None else DEFAULT_SAFETY_HOME_DATA
     alert_pool = alert_data if alert_data is not None else DEFAULT_ALERT_DATA
     restore_pool = restore_data if restore_data is not None else DEFAULT_RESTORE_DATA
+    server_alert_pool = (
+        server_alert_data if server_alert_data is not None else DEFAULT_SERVER_ALERT_DATA
+    )
 
     @app.route("/", methods=["GET"])
     @app.route("/search", methods=["GET"])
@@ -650,6 +672,13 @@ def create_app(
             "restore.html",
             restore=restore_pool,
             active_page="safety",
+        )
+
+    @app.route("/server-alert", methods=["GET"])
+    def server_alert() -> str:
+        return render_template(
+            "server_alert.html",
+            alert=server_alert_pool,
         )
 
     return app

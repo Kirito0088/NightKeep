@@ -1321,4 +1321,171 @@ html, body {
   font-weight: 700;
 }
 
+/* Screen 7: Server Alert Popup (ServerAlert.dc.html)
+   Documented 600 x 380 target geometry for the office computer popup.
+   The only Nightkeep surface that appears on the PDS server.
+*/
+.server-alert-page {
+  min-height: 100vh;
+  background-color: #2b3442;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 16px;
+}
+
+.server-alert-backdrop {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.server-alert-window {
+  width: 600px;
+  height: 380px;
+  max-width: 100%;
+  background-color: #ffffff;
+  border: 1px solid var(--color-incident-red);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.server-alert-header {
+  background-color: var(--color-incident-red);
+  color: #ffffff;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--color-incident-red);
+  flex-shrink: 0;
+}
+
+.server-alert-header-title {
+  font-size: var(--font-size-lead);
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.server-alert-body {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  flex: 1;
+  box-sizing: border-box;
+}
+
+.server-alert-banner {
+  background-color: #fdf2f2;
+  border-left: 4px solid var(--color-incident-red);
+  padding: 8px 12px;
+  flex-shrink: 0;
+}
+
+.server-alert-headline {
+  font-size: var(--font-size-lead);
+  font-weight: 700;
+  color: var(--color-incident-red);
+  line-height: 1.3;
+  margin: 0;
+}
+
+.server-alert-actions-list {
+  list-style: none;
+  margin: 8px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.server-alert-action-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background-color: #ffffff;
+  border: 1px solid var(--color-border);
+}
+
+.server-alert-action-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background-color: var(--color-primary-navy);
+  color: #ffffff;
+  font-size: var(--font-size-caption);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.server-alert-action-text {
+  font-size: var(--font-size-body);
+  color: var(--color-body-text);
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.server-alert-action-highlight {
+  background-color: #fdf2f2;
+  border-color: var(--color-incident-red);
+  border-left: 4px solid var(--color-incident-red);
+}
+
+.server-alert-action-highlight .server-alert-action-number {
+  background-color: var(--color-incident-red);
+}
+
+.server-alert-action-highlight .server-alert-action-text {
+  color: var(--color-incident-red);
+  font-weight: 700;
+}
+
+.server-alert-footer {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.server-alert-buttons {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.server-alert-buttons .btn {
+  height: 38px;
+  padding: 0 16px;
+  font-size: var(--font-size-table);
+  font-weight: 600;
+}
+
+.btn-alert-ack {
+  background-color: var(--color-incident-red);
+  border-color: var(--color-incident-red);
+  color: #ffffff;
+}
+
+.btn-alert-ack:hover {
+  background-color: #7f1d1d;
+  border-color: #7f1d1d;
+}
+
+.server-alert-disclaimer {
+  font-size: var(--font-size-utility);
+  color: var(--color-secondary-text);
+  margin: 0;
+}
+
+
 

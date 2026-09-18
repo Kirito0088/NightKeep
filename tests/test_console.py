@@ -3,7 +3,11 @@
 import re
 from pathlib import Path
 import pytest
-from nightkeep.console.app import DEFAULT_SAMPLE_RECORDS, create_app
+from nightkeep.console.app import (
+    DEFAULT_SAMPLE_RECORDS,
+    ServerAlertPresentation,
+    create_app,
+)
 
 CONSOLE_DIR = Path(__file__).resolve().parent.parent / "nightkeep" / "console"
 
@@ -142,6 +146,7 @@ def test_no_em_dashes_in_console_assets():
         CONSOLE_DIR / "templates" / "safety.html",
         CONSOLE_DIR / "templates" / "alert.html",
         CONSOLE_DIR / "templates" / "restore.html",
+        CONSOLE_DIR / "templates" / "server_alert.html",
         CONSOLE_DIR / "app.py",
         CONSOLE_DIR / "__init__.py",
         CONSOLE_DIR / "__main__.py",
@@ -805,6 +810,136 @@ def test_restore_no_technical_detection_terms_in_clerk_sections(client):
     ]
     for term in technical_terms:
         assert term not in html, f"Technical term '{term}' leaked to clerk-facing restore content"
+
+
+# ---------------------------------------------------------------------------
+# Screen 7: Server Alert Pop-up (ServerAlert.dc.html)
+# ---------------------------------------------------------------------------
+
+def test_server_alert_route_returns_200(client):
+    response = client.get("/server-alert")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert "Nightkeep Security Alert" in html
+
+
+def test_server_alert_exact_copy_and_instructions(client):
+    response = client.get("/server-alert")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    # Exact title and headline from mockup-log.md / CLAUDE.md
+    assert '<h1 id="server-alert-title" class="server-alert-header-title">Nightkeep Security Alert</h1>' in html
+    assert "A program tried to lock your files. It was paused." in html
+
+    # Exact three instructions in order
+    assert "Do not restart the office computer." in html
+    assert "Disconnect the network cable." in html
+    assert "Go to the Data Safety console on the Vault machine." in html
+
+    # First instruction must have the highlighted red treatment
+    assert "server-alert-action-highlight" in html
+
+
+def test_server_alert_popup_dialog_accessibility(client):
+    response = client.get("/server-alert")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    assert 'role="alertdialog"' in html
+    assert 'aria-modal="true"' in html
+    assert 'aria-labelledby="server-alert-title"' in html
+    assert 'aria-describedby="server-alert-headline"' in html
+
+
+def test_server_alert_geometry_and_styling():
+    style_path = CONSOLE_DIR / "static" / "style.css"
+    content = style_path.read_text(encoding="utf-8")
+
+    assert "width: 600px;" in content
+    assert "height: 380px;" in content
+    assert "box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);" in content
+    assert ".server-alert-window" in content
+
+
+def test_server_alert_controls_and_simulation_link(client):
+    response = client.get("/server-alert")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    # Presentation-only acknowledge button
+    assert '<button type="button" class="btn btn-primary btn-alert-ack">Acknowledge</button>' in html
+
+    # Simulation secondary link to Data Safety
+    assert 'href="/safety"' in html
+    assert "Open Vault Console (Simulation)" in html
+    assert "btn-secondary" in html
+
+    # Mandatory disclaimer
+    assert "Prototype on invented data. Not a live government system." in html
+
+
+def test_server_alert_no_dead_anchors(client):
+    response = client.get("/server-alert")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert '<a href="#"' not in html, "Found dead anchor href='#' in server_alert template"
+
+
+def test_server_alert_distinct_chrome_no_government_nav(client):
+    response = client.get("/server-alert")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    # Server alert is the isolated popup on the office computer, not full portal chrome
+    assert "site-nav" not in html
+    assert "utility-strip" not in html
+    assert "breadcrumb-nav" not in html
+
+
+def test_server_alert_no_technical_detection_terms(client):
+    response = client.get("/server-alert")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    technical_terms = [
+        "entropy",
+        "SHA-256",
+        "sha256",
+        "Habit Score",
+        "habit score",
+        "MAD",
+        "snapshot ID",
+        "verdict table",
+        "script hash",
+        "watcher internals",
+        "PRAGMA",
+        "heuristic",
+        "Thane",
+    ]
+    for term in technical_terms:
+        assert term not in html, f"Technical or invented term '{term}' leaked to server alert popup"
+
+
+def test_custom_server_alert_data_injection():
+    custom_alert = ServerAlertPresentation(
+        title="Custom Alert Title",
+        headline="Custom alert headline.",
+        actions=(
+            "Custom step one.",
+            "Custom step two.",
+        ),
+    )
+    app = create_app(server_alert_data=custom_alert)
+    app.config["TESTING"] = True
+    with app.test_client() as c:
+        resp = c.get("/server-alert")
+        assert resp.status_code == 200
+        html = resp.get_data(as_text=True)
+        assert "Custom Alert Title" in html
+        assert "Custom alert headline." in html
+        assert "Custom step one." in html
+        assert "Custom step two." in html
 
 
 
