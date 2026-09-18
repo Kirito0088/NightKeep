@@ -30,7 +30,7 @@ A third register, **counter-clerk language**, is what appears on the main path o
 | **e-KYC status** | Whether a member's identity verification is complete. Done or Pending. |
 | **Aadhaar seeded** | Whether a member's Aadhaar has been linked to the card. **A yes/no only.** No Aadhaar number is ever generated or stored, and no field is named `aadhaar_no`. |
 | **PMGKAY** | Pradhan Mantri Garib Kalyan Anna Yojana. Under it, foodgrain is issued **free**, extended five years from 1 Jan 2024. Do not print the old Rs 3 / Rs 2 NFSA rates as current. |
-| **Kesargaon** | The invented district this prototype models. Talukas: **Kesargaon** and **Nandori**. Never name a real district. |
+| **Thane** | The real Maharashtra district this prototype models. Talukas modelled: **Thane** and **Kalyan**, both real. Every card, member, shop and transaction attached to the district is still invented; only the district and taluka names are real. See ADR-0006. |
 | **District Supply Officer** | The official who answers for grain reaching shops. One of the two console audiences. |
 | **Counter clerk** | The person at the district office who searches cards and fixes records. The other console audience, and the one the main path is written for. |
 

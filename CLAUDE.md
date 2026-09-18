@@ -103,7 +103,7 @@ a root-level `types.py` shadows the standard library's `types` module. See
 - **The jobs contain zero imports from Nightkeep and do not know it exists.** They are launched as subprocesses and receive everything through argv.
 - **Nothing outside `mock_pds/` and `tests/` may read `logs/_truth/`.** A test asserts no module under `watcher/`, `habit/`, `judge/` or `vault/` opens it.
 - **The simulator** hard-codes a path check and refuses to run outside the demo folder, uses a known key with a matching decrypt script, does not spread, and only **echoes** recovery-killing command text. It never executes `vssadmin`, `wbadmin` or `bcdedit`.
-- **No real personal data anywhere, ever.** Names come from a fixed invented pool. The district is invented.
+- **No real personal data anywhere, ever.** Names come from a fixed invented pool. Every ration card, member, FPS shop, transaction and officer is invented. See ADR-0006 for what this no longer covers.
 - **No Aadhaar-shaped numbers, ever.** No field named `aadhaar_no`. Aadhaar is stored as a seeded yes/no per member only.
 - **Every console screen carries "Prototype on invented data. Not a live government system." in its top strip.** A rebuild of the console that drops this line is a regression. See ADR-0005.
 
@@ -126,7 +126,7 @@ All of these are constants in **one file, `mock_pds/conventions.py`**. Every gen
 | Aadhaar | **A seeded yes/no per member only. Never a 12-digit Aadhaar-shaped number, never a field named `aadhaar_no`** |
 | Mobile | Masked, e.g. `98XXXXXX41` |
 | Names | Realistic Marathi names with a middle name (father's or husband's given name), e.g. "Sunita Ramesh Kadam" |
-| District | Invented: **Kesargaon** district, talukas **Kesargaon** and **Nandori**. Never a real district |
+| District | **Thane**, Maharashtra: a real district. Talukas modelled: **Thane** and **Kalyan**, both real. Every card, member, shop and transaction attached to it is still invented. See ADR-0006 |
 | Card status | `Active` or `Suspended`. Seeded per card; a small minority suspended |
 | Card type | The scheme's own official name (`Priority Household` for NFSA-PHH, `Antyodaya` for AAY, `Kesari` for Kesari (APL)). **No colour is printed.** No sourced colour convention exists yet. See ADR-0005 |
 | Address | A generated street-level line: plot/house number and a locality name from a fixed invented pool, plus the card's taluka. No real street data |
@@ -186,6 +186,7 @@ Recorded as ADRs in `docs/adr/`. These beat the plain document precedence order.
 | 0003 | 12-digit numeric ration card numbers, not `RC-` IDs |
 | 0004 | Code lives in a `nightkeep/` package inside the repo root, not at the root |
 | 0005 | Six PDS fields (card status, card type, address, village, issue date, transaction status) added from the mockups; console built from the Claude Design canvas, not from prose alone |
+| 0006 | The district is the real Thane, talukas Thane and Kalyan; every record attached to it stays invented |
 
 Resolved without an ADR, because the newer document already says so: the product is **Nightkeep** (not QuirkGuard); the console binds to `127.0.0.1` only (MVP.md section 8 reverses SOLUTION_DESIGN's LAN web page); there are **6** erratic jobs (not 3); learning is **7** simulated days plus **3** guard days (not 5 nights); one simulated day is **30 s** (not 20 s).
 

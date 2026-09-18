@@ -8,6 +8,15 @@ Log covers versions 1 to 13, built 17 to 18 September 2026. Recorded here in ful
 on 18 September 2026 so the console ticket does not depend on anyone re-opening
 the canvas to find these decisions.
 
+> **Addendum, 18 Sept 2026 (ADR-0006): the district is now the real Thane,
+> talukas Thane and Kalyan, not the invented Kesargaon this log describes.**
+> The log below is left exactly as written: an accurate record of what
+> versions 1 to 13 actually contained. The canvas itself has not been edited
+> to match ADR-0006, so all seven artboards still read "Kesargaon" and
+> "Kesargaon / Nandori". `mock_pds` will generate Thane data once ticket #2
+> lands; the mockups are a separate, later task if the team wants the canvas
+> itself to read Thane.
+
 This is the source-of-truth record for the console's copy, layout and data
 shape. See ADR-0005 for how it changes `mock_pds` and CLAUDE.md.
 
