@@ -1,12 +1,14 @@
 {% extends "base.html" %}
 
-{% block title %}Ration Card Not Found - District Supply Office, Thane{% endblock %}
+{% block title %}Ration Card Not Found{% endblock %}
 {% block page_heading %}Ration Card Not Found{% endblock %}
 
-{% block breadcrumb %}
-<a href="{{ url_for('search_cards') }}">Ration Card Search</a>
-<span class="breadcrumb-separator" aria-hidden="true">/</span>
-<span aria-current="page">Not Found</span>
+{% block breadcrumb_items %}
+<li><a href="/">Home</a></li>
+<li class="breadcrumb-separator" aria-hidden="true">/</li>
+<li><a href="{{ url_for('search_cards') }}">Ration Card Search</a></li>
+<li class="breadcrumb-separator" aria-hidden="true">/</li>
+<li aria-current="page">Not Found</li>
 {% endblock %}
 
 {% block content %}

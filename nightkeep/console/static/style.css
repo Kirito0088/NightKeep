@@ -1303,6 +1303,13 @@ html, body {
   max-width: 400px;
 }
 
+.form-help-text {
+  display: block;
+  font-size: var(--font-size-caption);
+  color: var(--color-secondary-text);
+  margin-top: 4px;
+}
+
 .pin-input {
   letter-spacing: 4px;
   font-family: Consolas, Monaco, "Courier New", monospace;

@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
-{% block title %}Data Safety - District Supply Office, Thane{% endblock %}
+{% block title %}Data Safety{% endblock %}
 {% block page_heading %}Data Safety{% endblock %}
 
-{% block breadcrumb %}
-<a href="{{ url_for('nightkeep_home') }}">Home</a>
-<span class="breadcrumb-separator" aria-hidden="true">/</span>
-<span aria-current="page">Data Safety</span>
+{% block breadcrumb_items %}
+<li><a href="/">Home</a></li>
+<li class="breadcrumb-separator" aria-hidden="true">/</li>
+<li aria-current="page">Data Safety</li>
 {% endblock %}
 
 {% block content %}

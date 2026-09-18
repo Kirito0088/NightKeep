@@ -59,9 +59,11 @@
   <!-- Chrome 5: Breadcrumb -->
   <nav aria-label="Breadcrumb" class="breadcrumb-container">
     <ol class="breadcrumb-list">
-      <li><a href="{{ url_for('search_cards') }}">Home</a></li>
+      {% block breadcrumb_items %}
+      <li><a href="/">Home</a></li>
       <li class="breadcrumb-separator" aria-hidden="true">/</li>
-      <li aria-current="page">{% block breadcrumb %}Ration Card Search{% endblock %}</li>
+      <li aria-current="page">Ration Card Search</li>
+      {% endblock %}
     </ol>
   </nav>
 

@@ -1,4 +1,4 @@
-"""Tests for Feature 1: Console foundation + Ration Card Search screen."""
+"""Console tests: all seven Nightkeep frontend screens, base chrome, and CSS contract."""
 
 import re
 from pathlib import Path
@@ -941,8 +941,152 @@ def test_custom_server_alert_data_injection():
         assert "Custom step one." in html
         assert "Custom step two." in html
 
+# ---------------------------------------------------------------------------
+# Polish regression tests (breadcrumb structure, title, copy, CSS)
+# ---------------------------------------------------------------------------
+
+PAGES_WITH_CHROME = [
+    "/",
+    "/search",
+    "/locked",
+    "/card/110300512847",
+    "/safety",
+    "/alert",
+    "/restore",
+    "/card/999999999999",  # 404 page
+]
+
+NIGHTKEEP_PAGES = ["/safety", "/alert", "/restore"]
 
 
+def test_title_tags_have_no_doubled_suffix(client):
+    """Rendered <title> must not repeat the office suffix."""
+    doubled = "District Supply Office, Thane - District Supply Office, Thane"
+    for path in PAGES_WITH_CHROME:
+        resp = client.get(path)
+        html = resp.get_data(as_text=True)
+        assert doubled not in html, (
+            f"Doubled office suffix found in <title> on {path}"
+        )
 
 
+def test_breadcrumb_items_are_list_elements(client):
+    """Every breadcrumb entry must be inside its own <li>, not a bare span/a."""
+    for path in PAGES_WITH_CHROME:
+        resp = client.get(path)
+        html = resp.get_data(as_text=True)
+        # Extract breadcrumb-list content
+        assert 'class="breadcrumb-list"' in html, f"No breadcrumb-list on {path}"
+        bc_start = html.index('class="breadcrumb-list"')
+        bc_section = html[bc_start: bc_start + 800]
+        # Must have at least one <li> item
+        assert "<li>" in bc_section or '<li ' in bc_section, (
+            f"Breadcrumb has no <li> elements on {path}"
+        )
+        # Must not have a bare <a> or <span> directly inside the <ol>
+        # (i.e. the old broken pattern of crammed items)
+        # We check that no breadcrumb separator is a <span> (they're now <li>)
+        assert '<span class="breadcrumb-separator"' not in bc_section, (
+            f"Breadcrumb still has bare <span> separators on {path} "
+            "(items are not wrapped in <li>)"
+        )
+
+
+def test_breadcrumb_exactly_one_aria_current_page(client):
+    """Each page's breadcrumb nav must have exactly one aria-current='page' attribute."""
+    for path in PAGES_WITH_CHROME:
+        resp = client.get(path)
+        html = resp.get_data(as_text=True)
+        # Scope to the breadcrumb nav only — the site nav also uses aria-current
+        # on the active tab, which is correct ARIA practice.
+        bc_start = html.find('aria-label="Breadcrumb"')
+        bc_end = html.find('</nav>', bc_start) + 6
+        bc_section = html[bc_start:bc_end]
+        count = bc_section.count('aria-current="page"')
+        assert count == 1, (
+            f"Expected 1 aria-current='page' in breadcrumb on {path}, found {count}"
+        )
+
+
+def test_breadcrumb_home_not_duplicated(client):
+    """The text 'Home' must not appear more than once in the breadcrumb."""
+    for path in PAGES_WITH_CHROME:
+        resp = client.get(path)
+        html = resp.get_data(as_text=True)
+        # Extract the breadcrumb nav element
+        bc_start = html.find('aria-label="Breadcrumb"')
+        bc_end = html.find('</nav>', bc_start) + 6
+        bc_section = html[bc_start:bc_end]
+        home_count = bc_section.count(">Home<")
+        assert home_count <= 1, (
+            f"'Home' appears {home_count} times in breadcrumb on {path}"
+        )
+
+
+def test_nightkeep_screens_home_breadcrumb_links_to_root(client):
+    """On /safety, /alert, /restore the Home breadcrumb must link to /."""
+    for path in NIGHTKEEP_PAGES:
+        resp = client.get(path)
+        html = resp.get_data(as_text=True)
+        bc_start = html.find('aria-label="Breadcrumb"')
+        bc_end = html.find('</nav>', bc_start) + 6
+        bc_section = html[bc_start:bc_end]
+        # Home link must be href="/"
+        assert '<a href="/">Home</a>' in bc_section, (
+            f"Home breadcrumb on {path} does not link to /"
+        )
+        # Must not use /search as the Home href
+        assert '<a href="/search">Home</a>' not in bc_section, (
+            f"Home breadcrumb on {path} uses /search instead of /"
+        )
+
+
+def test_restore_done_label_no_brackets(client):
+    """Completed step indicators must show 'Done', not '[DONE]'."""
+    resp = client.get("/restore")
+    html = resp.get_data(as_text=True)
+    assert "[DONE]" not in html, "Placeholder text '[DONE]' found in /restore"
+    # Completed steps should still show text
+    assert "Done" in html
+
+
+def test_card_detail_status_badge_not_duplicated(client):
+    """The redundant 'Card Status' kv-row must be absent from card detail pages.
+
+    The status is shown canonically in the panel header badge. The old kv-row
+    was a duplicate and has been removed. e-KYC and transaction badges are
+    intentional and unrelated.
+    """
+    for card_no in ["110300512847", "110294819203"]:  # one active, one suspended
+        resp = client.get(f"/card/{card_no}")
+        html = resp.get_data(as_text=True)
+        # The removed kv-row had this exact label text
+        assert 'class="kv-label">Card Status</dt>' not in html, (
+            f"Duplicate 'Card Status' kv-row still present in card detail for {card_no}"
+        )
+        # The canonical header badge must still be present
+        assert 'detail-panel-header' in html
+        assert 'status-badge' in html
+
+
+def test_form_help_text_rule_in_css():
+    """style.css must define the .form-help-text rule."""
+    style_path = CONSOLE_DIR / "static" / "style.css"
+    content = style_path.read_text(encoding="utf-8")
+    assert ".form-help-text" in content, ".form-help-text rule missing from style.css"
+    assert "font-size: var(--font-size-caption);" in content
+
+
+def test_module_docstring_updated():
+    """The test module docstring must not be the stale Screen 1 description."""
+    import nightkeep  # noqa: F401 — just check the test file docstring via source
+    test_file = Path(__file__)
+    source = test_file.read_text(encoding="utf-8")
+    first_line = source.split('\n')[0]
+    assert "Feature 1" not in first_line, (
+        "Module docstring still references Feature 1 only"
+    )
+    assert "Console tests" in source[:120], (
+        "Module docstring does not describe the full console suite"
+    )
 

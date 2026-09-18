@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 
-{% block title %}Ration Card Search (System Protected) - District Supply Office, Thane{% endblock %}
+{% block title %}Ration Card Search (System Protected){% endblock %}
 {% block page_heading %}Ration Card Search{% endblock %}
 
-{% block breadcrumb %}
-<a href="{{ url_for('search_cards') }}">Home</a>
-<span class="breadcrumb-separator" aria-hidden="true">/</span>
-<a href="{{ url_for('search_cards') }}">Ration Card Search</a>
-<span class="breadcrumb-separator" aria-hidden="true">/</span>
-<span aria-current="page">System Protected</span>
+{% block breadcrumb_items %}
+<li><a href="/">Home</a></li>
+<li class="breadcrumb-separator" aria-hidden="true">/</li>
+<li><a href="{{ url_for('search_cards') }}">Ration Card Search</a></li>
+<li class="breadcrumb-separator" aria-hidden="true">/</li>
+<li aria-current="page">System Protected</li>
 {% endblock %}
 
 {% block content %}

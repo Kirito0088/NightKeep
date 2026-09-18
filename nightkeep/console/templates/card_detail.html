@@ -7,10 +7,12 @@
 <a href="{{ url_for('search_cards') }}" class="btn btn-secondary btn-heading-back">Back to Search</a>
 {% endblock %}
 
-{% block breadcrumb %}
-<a href="{{ url_for('search_cards') }}">Ration Card Search</a>
-<span class="breadcrumb-separator" aria-hidden="true">/</span>
-<span aria-current="page">Card {{ card.card_no }}</span>
+{% block breadcrumb_items %}
+<li><a href="/">Home</a></li>
+<li class="breadcrumb-separator" aria-hidden="true">/</li>
+<li><a href="{{ url_for('search_cards') }}">Ration Card Search</a></li>
+<li class="breadcrumb-separator" aria-hidden="true">/</li>
+<li aria-current="page">Card {{ card.card_no }}</li>
 {% endblock %}
 
 {% block content %}
@@ -38,12 +40,6 @@
         <div class="kv-item">
           <dt class="kv-label">Contact Mobile</dt>
           <dd class="kv-value tabular-number">{{ card.mobile_masked }}</dd>
-        </div>
-        <div class="kv-item">
-          <dt class="kv-label">Card Status</dt>
-          <dd class="kv-value">
-            <span class="status-badge status-badge-{{ card.status|lower }}">{{ card.status }}</span>
-          </dd>
         </div>
         <div class="kv-item">
           <dt class="kv-label">Taluka / Village</dt>
