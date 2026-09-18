@@ -8,9 +8,11 @@ below the summary, each taking what it needs from `config`.
 import sys
 from pathlib import Path
 
+from nightkeep import mock_pds
 from nightkeep.config import ConfigError, load_config
 
 DEFAULT_CONFIG = Path(__file__).resolve().parent / "config.yaml"
+DEMO_DIR = Path(__file__).resolve().parent.parent / "demo"
 
 
 def main(arguments: list[str]) -> int:
@@ -35,6 +37,9 @@ def main(arguments: list[str]) -> int:
     )
     jobs = vars(config.jobs)
     print(f"{len(jobs)} jobs configured: " + ", ".join(jobs))
+
+    district_dir = mock_pds.build_district(config.seed, config.district, DEMO_DIR)
+    print(f"District built at {district_dir}")
     return 0
 
 
