@@ -28,8 +28,10 @@ DISTRICT = District(
     members_per_card=Span(low=1, high=5),
     transactions_per_card_per_month=Span(low=0, high=2),
 )
-# Short days keep the suite fast. The pacing test uses its own length.
-FAST_CLOCK = replace(REPO.clock, simulated_day_seconds=1)
+# Short days keep the suite fast, but not so short that six real jobs'
+# subprocess overhead (measured up to ~1s) drifts a job past its own window
+# once scaled up. The pacing test uses its own length.
+FAST_CLOCK = replace(REPO.clock, simulated_day_seconds=6)
 NETWORK_UP = replace(
     REPO.jobs,
     nightly_export=replace(REPO.jobs.nightly_export, network_down_probability=0.0),
@@ -46,8 +48,14 @@ def _district(tmp_path: Path, name: str = "district") -> Path:
     return build_district(SEED, DISTRICT, tmp_path / name)
 
 
-def _run(district_dir: Path, day_no: int, jobs: Jobs = NETWORK_UP, clock: Clock = FAST_CLOCK):
-    run_day(day_no, seed=SEED, clock=clock, jobs=jobs, district_dir=district_dir)
+def _run(
+    district_dir: Path, day_no: int, jobs: Jobs = NETWORK_UP, clock: Clock = FAST_CLOCK,
+    harvest_surge_override: bool | None = None,
+):
+    run_day(
+        day_no, seed=SEED, clock=clock, jobs=jobs, harvest_surge=REPO.harvest_surge,
+        district_dir=district_dir, harvest_surge_override=harvest_surge_override,
+    )
 
 
 def test_the_month_starts_on_a_learning_day_that_is_not_a_harvest_day():
@@ -66,13 +74,13 @@ def test_the_month_starts_on_a_learning_day_that_is_not_a_harvest_day():
 
 def test_a_day_takes_about_one_simulated_day_of_real_time(tmp_path):
     district_dir = _district(tmp_path)
-    clock = replace(REPO.clock, simulated_day_seconds=2)
+    clock = replace(REPO.clock, simulated_day_seconds=6)
 
     started = wall.monotonic()
     _run(district_dir, 1, clock=clock)
     elapsed = wall.monotonic() - started
 
-    assert 2.0 <= elapsed < 3.5
+    assert 6.0 <= elapsed < 9.0
 
 
 def _transactions_on(district_dir: Path, day: date) -> list[tuple]:

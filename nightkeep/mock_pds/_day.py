@@ -22,16 +22,21 @@ def day_rng(seed: int, day_no: int) -> random.Random:
     return random.Random(f"{seed}/day/{day_no}")
 
 
-def draw_transaction_count(rng: random.Random, export: NightlyExport) -> int:
+def draw_transaction_count(
+    rng: random.Random, export: NightlyExport, surge_multiplier: float = 1.0
+) -> int:
     """How many ePoS transactions the district's shops record today.
 
     The midpoint of rows_per_run, moved by up to volume_variation either way,
-    and kept inside rows_per_run. The export later carries exactly these.
+    and kept inside rows_per_run. surge_multiplier scales the result after
+    that clamp, so the harvest surge can legitimately exceed rows_per_run.
+    The export later carries exactly these.
     """
     span = export.rows_per_run
     midpoint = (span.low + span.high) / 2
     count = round(midpoint * (1 + rng.uniform(-export.volume_variation, export.volume_variation)))
-    return min(max(count, span.low), span.high)
+    count = min(max(count, span.low), span.high)
+    return round(count * surge_multiplier)
 
 
 def land_transactions(
@@ -67,23 +72,45 @@ def land_transactions(
 
 _JOBS_DIR = Path(__file__).resolve().parent / "jobs"
 
+# Job identity is executable + script path + hash (SOLUTION_DESIGN.md), so
+# the two script-language jobs run through their real interpreters rather
+# than being reduced to Python for convenience.
+_INTERPRETERS = {
+    ".py": lambda path: [sys.executable, "-I", str(path)],
+    ".bat": lambda path: ["cmd.exe", "/c", str(path)],
+    ".vbs": lambda path: ["cscript.exe", "//nologo", str(path)],
+}
+
+
+def _job_path(job: str) -> Path:
+    matches = [
+        _JOBS_DIR / f"{job}{suffix}" for suffix in _INTERPRETERS
+        if (_JOBS_DIR / f"{job}{suffix}").exists()
+    ]
+    if not matches:
+        raise FileNotFoundError(f"no job script found for {job!r} in {_JOBS_DIR}")
+    if len(matches) > 1:
+        # Job identity is executable + script path + hash: two scripts for
+        # the same job name would make that identity ambiguous.
+        raise FileNotFoundError(f"more than one job script found for {job!r}: {matches}")
+    return matches[0]
+
 
 def launch(job: str, district_dir: Path, day_no: int, sim_start: datetime,
            scale: float, *arguments: str) -> None:
     """Run one job as a real subprocess and wait for it to finish.
 
-    -I (isolated mode) keeps this repository off the job's import path, so a
-    job that tried to import Nightkeep would fail here, not just in a test.
-    The job writes its own ground-truth line. The scheduler never does.
+    A .py job runs under -I (isolated mode), which keeps this repository off
+    its import path, so a job that tried to import Nightkeep would fail
+    here, not just in a test. The job writes its own ground-truth line. The
+    scheduler never does.
     """
-    subprocess.run(
-        [
-            sys.executable, "-I", str(_JOBS_DIR / f"{job}.py"),
-            "--root", str(district_dir),
-            "--day", str(day_no),
-            "--sim-start", sim_start.isoformat(),
-            "--scale", repr(scale),
-            *arguments,
-        ],
-        check=True,
-    )
+    path = _job_path(job)
+    command = _INTERPRETERS[path.suffix](path) + [
+        "--root", str(district_dir),
+        "--day", str(day_no),
+        "--sim-start", sim_start.isoformat(),
+        "--scale", repr(scale),
+        *arguments,
+    ]
+    subprocess.run(command, check=True)

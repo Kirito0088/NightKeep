@@ -18,6 +18,11 @@ def _jobs() -> list[Path]:
     return sorted(JOBS.glob("*.py"))
 
 
+def _script_jobs() -> list[Path]:
+    # .bat and .vbs jobs: real interpreters, no Python AST to walk.
+    return sorted(list(JOBS.glob("*.bat")) + list(JOBS.glob("*.vbs")))
+
+
 def _imports(tree: ast.AST) -> list[tuple[str, int]]:
     """(top-level module, relative level) for every import in the tree."""
     found = []
@@ -31,7 +36,19 @@ def _imports(tree: ast.AST) -> list[tuple[str, int]]:
 
 def test_there_are_jobs_to_police():
     # Without this, the rail below passes by finding nothing.
-    assert {job.stem for job in _jobs()} >= {"nightly_export", "db_backup"}
+    stems = {job.stem for job in _jobs()} | {job.stem for job in _script_jobs()}
+    assert stems >= {
+        "nightly_export", "db_backup", "allocation_gen", "archive_old",
+        "fix_dat", "operator_activity",
+    }
+
+
+def test_the_two_script_jobs_keep_their_real_extensions():
+    # Job identity is executable + script path + hash (SOLUTION_DESIGN.md):
+    # archive_old and fix_dat must stay .bat and .vbs, run through cmd.exe
+    # and cscript.exe, not reduced to Python for convenience.
+    names = {job.name for job in _script_jobs()}
+    assert names == {"archive_old.bat", "fix_dat.vbs"}
 
 
 def test_the_jobs_are_not_a_package_nightkeep_can_import():
@@ -50,6 +67,30 @@ def test_no_job_import_resolves_to_anything_in_this_repository():
             assert module in sys.stdlib_module_names, (
                 f"{job.name} imports {module}, which is not the standard library"
             )
+
+
+def _code_lines(job: Path) -> list[str]:
+    # Strips comment lines (REM/:: in .bat, ' in .vbs) so a docstring-style
+    # header may say "it knows nothing about Nightkeep" without tripping
+    # the rail below, which cares about what actually executes.
+    lines = []
+    for line in job.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip().lower()
+        if stripped.startswith(("rem ", "::", "'")):
+            continue
+        lines.append(stripped)
+    return lines
+
+
+def test_no_script_job_references_this_repository():
+    # .bat and .vbs can't be ast.parse'd, so the rail is textual: neither
+    # ever names nightkeep, or reaches for Python/importlib to sneak a
+    # repository import in through the back door.
+    banned = ("nightkeep", "importlib", "__import__")
+    for job in _script_jobs():
+        code = "\n".join(_code_lines(job))
+        for word in banned:
+            assert word not in code, f"{job.name} references {word!r}"
 
 
 def test_no_job_imports_by_name_at_runtime():

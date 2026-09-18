@@ -37,7 +37,7 @@ This is the entire public surface. **If a module needs a bigger interface than t
 
 | Module | Public interface | What it hides |
 |---|---|---|
-| `mock_pds` | `build_district(seed, district, out_dir)`, `run_day(day_no, *, seed, clock, jobs, district_dir) -> None` | 5,000 records, 6 jobs, their randomness, the simulated clock, the hidden truth log |
+| `mock_pds` | `build_district(seed, district, out_dir)`, `run_day(day_no, *, seed, clock, jobs, harvest_surge, district_dir, harvest_surge_override=None) -> None` | 5,000 records, 6 jobs, their randomness, the simulated clock, the hidden truth log |
 | `watcher` | `events_since(t) -> [Event]`, `is_alive()` | watchdog wiring, psutil polling, file-to-process attribution, the append-only log |
 | `habit` | `score(run) -> HabitScore(value, reasons)`, `learn(run)` | feature extraction, median/MAD ranges, novelty flags, card versions, SQLite storage |
 | `judge` | `verdict(run, events) -> Verdict(level, reasons, actions)` | all six signals, the verdict table, suspend/read-only actions and their undo |
