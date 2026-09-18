@@ -28,6 +28,23 @@ up to watch. Point it at another file to try different numbers:
 python -m nightkeep path/to/config.yaml
 ```
 
+### Running the Vault Console
+
+The console runs locally on the Vault screen bound strictly to loopback (`127.0.0.1:5000`), never exposed to the network (ADR-0002):
+
+```bash
+python -m nightkeep.console
+```
+
+Available screens:
+- `/`: Ration Card Search (PDS Normal)
+- `/cards/<card_no>`: Ration Card Detail with members & ePoS history
+- `/pds/locked`: PDS under attack state
+- `/nightkeep`: Nightkeep Data Safety Home
+- `/nightkeep/alert`: Data Safety Attack Report
+- `/nightkeep/restore`: Restore Wizard
+- `/server-alert`: Office computer pop-up alert
+
 ## Where things are
 
 | Path | What |
@@ -37,8 +54,10 @@ python -m nightkeep path/to/config.yaml
 | `nightkeep/__main__.py` | the entrypoint, which passes those values to the modules |
 | `nightkeep/mock_pds/` | the fake district: data, six erratic jobs, the simulated clock |
 | `nightkeep/watcher/` `habit/` `judge/` | on the PDS server: what changed, what is normal, what to do |
-| `nightkeep/vault/` `console/` | on the Vault: snapshots, restore, the screen staff read |
+| `nightkeep/vault/` | on the Vault: snapshots, restore engine, pinned clean points |
+| `nightkeep/console/` | on the Vault: 7 screens + pop-up, Flask routes and templates |
 | `nightkeep/simulator/` | the safe ransomware simulator and its decrypt script |
 | `CLAUDE.md` | the rules the codebase obeys |
 | `CONTEXT.md` | the vocabulary. Use these words |
 | `docs/adr/` | settled decisions |
+
