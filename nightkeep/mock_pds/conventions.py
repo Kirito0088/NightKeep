@@ -87,8 +87,10 @@ TALUKAS = ("Thane", "Kalyan")
 
 # The fixed anchor every relative date (card issue date, current allotment
 # month) is computed against, so build_district stays reproducible
-# independent of the real calendar. Matches the Round 2 demo date.
-SIMULATED_TODAY = date(2026, 9, 22)
+# independent of the real calendar. Simulated day 1 is the day after it.
+# Chosen so 1 Oct, the allotment job's big month-start run, falls on day 5:
+# inside the 7 learning days, and clear of harvest surge day 4.
+SIMULATED_TODAY = date(2026, 9, 26)
 
 _ISSUE_DATE_EARLIEST_YEARS_AGO = 8
 _ISSUE_DATE_LATEST_DAYS_AGO = 90

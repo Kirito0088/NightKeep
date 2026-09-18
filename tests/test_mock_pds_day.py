@@ -16,6 +16,7 @@ from pathlib import Path
 
 from nightkeep.config import Clock, District, Jobs, Span, load_config
 from nightkeep.mock_pds import build_district, run_day
+from nightkeep.mock_pds import conventions as c
 
 REPO_CONFIG = Path(__file__).resolve().parent.parent / "nightkeep" / "config.yaml"
 REPO = load_config(REPO_CONFIG)
@@ -37,8 +38,8 @@ NETWORK_DOWN = replace(
     REPO.jobs,
     nightly_export=replace(REPO.jobs.nightly_export, network_down_probability=1.0),
 )
-# Day 1 is the day after the district was built (SIMULATED_TODAY, 22 Sept).
-DAY_ONE = date(2026, 9, 23)
+# Day 1 is the day after the district was built (SIMULATED_TODAY, 26 Sept).
+DAY_ONE = date(2026, 9, 27)
 
 
 def _district(tmp_path: Path, name: str = "district") -> Path:
@@ -47,6 +48,20 @@ def _district(tmp_path: Path, name: str = "district") -> Path:
 
 def _run(district_dir: Path, day_no: int, jobs: Jobs = NETWORK_UP, clock: Clock = FAST_CLOCK):
     run_day(day_no, seed=SEED, clock=clock, jobs=jobs, district_dir=district_dir)
+
+
+def test_the_month_starts_on_a_learning_day_that_is_not_a_harvest_day():
+    # The allotment job's big run on the 1st must be seen while learning, and
+    # not on a surge day, or the habit cards learn the two tangled together.
+    learning = range(1, REPO.clock.learning_days + 1)
+    month_starts = [
+        day_no for day_no in learning
+        if (c.SIMULATED_TODAY + timedelta(days=day_no)).day
+        == REPO.jobs.allocation_gen.month_start_day
+    ]
+
+    assert month_starts == [5]
+    assert not set(month_starts) & set(REPO.harvest_surge.days)
 
 
 def test_a_day_takes_about_one_simulated_day_of_real_time(tmp_path):
@@ -115,7 +130,7 @@ def test_the_day_end_export_writes_the_days_transactions_in_its_window(tmp_path)
     assert line["skipped"] is None
 
     started = datetime.fromisoformat(line["sim_start"])
-    # The night after 23 Sept, between 01:00 and 02:30 (config.yaml).
+    # The night after 27 Sept, between 01:00 and 02:30 (config.yaml).
     assert started.date() == DAY_ONE + timedelta(days=1)
     assert time(1, 0) <= started.time() <= time(2, 30)
     assert datetime.fromisoformat(line["sim_end"]) >= started
