@@ -693,13 +693,119 @@ def test_alert_no_technical_detection_terms_in_clerk_sections(client):
         assert term not in clerk_content, f"Technical term '{term}' leaked to clerk-facing alert content"
 
 
-def test_restore_placeholder_route_returns_200(client):
+def test_restore_route_returns_200(client):
     response = client.get("/restore")
     assert response.status_code == 200
     html = response.get_data(as_text=True)
     assert "Get my records back" in html
     assert "Restore Records" in html
+
+
+def test_restore_clean_point_info_present(client):
+    response = client.get("/restore")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert "Day 9, 01:20" in html
+    assert "5,000" in html
+    assert "District Supply Office, Thane" in html
+
+
+def test_restore_three_steps_rendered(client):
+    response = client.get("/restore")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    assert "Restore Progress" in html
+    assert "Step 1: Select clean copy" in html
+    assert "Step 2: Verify records" in html
+    assert "Step 3: Confirm and restore" in html
+    assert "Current Step" in html
+
+    steps_content = html.split('<ol class="restore-steps-list">')[1].split("</ol>")[0]
+    assert steps_content.count("restore-step-item") == 3
+
+
+def test_restore_five_verification_checks_rendered(client):
+    response = client.get("/restore")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    assert "Safety Verification (Five Checks Passed)" in html
+    assert "Every one of the 5,000 ration cards is present and readable." in html
+    assert "All database files match their safe copy from the Vault." in html
+    assert "File headers and formats are intact with zero damage." in html
+    assert "All monthly allocation files and fair price shop records parse correctly." in html
+    assert "Database internal records passed complete integrity checks." in html
+
+    checks_content = html.split('<ul class="verification-checks-list">')[1].split("</ul>")[0]
+    assert checks_content.count("verification-check-item") == 5
+
+
+def test_restore_loss_window_advisory_present(client):
+    response = client.get("/restore")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    assert "Loss Window Advisory" in html
+    assert "19 counter entries" in html
+    assert "19 counter entries recorded between 01:20 and the incident at 03:41 must be re-checked after restoration." in html
+
+
+def test_restore_pin_field_accessible(client):
+    response = client.get("/restore")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    assert '<label for="restore_pin"' in html
+    assert 'id="restore_pin"' in html
+    assert 'type="password"' in html
+    assert "Supervisor authorisation PIN" in html
+
+
+def test_restore_primary_action_present(client):
+    response = client.get("/restore")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    assert "Restore records to office computer" in html
+    assert "btn-restore-confirm" in html
+    assert '<a href="#"' not in html, "Found dead anchor href='#' in restore template"
+    assert 'href="/alert"' in html
+
+
+def test_restore_retains_government_chrome(client):
+    response = client.get("/restore")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    assert "जिल्हा पुरवठा कार्यालय, ठाणे" in html
+    assert "District Supply Office, Thane" in html
     assert "Prototype on invented data. Not a live government system." in html
+    assert '<a href="#main-content" class="skip-link">Skip to main content</a>' in html
+    assert 'id="main-content"' in html
+
+
+def test_restore_no_technical_detection_terms_in_clerk_sections(client):
+    response = client.get("/restore")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    technical_terms = [
+        "entropy",
+        "SHA-256",
+        "sha256",
+        "Habit Score",
+        "habit score",
+        "MAD",
+        "snapshot ID",
+        "verdict table",
+        "script hash",
+        "watcher internals",
+        "PRAGMA",
+    ]
+    for term in technical_terms:
+        assert term not in html, f"Technical term '{term}' leaked to clerk-facing restore content"
+
 
 
 

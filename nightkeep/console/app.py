@@ -134,6 +134,32 @@ class AlertScreenPresentation:
     actions: tuple[AlertActionStepPresentation, ...]
 
 
+@dataclass(frozen=True)
+class RestoreStepPresentation:
+    step_number: int
+    title: str
+    description: str
+    status: str  # "completed" | "active"
+
+
+@dataclass(frozen=True)
+class VerificationCheckPresentation:
+    check_number: int
+    statement: str
+    status: str  # "Passed"
+
+
+@dataclass(frozen=True)
+class RestoreWizardPresentation:
+    headline: str
+    clean_point: str
+    records_count: str
+    loss_window_entries: str
+    loss_window_detail: str
+    steps: tuple[RestoreStepPresentation, ...]
+    checks: tuple[VerificationCheckPresentation, ...]
+
+
 DEFAULT_SAFETY_HOME_DATA: SafetyHomePresentation = SafetyHomePresentation(
     protection_status="Your records are safe",
     protected_cards_count="5,000",
@@ -235,6 +261,62 @@ DEFAULT_ALERT_DATA: AlertScreenPresentation = AlertScreenPresentation(
             title="Restore records using the clean copy.",
             detail="Safe copies are preserved on the Vault. Use the clean copy from 01:20 to restore records.",
             is_highlighted=False,
+        ),
+    ),
+)
+
+
+DEFAULT_RESTORE_DATA: RestoreWizardPresentation = RestoreWizardPresentation(
+    headline="Get my records back",
+    clean_point="Day 9, 01:20",
+    records_count="5,000",
+    loss_window_entries="19",
+    loss_window_detail="19 counter entries recorded between 01:20 and the incident at 03:41 must be re-checked after restoration.",
+    steps=(
+        RestoreStepPresentation(
+            step_number=1,
+            title="Select clean copy",
+            description="Clean backup from Day 9, 01:20 on Vault selected.",
+            status="completed",
+        ),
+        RestoreStepPresentation(
+            step_number=2,
+            title="Verify records",
+            description="All five automated integrity and safety checks passed.",
+            status="completed",
+        ),
+        RestoreStepPresentation(
+            step_number=3,
+            title="Confirm and restore",
+            description="Enter supervisor PIN to restore records to the office computer.",
+            status="active",
+        ),
+    ),
+    checks=(
+        VerificationCheckPresentation(
+            check_number=1,
+            statement="Every one of the 5,000 ration cards is present and readable.",
+            status="Passed",
+        ),
+        VerificationCheckPresentation(
+            check_number=2,
+            statement="All database files match their safe copy from the Vault.",
+            status="Passed",
+        ),
+        VerificationCheckPresentation(
+            check_number=3,
+            statement="File headers and formats are intact with zero damage.",
+            status="Passed",
+        ),
+        VerificationCheckPresentation(
+            check_number=4,
+            statement="All monthly allocation files and fair price shop records parse correctly.",
+            status="Passed",
+        ),
+        VerificationCheckPresentation(
+            check_number=5,
+            statement="Database internal records passed complete integrity checks.",
+            status="Passed",
         ),
     ),
 )
@@ -459,6 +541,7 @@ def create_app(
     card_details: dict[str, CardDetailPresentation] | None = None,
     safety_home_data: SafetyHomePresentation | None = None,
     alert_data: AlertScreenPresentation | None = None,
+    restore_data: RestoreWizardPresentation | None = None,
 ) -> Flask:
     """Create and configure the Nightkeep console Flask application."""
     app = Flask(__name__)
@@ -467,6 +550,7 @@ def create_app(
     card_details_pool = card_details if card_details is not None else DEFAULT_CARD_DETAILS
     safety_pool = safety_home_data if safety_home_data is not None else DEFAULT_SAFETY_HOME_DATA
     alert_pool = alert_data if alert_data is not None else DEFAULT_ALERT_DATA
+    restore_pool = restore_data if restore_data is not None else DEFAULT_RESTORE_DATA
 
     @app.route("/", methods=["GET"])
     @app.route("/search", methods=["GET"])
@@ -564,6 +648,7 @@ def create_app(
     def restore_wizard() -> str:
         return render_template(
             "restore.html",
+            restore=restore_pool,
             active_page="safety",
         )
 
