@@ -32,10 +32,9 @@
     <div class="panel-body">
       <div class="alert-summary-grid">
         {% for figure in alert.figures %}
-          <div class="alert-stat-card" title="{{ figure.value }} {{ figure.label }}">
+          <div class="alert-stat-card">
             <span class="alert-stat-value tabular-number">{{ figure.value }}</span>
             <span class="alert-stat-label">{{ figure.label }}</span>
-            <span class="visually-hidden">{{ figure.value }} {{ figure.label }}</span>
           </div>
         {% endfor %}
       </div>
@@ -71,7 +70,7 @@
       <ol class="action-steps-list">
         {% for action in alert.actions %}
           <li class="action-step-item {% if action.is_highlighted %}action-step-highlight{% endif %}">
-            <div class="action-step-number">{{ action.number }}</div>
+            <div class="action-step-number" aria-hidden="true">{{ action.number }}</div>
             <div class="action-step-text">
               <p class="action-step-title">{{ action.title }}</p>
               <p class="{% if action.is_highlighted %}action-step-reason{% else %}action-step-detail{% endif %}">

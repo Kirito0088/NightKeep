@@ -3,8 +3,12 @@
 import re
 from pathlib import Path
 import pytest
+from dataclasses import replace
+
 from nightkeep.console.app import (
+    DEFAULT_CARD_DETAILS,
     DEFAULT_SAMPLE_RECORDS,
+    TransactionPresentation,
     ServerAlertPresentation,
     create_app,
 )
@@ -595,11 +599,18 @@ def test_alert_four_summary_figures_present(client):
     assert response.status_code == 200
     html = response.get_data(as_text=True)
 
-    # All four documented figures must be present
-    assert "37 files damaged" in html
-    assert "Detected in 6 seconds" in html
-    assert "Clean copy from 01:20 ready" in html
-    assert "19 counter entries to re-check" in html
+    # All four documented figures must be present, value beside its label
+    for value, label in (
+        ("37", "files damaged"),
+        ("6s", "Detected in 6 seconds"),
+        ("01:20", "Clean copy from 01:20 ready"),
+        ("19", "counter entries to re-check"),
+    ):
+        assert re.search(
+            rf'alert-stat-value tabular-number">{re.escape(value)}</span>\s*'
+            rf'<span class="alert-stat-label">{re.escape(label)}</span>',
+            html,
+        )
 
     # Tabular values and labels
     assert "37" in html
@@ -870,8 +881,9 @@ def test_server_alert_controls_and_simulation_link(client):
     # Presentation-only acknowledge button
     assert '<button type="button" class="btn btn-primary btn-alert-ack">Acknowledge</button>' in html
 
-    # Simulation secondary link to Data Safety
-    assert 'href="/safety"' in html
+    # Simulation secondary link to the attack report, not the calm home screen
+    assert 'href="/alert"' in html
+    assert 'href="/safety"' not in html
     assert "Open Vault Console (Simulation)" in html
     assert "btn-secondary" in html
 
@@ -1090,3 +1102,13 @@ def test_module_docstring_updated():
         "Module docstring does not describe the full console suite"
     )
 
+
+def test_card_detail_part_collected_is_not_marked_green():
+    card = DEFAULT_CARD_DETAILS["110300512847"]
+    tx = TransactionPresentation(
+        "2026-09-08 11:24", "2026-09", "Rice (12.000 kg)", 12.000,
+        "Biometric", "Part collected", "27030300145",
+    )
+    app = create_app(card_details={card.card_no: replace(card, transactions=(tx,))})
+    html = app.test_client().get(f"/card/{card.card_no}").get_data(as_text=True)
+    assert '<span class="status-badge status-badge-suspended">Part collected</span>' in html

@@ -21,7 +21,7 @@
         <ol class="server-alert-actions-list">
           {% for action in alert.actions %}
             <li class="server-alert-action-item {% if loop.first %}server-alert-action-highlight{% endif %}">
-              <span class="server-alert-action-number">{{ loop.index }}</span>
+              <span class="server-alert-action-number" aria-hidden="true">{{ loop.index }}</span>
               <span class="server-alert-action-text">{{ action }}</span>
             </li>
           {% endfor %}
@@ -30,7 +30,7 @@
         <div class="server-alert-footer">
           <div class="server-alert-buttons">
             <button type="button" class="btn btn-primary btn-alert-ack">Acknowledge</button>
-            <a href="{{ url_for('nightkeep_home') }}" class="btn btn-secondary btn-alert-vault-link">Open Vault Console (Simulation)</a>
+            <a href="{{ url_for('nightkeep_alert') }}" class="btn btn-secondary btn-alert-vault-link">Open Vault Console (Simulation)</a>
           </div>
           <p class="server-alert-disclaimer">Prototype on invented data. Not a live government system.</p>
         </div>

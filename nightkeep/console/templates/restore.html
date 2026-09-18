@@ -37,7 +37,7 @@
               {% if step.status == 'completed' %}
                 <span class="restore-step-check" aria-hidden="true">Done</span>
               {% else %}
-                <span class="restore-step-num">{{ step.step_number }}</span>
+                <span class="restore-step-num" aria-hidden="true">{{ step.step_number }}</span>
               {% endif %}
             </div>
             <div class="restore-step-body">

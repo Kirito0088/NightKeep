@@ -196,7 +196,7 @@
                 <td class="tabular-number">{{ tx.fps_id }}</td>
                 <td>{{ tx.auth_mode }}</td>
                 <td>
-                  <span class="status-badge status-badge-active">{{ tx.status }}</span>
+                  <span class="status-badge status-badge-{{ 'active' if tx.status == 'Collected' else 'suspended' }}">{{ tx.status }}</span>
                 </td>
               </tr>
             {% endfor %}
