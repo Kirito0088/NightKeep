@@ -226,6 +226,7 @@ html, body {
   font-weight: 500;
   border-radius: 0;
   border-bottom: 3px solid transparent;
+  transition: background-color 0.12s ease;
 }
 
 .nav-item:first-child .nav-link {
@@ -284,6 +285,9 @@ html, body {
 
 /* Main Content Wrapper */
 .main-content {
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
   padding: 20px var(--page-gutter);
 }
 
@@ -370,6 +374,7 @@ html, body {
   grid-column: 1 / -1;
   display: flex;
   justify-content: flex-end;
+  gap: 10px;
   margin-top: 8px;
 }
 
@@ -387,6 +392,11 @@ html, body {
   cursor: pointer;
   border: 1px solid transparent;
   text-decoration: none;
+  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.btn:active {
+  transform: translateY(1px);
 }
 
 .btn-primary {
@@ -464,6 +474,7 @@ html, body {
   font-size: var(--font-size-table);
   color: var(--color-secondary-text);
   line-height: 1.4;
+  text-wrap: pretty;
 }
 
 /* Results Table Section */
@@ -553,6 +564,7 @@ html, body {
   color: var(--color-primary-navy);
   font-weight: 600;
   text-decoration: underline;
+  transition: color 0.12s ease;
 }
 
 .card-number-link:hover {
@@ -587,4 +599,9 @@ html, body {
   padding: 24px var(--block-inner-gutter);
   color: var(--color-secondary-text);
   font-size: var(--font-size-body);
+}
+
+.empty-results-message {
+  margin-bottom: 12px;
+  text-wrap: pretty;
 }

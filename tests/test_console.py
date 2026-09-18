@@ -188,3 +188,40 @@ def test_search_filter_changes_result_set(client):
     assert "0 records found" in nomatch_html
     nomatch_tbody = nomatch_html.split("<tbody>")[1].split("</tbody>")[0]
     assert "No ration cards found matching the criteria" in nomatch_tbody
+    assert "Clear Filters" in nomatch_tbody
+    assert 'href="/search"' in nomatch_tbody
+
+
+def test_card_number_links_target_detail_route(client):
+    response = client.get("/search")
+    html = response.get_data(as_text=True)
+
+    for record in DEFAULT_SAMPLE_RECORDS:
+        expected_link = f'href="/card/{record.card_no}"'
+        assert expected_link in html, f"Expected detail link {expected_link} not found in search results"
+
+
+def test_search_form_contains_reset_action(client):
+    response = client.get("/search")
+    html = response.get_data(as_text=True)
+
+    assert "Reset Filters" in html
+    assert 'class="btn btn-secondary btn-reset"' in html
+
+
+def test_empty_state_contains_clear_action(client):
+    response = client.get("/search?card_no=999999999999")
+    html = response.get_data(as_text=True)
+
+    assert "Clear Filters" in html
+    assert "empty-results-message" in html
+    assert 'class="btn btn-secondary btn-reset-empty"' in html
+
+
+def test_main_content_has_max_width_constraint():
+    style_path = CONSOLE_DIR / "static" / "style.css"
+    content = style_path.read_text(encoding="utf-8")
+    assert "max-width: 1280px;" in content
+    assert "transform: translateY(1px);" in content
+    assert "text-wrap: pretty;" in content
+

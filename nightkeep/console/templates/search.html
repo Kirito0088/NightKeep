@@ -84,6 +84,7 @@
           </div>
 
           <div class="form-actions">
+            <a href="{{ url_for('search_cards') }}" class="btn btn-secondary btn-reset">Reset Filters</a>
             <button type="submit" class="btn btn-primary">Search</button>
           </div>
         </div>
@@ -155,7 +156,7 @@
           {% for record in records %}
             <tr>
               <td class="tabular-number">
-                <a href="#" class="card-number-link">{{ record.card_no }}</a>
+                <a href="/card/{{ record.card_no }}" class="card-number-link">{{ record.card_no }}</a>
               </td>
               <td>{{ record.head_of_family }}</td>
               <td>{{ record.taluka }} / {{ record.village }}</td>
@@ -171,7 +172,8 @@
         {% else %}
           <tr>
             <td colspan="6" class="empty-results-cell">
-              No ration cards found matching the criteria.
+              <p class="empty-results-message">No ration cards found matching the criteria.</p>
+              <a href="{{ url_for('search_cards') }}" class="btn btn-secondary btn-reset-empty">Clear Filters</a>
             </td>
           </tr>
         {% endif %}
