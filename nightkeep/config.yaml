@@ -1,0 +1,80 @@
+# Every tunable number in Nightkeep. Nothing here is duplicated in code.
+# Read exactly once, at start-up, by nightkeep/config.py. Modules take these
+# values as arguments from the entrypoint and never reach for this file.
+
+district:
+  ration_cards: 5000
+  fps_count: 50
+  members_per_card:
+    low: 1
+    high: 7
+  transactions_per_card_per_month:
+    low: 0
+    high: 2
+
+# One seed drives the whole run: the district, every job's randomness, the
+# harvest surge. A judge who picks a seed gets the same run back.
+seed: 20260922
+
+clock:
+  simulated_day_seconds: 30
+  learning_days: 7
+  guard_days: 3
+
+harvest_surge:
+  # Peak season. Legitimate, and must not alarm. Day 4 falls inside learning so
+  # the habit cards see a surge; day 9 falls inside the guard days so P1 is
+  # actually exercised.
+  days: [4, 9]
+  multiplier: 2.0
+
+jobs:
+  # The six jobs a district PDS setup really runs, each messy on purpose.
+  # Times are 24-hour HH:MM. volume_variation is a fraction: 0.30 means the
+  # run's volume moves plus or minus 30 percent.
+
+  nightly_export:
+    # Day-end export of transactions for the state server.
+    start_window: {earliest: "01:00", latest: "02:30"}
+    volume_variation: 0.30
+    rows_per_run: {low: 180, high: 320}
+    network_down_probability: 0.12
+
+  allocation_gen:
+    # Next month's grain quota file for each shop. Big run on the 1st, small
+    # top-ups mid-month, and a vendor bug that sometimes runs it twice.
+    start_window: {earliest: "23:15", latest: "00:45"}
+    volume_variation: 0.20
+    month_start_day: 1
+    double_run_probability: 0.15
+    files_on_month_start: {low: 50, high: 50}
+    files_on_a_top_up: {low: 3, high: 12}
+
+  archive_old:
+    # Zips old exports and deletes the originals. Only fires when the folder
+    # crosses the size limit, so it lands on random nights.
+    start_window: {earliest: "03:00", latest: "04:30"}
+    volume_variation: 0.25
+    size_threshold_mb: 40
+    files_zipped_per_run: {low: 20, high: 90}
+
+  db_backup:
+    # The nightly database backup file the Vault pulls. Runs after the export,
+    # so its start time drifts with it rather than having a window of its own.
+    delay_after_export_minutes: {low: 10, high: 45}
+    volume_variation: 0.15
+
+  fix_dat:
+    # The undocumented script. Renames .tmp to .dat and rewrites allocation
+    # files in place, some nights only. The hardest legitimate job to tell
+    # from ransomware, which is why it exists.
+    start_window: {earliest: "02:00", latest: "05:00"}
+    volume_variation: 0.40
+    run_probability: 0.45
+
+  operator_activity:
+    # Clerks editing records in office hours. Never on a Sunday.
+    start_window: {earliest: "10:00", latest: "17:00"}
+    volume_variation: 0.50
+    edits_per_day: {low: 5, high: 40}
+    skip_sundays: true

@@ -70,6 +70,11 @@ Rules that follow:
 ## Folder layout
 
 ```
+CLAUDE.md
+CONTEXT.md
+pyproject.toml  # Python 3.11 pin, dependencies, pytest settings
+docs/adr/
+tests/
 nightkeep/
   mock_pds/     # fake district PDS data, 6 erratic jobs, simulated clock, hidden ground-truth logs
   watcher/
@@ -79,10 +84,15 @@ nightkeep/
   console/      # Flask app, Jinja templates, static CSS
   simulator/    # safe ransomware simulator + decrypt script
   types.py      # plain dataclasses shared across the boundary
-  tests/
+  config.py     # the one loader
   config.yaml
-  CLAUDE.md
+  __main__.py   # the entrypoint: reads config once, passes values in
 ```
+
+Imports are absolute and package-qualified: `from nightkeep.habit import score`.
+`nightkeep/` is a package inside the repository root, not the root itself, because
+a root-level `types.py` shadows the standard library's `types` module. See
+`docs/adr/0004-package-under-nightkeep.md`.
 
 `judge/entropy_signal.py` (Shannon entropy jump + header/structure check, 10 passing tests) is **pre-existing and must not be rewritten**. Wire S3 to it. It is not yet in the repo at the time of writing.
 
@@ -157,6 +167,7 @@ Recorded as ADRs in `docs/adr/`. These beat the plain document precedence order.
 | 0001 | `MVP.md` wins over `SOLUTION_DESIGN.md` |
 | 0002 | Flask + Jinja + hand-written CSS for the console, not Streamlit |
 | 0003 | 12-digit numeric ration card numbers, not `RC-` IDs |
+| 0004 | Code lives in a `nightkeep/` package inside the repo root, not at the root |
 
 Resolved without an ADR, because the newer document already says so: the product is **Nightkeep** (not QuirkGuard); the console binds to `127.0.0.1` only (MVP.md section 8 reverses SOLUTION_DESIGN's LAN web page); there are **6** erratic jobs (not 3); learning is **7** simulated days plus **3** guard days (not 5 nights); one simulated day is **30 s** (not 20 s).
 
