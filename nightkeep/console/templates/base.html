@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Nightkeep Console{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  <div class="utility-strip" role="banner">
+    <div class="utility-group">
+      <a class="utility-link" href="#main-content">Screen reader navigation</a>
+      <button class="utility-button" type="button" aria-label="Text resize control">Text resize</button>
+      <span>English / मराठी</span>
+    </div>
+    <div class="disclaimer">Prototype on invented data. Not a live government system.</div>
+  </div>
+
+  <div class="tricolour-hairline" aria-hidden="true">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+
+  <header class="site-header">
+    <div class="dept-seal" aria-label="Department seal placeholder">[DEPT<br>SEAL]</div>
+    <div class="office-title">
+      <div class="office-title-marathi" lang="mr">जिल्हा पुरवठा कार्यालय, ठाणे</div>
+      <div class="office-title-english">District Supply Office, Thane</div>
+    </div>
+  </header>
+
+  <nav class="site-nav" aria-label="Primary navigation">
+    <ul>
+      <li><a class="active" href="{{ url_for('search') }}" aria-current="page">Ration Card Search</a></li>
+      <li><a href="#">Reports</a></li>
+      <li><a href="#">Office Services</a></li>
+    </ul>
+  </nav>
+
+  <div class="breadcrumb" aria-label="Breadcrumb">
+    {% block breadcrumb %}
+    <span>Home</span> &gt; <span>Ration Card Search</span>
+    {% endblock %}
+  </div>
+
+  <div class="page-heading-band">
+    <h1>{% block page_heading %}Ration Card Search{% endblock %}</h1>
+  </div>
+
+  <main id="main-content">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

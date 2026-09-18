@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Ration Card Search | District Supply Office, Thane{% endblock %}
+
+{% block breadcrumb %}
+  <span>Home</span> &gt; <span>Ration Card Search</span>
+{% endblock %}
+
+{% block page_heading %}Ration Card Search{% endblock %}
+
+{% block content %}
+<section class="search-layout" aria-label="Ration card search">
+  <section class="content-block" aria-labelledby="search-filter-heading">
+    <div class="block-heading" id="search-filter-heading">Search filters</div>
+    <div class="block-body">
+      <form class="search-form" method="get" action="{{ url_for('search') }}">
+        <div class="form-field">
+          <label for="card_no">Ration card number</label>
+          <input id="card_no" name="card_no" type="text" inputmode="numeric" value="{{ filters.card_no }}" autocomplete="off">
+        </div>
+
+        <div class="form-field">
+          <label for="head_of_family">Head of family</label>
+          <input id="head_of_family" name="head_of_family" type="text" value="{{ filters.head_of_family }}" autocomplete="off">
+        </div>
+
+        <div class="form-field">
+          <label for="taluka">Taluka</label>
+          <select id="taluka" name="taluka">
+            <option value="">All talukas</option>
+            {% for option in talukas %}
+            <option value="{{ option }}" {% if filters.taluka == option %}selected{% endif %}>{{ option }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-field">
+          <label for="fps_id">Fair Price Shop</label>
+          <input id="fps_id" name="fps_id" type="text" value="{{ filters.fps_id }}" autocomplete="off">
+        </div>
+
+        <div class="form-field">
+          <label for="scheme">Scheme</label>
+          <select id="scheme" name="scheme">
+            <option value="">All schemes</option>
+            {% for option in schemes %}
+            <option value="{{ option }}" {% if filters.scheme == option %}selected{% endif %}>{{ option }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-field">
+          <label for="status">Status</label>
+          <select id="status" name="status">
+            <option value="">All statuses</option>
+            {% for option in statuses %}
+            <option value="{{ option }}" {% if filters.status == option %}selected{% endif %}>{{ option }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-actions">
+          <button class="primary-button" type="submit">Search</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <aside class="side-stack" aria-label="District information">
+    <section class="content-block" aria-labelledby="district-figures-heading">
+      <div class="block-heading" id="district-figures-heading">District Figures</div>
+      <div class="block-body">
+        <ul class="stat-list">
+          <li>
+            <span class="stat-number">{{ district_summary.ration_cards|int|format_number }}</span>
+            <span class="stat-label">ration cards</span>
+          </li>
+          <li>
+            <span class="stat-number">{{ district_summary.fps_count|int|format_number }}</span>
+            <span class="stat-label">fair price shops</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="content-block" aria-labelledby="safety-heading">
+      <div class="block-heading" id="safety-heading">Data Safety</div>
+      <div class="block-body">
+        <div class="safety-status">
+          <div class="safety-headline">Records protected</div>
+          <div class="safety-copy">Nightkeep backup protection is available on the separate Vault machine.</div>
+        </div>
+        <a class="primary-button" href="#" role="button">Open Data Safety</a>
+      </div>
+    </section>
+  </aside>
+</section>
+
+<section class="content-block results-block" aria-labelledby="results-heading">
+  <div class="block-heading" id="results-heading">Search results</div>
+  <div class="results-meta">
+    Showing {{ cards|length }} of {{ cards_total }} records
+  </div>
+
+  {% if cards %}
+  <div class="table-wrap">
+    <table class="data-table">
+      <caption class="visually-hidden">Ration card search results</caption>
+      <thead>
+        <tr>
+          <th scope="col">Card Number</th>
+          <th scope="col">Head of Family</th>
+          <th scope="col">Taluka / Village</th>
+          <th scope="col">Fair Price Shop</th>
+          <th scope="col">Scheme</th>
+          <th scope="col">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for card in cards %}
+        <tr>
+          <td><a class="card-link" href="#">{{ card.card_no }}</a></td>
+          <td>{{ card.head_of_family }}</td>
+          <td>{{ card.taluka }} / {{ card.village }}</td>
+          <td>
+            <span>{{ card.fps_id }}</span><br>
+            <span class="muted">{{ card.fps_name }}</span>
+          </td>
+          <td>{{ card.scheme }}</td>
+          <td><span class="status-badge">{{ card.status }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-note">No ration cards match the selected search filters.</div>
+  {% endif %}
+</section>
+{% endblock %}
