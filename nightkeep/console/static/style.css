@@ -276,6 +276,16 @@ html, body {
   border-bottom: 1px solid var(--color-border);
 }
 
+.page-heading-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
 .page-heading-band h1 {
   font-size: var(--font-size-h1);
   font-weight: 700;
@@ -604,4 +614,109 @@ html, body {
 .empty-results-message {
   margin-bottom: 12px;
   text-wrap: pretty;
+}
+
+/* Screen 2: Ration Card Detail Styles */
+.card-detail-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.detail-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.kv-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px 24px;
+}
+
+@media (max-width: 768px) {
+  .kv-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.kv-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 8px;
+}
+
+.kv-label {
+  font-size: var(--font-size-caption);
+  color: var(--color-secondary-text);
+  font-weight: 600;
+}
+
+.kv-value {
+  font-size: var(--font-size-body);
+  color: var(--color-body-text);
+  font-weight: 600;
+}
+
+.section-lead-note {
+  font-size: var(--font-size-table);
+  color: var(--color-secondary-text);
+  margin-bottom: 12px;
+  text-wrap: pretty;
+}
+
+.table-summary-row th,
+.table-summary-row td {
+  background-color: var(--color-bg-surface);
+  font-weight: 700;
+  border-top: 2px solid var(--color-border);
+}
+
+.status-indicator-positive {
+  color: var(--color-safe-green);
+  font-weight: 700;
+}
+
+.status-indicator-neutral {
+  color: var(--color-secondary-text);
+  font-weight: 600;
+}
+
+.detail-actions-bar {
+  display: flex;
+  justify-content: flex-start;
+  padding: 8px 0;
+}
+
+/* 404 Record Not Found Styles */
+.not-found-layout {
+  max-width: 640px;
+  margin: 40px auto;
+}
+
+.not-found-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 24px var(--block-inner-gutter);
+}
+
+.not-found-message {
+  font-size: var(--font-size-lead);
+  color: var(--color-body-text);
+  line-height: 1.4;
+  text-wrap: pretty;
+}
+
+.not-found-subtext {
+  font-size: var(--font-size-table);
+  color: var(--color-secondary-text);
+  text-wrap: pretty;
+}
+
+.not-found-actions {
+  margin-top: 8px;
 }

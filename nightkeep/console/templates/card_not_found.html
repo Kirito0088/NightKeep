@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Ration Card Not Found - District Supply Office, Thane{% endblock %}
+{% block page_heading %}Ration Card Not Found{% endblock %}
+
+{% block breadcrumb %}
+<a href="{{ url_for('search_cards') }}">Ration Card Search</a>
+<span class="breadcrumb-separator" aria-hidden="true">/</span>
+<span aria-current="page">Not Found</span>
+{% endblock %}
+
+{% block content %}
+<div class="not-found-layout">
+  <section class="panel-block not-found-panel" aria-labelledby="not-found-heading">
+    <div class="panel-header">
+      <h2 id="not-found-heading">Record Not Found</h2>
+    </div>
+    <div class="panel-body not-found-body">
+      <p class="not-found-message">
+        No ration card record matching <strong class="tabular-number">{{ card_no }}</strong> was found in the Thane district PDS registry.
+      </p>
+      <p class="not-found-subtext">
+        Please check the 12-digit ration card number and try searching again.
+      </p>
+      <div class="not-found-actions">
+        <a href="{{ url_for('search_cards') }}" class="btn btn-primary">Return to Ration Card Search</a>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

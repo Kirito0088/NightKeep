@@ -24,6 +24,68 @@ class RationCardPresentation:
     status: str
 
 
+@dataclass(frozen=True)
+class MemberPresentation:
+    sr_no: int
+    name: str
+    relation_to_head: str
+    sex: str
+    age: int
+    aadhaar_seeded: bool
+    ekyc_status: str  # "Done" | "Pending"
+
+
+@dataclass(frozen=True)
+class EntitlementItemPresentation:
+    commodity: str  # "Rice", "Wheat", "Sugar"
+    monthly_allotment_kg: float
+    rate_per_kg: str  # "Free under PMGKAY"
+    allotment_basis: str  # "3.000 kg per member"
+
+
+@dataclass(frozen=True)
+class TransactionPresentation:
+    occurred_at: str  # "2026-09-08 11:24"
+    allotment_month: str  # "2026-09"
+    commodity_summary: str  # "Rice (12.000 kg), Wheat (8.000 kg)"
+    quantity_kg: float
+    auth_mode: str  # "Biometric" | "Iris" | "OTP" | "Nominee"
+    status: str  # "Collected" | "Part collected"
+    fps_id: str
+
+
+@dataclass(frozen=True)
+class CardDetailPresentation:
+    card_no: str
+    head_of_family: str
+    scheme: str
+    card_type: str
+    status: str
+    address: str
+    taluka: str
+    village: str
+    issue_date: str
+    fps_id: str
+    fps_name: str
+    mobile_masked: str
+    gas_connection: str
+    members: tuple[MemberPresentation, ...]
+    entitlements: tuple[EntitlementItemPresentation, ...]
+    transactions: tuple[TransactionPresentation, ...]
+
+    @property
+    def member_count(self) -> int:
+        return len(self.members)
+
+    @property
+    def seeded_member_count(self) -> int:
+        return sum(1 for m in self.members if m.aadhaar_seeded)
+
+    @property
+    def aadhaar_summary(self) -> str:
+        return f"{self.seeded_member_count} of {self.member_count} members seeded"
+
+
 # Five realistic initial presentation records modeled strictly after
 # Thane district conventions (ADR-0003, ADR-0005, ADR-0006).
 # Kept isolated as route presentation defaults so mock_pds data can
@@ -86,6 +148,151 @@ DEFAULT_SAMPLE_RECORDS: tuple[RationCardPresentation, ...] = (
     ),
 )
 
+DEFAULT_CARD_DETAILS: dict[str, CardDetailPresentation] = {
+    "110300512847": CardDetailPresentation(
+        card_no="110300512847",
+        head_of_family="Sunita Ramesh Kadam",
+        scheme="NFSA-PHH",
+        card_type="Priority Household",
+        status="Active",
+        address="Plot 14, Ghodbunder Road, Navghar, Thane",
+        taluka="Thane",
+        village="Navghar",
+        issue_date="14 Mar 2021",
+        fps_id="27030300145",
+        fps_name="Jai Bhavani Swasta Dhanya Dukan",
+        mobile_masked="98XXXXXX41",
+        gas_connection="1 Cylinder (HP Gas)",
+        members=(
+            MemberPresentation(1, "Sunita Ramesh Kadam", "Self", "Female", 42, True, "Done"),
+            MemberPresentation(2, "Ramesh Ananda Kadam", "Spouse", "Male", 46, True, "Done"),
+            MemberPresentation(3, "Amit Ramesh Kadam", "Son", "Male", 19, True, "Done"),
+            MemberPresentation(4, "Priya Ramesh Kadam", "Daughter", "Female", 16, False, "Pending"),
+        ),
+        entitlements=(
+            EntitlementItemPresentation("Rice", 12.000, "Free under PMGKAY", "3.000 kg per member"),
+            EntitlementItemPresentation("Wheat", 8.000, "Free under PMGKAY", "2.000 kg per member"),
+        ),
+        transactions=(
+            TransactionPresentation("2026-09-08 11:24", "2026-09", "Rice (12.000 kg), Wheat (8.000 kg)", 20.000, "Biometric", "Collected", "27030300145"),
+            TransactionPresentation("2026-08-06 16:40", "2026-08", "Rice (12.000 kg), Wheat (8.000 kg)", 20.000, "Biometric", "Collected", "27030300145"),
+            TransactionPresentation("2026-07-10 10:15", "2026-07", "Rice (12.000 kg), Wheat (8.000 kg)", 20.000, "OTP", "Collected", "27030300145"),
+        ),
+    ),
+    "110482910384": CardDetailPresentation(
+        card_no="110482910384",
+        head_of_family="Rajesh Vithal Shinde",
+        scheme="AAY",
+        card_type="Antyodaya",
+        status="Active",
+        address="House 42, Majiwada Village Road, Thane",
+        taluka="Thane",
+        village="Majiwada",
+        issue_date="05 Nov 2019",
+        fps_id="27030300145",
+        fps_name="Jai Bhavani Swasta Dhanya Dukan",
+        mobile_masked="97XXXXXX23",
+        gas_connection="None (PM Ujjwala eligible)",
+        members=(
+            MemberPresentation(1, "Rajesh Vithal Shinde", "Self", "Male", 54, True, "Done"),
+            MemberPresentation(2, "Lata Rajesh Shinde", "Spouse", "Female", 49, True, "Done"),
+            MemberPresentation(3, "Sachin Rajesh Shinde", "Son", "Male", 22, True, "Done"),
+        ),
+        entitlements=(
+            EntitlementItemPresentation("Rice", 21.000, "Free under PMGKAY", "AAY household fixed allocation"),
+            EntitlementItemPresentation("Wheat", 14.000, "Free under PMGKAY", "AAY household fixed allocation"),
+            EntitlementItemPresentation("Sugar", 1.000, "Free under PMGKAY", "1.000 kg per card"),
+        ),
+        transactions=(
+            TransactionPresentation("2026-09-04 09:30", "2026-09", "Rice (21.000 kg), Wheat (14.000 kg), Sugar (1.000 kg)", 36.000, "Biometric", "Collected", "27030300145"),
+            TransactionPresentation("2026-08-03 14:12", "2026-08", "Rice (21.000 kg), Wheat (14.000 kg), Sugar (1.000 kg)", 36.000, "Biometric", "Collected", "27030300145"),
+        ),
+    ),
+    "110829104928": CardDetailPresentation(
+        card_no="110829104928",
+        head_of_family="Pooja Santosh Jadhav",
+        scheme="NFSA-PHH",
+        card_type="Priority Household",
+        status="Active",
+        address="Room 8, Mandir Ali, Titwala, Kalyan",
+        taluka="Kalyan",
+        village="Titwala",
+        issue_date="22 Jan 2022",
+        fps_id="27030300218",
+        fps_name="Shree Ganesh Wajibi Bhav Dukan",
+        mobile_masked="98XXXXXX88",
+        gas_connection="1 Cylinder (Bharat Gas)",
+        members=(
+            MemberPresentation(1, "Pooja Santosh Jadhav", "Self", "Female", 38, True, "Done"),
+            MemberPresentation(2, "Santosh Tukaram Jadhav", "Spouse", "Male", 41, True, "Done"),
+            MemberPresentation(3, "Rahul Santosh Jadhav", "Son", "Male", 17, True, "Done"),
+            MemberPresentation(4, "Sneha Santosh Jadhav", "Daughter", "Female", 14, True, "Done"),
+            MemberPresentation(5, "Parvati Tukaram Jadhav", "Mother", "Female", 68, False, "Pending"),
+        ),
+        entitlements=(
+            EntitlementItemPresentation("Rice", 15.000, "Free under PMGKAY", "3.000 kg per member"),
+            EntitlementItemPresentation("Wheat", 10.000, "Free under PMGKAY", "2.000 kg per member"),
+        ),
+        transactions=(
+            TransactionPresentation("2026-09-09 17:05", "2026-09", "Rice (15.000 kg), Wheat (10.000 kg)", 25.000, "Biometric", "Collected", "27030300218"),
+            TransactionPresentation("2026-08-07 11:30", "2026-08", "Rice (15.000 kg), Wheat (10.000 kg)", 25.000, "Biometric", "Collected", "27030300218"),
+        ),
+    ),
+    "110294819203": CardDetailPresentation(
+        card_no="110294819203",
+        head_of_family="Anil Eknath More",
+        scheme="Kesari (APL)",
+        card_type="Kesari",
+        status="Suspended",
+        address="Bungalow 3, Deslepada, Dombivli Rural, Kalyan",
+        taluka="Kalyan",
+        village="Dombivli Rural",
+        issue_date="18 Aug 2018",
+        fps_id="27030300218",
+        fps_name="Shree Ganesh Wajibi Bhav Dukan",
+        mobile_masked="99XXXXXX55",
+        gas_connection="2 Cylinders (Indane)",
+        members=(
+            MemberPresentation(1, "Anil Eknath More", "Self", "Male", 51, True, "Done"),
+            MemberPresentation(2, "Sunanda Anil More", "Spouse", "Female", 47, True, "Done"),
+        ),
+        entitlements=(
+            EntitlementItemPresentation("Rice", 6.000, "Free under PMGKAY", "3.000 kg per member"),
+            EntitlementItemPresentation("Wheat", 4.000, "Free under PMGKAY", "2.000 kg per member"),
+        ),
+        transactions=(
+            TransactionPresentation("2026-07-12 15:20", "2026-07", "Rice (6.000 kg), Wheat (4.000 kg)", 10.000, "Biometric", "Collected", "27030300218"),
+        ),
+    ),
+    "110938201948": CardDetailPresentation(
+        card_no="110938201948",
+        head_of_family="Kavita Suresh Patil",
+        scheme="NFSA-PHH",
+        card_type="Priority Household",
+        status="Active",
+        address="Flat 102, Gokul Dham, Bhayandar Pada, Thane",
+        taluka="Thane",
+        village="Bhayandar Pada",
+        issue_date="29 Sep 2020",
+        fps_id="27030300145",
+        fps_name="Jai Bhavani Swasta Dhanya Dukan",
+        mobile_masked="96XXXXXX74",
+        gas_connection="1 Cylinder (HP Gas)",
+        members=(
+            MemberPresentation(1, "Kavita Suresh Patil", "Self", "Female", 35, True, "Done"),
+            MemberPresentation(2, "Suresh Dattatray Patil", "Spouse", "Male", 39, True, "Done"),
+            MemberPresentation(3, "Nikhil Suresh Patil", "Son", "Male", 12, True, "Done"),
+        ),
+        entitlements=(
+            EntitlementItemPresentation("Rice", 9.000, "Free under PMGKAY", "3.000 kg per member"),
+            EntitlementItemPresentation("Wheat", 6.000, "Free under PMGKAY", "2.000 kg per member"),
+        ),
+        transactions=(
+            TransactionPresentation("2026-09-05 10:45", "2026-09", "Rice (9.000 kg), Wheat (6.000 kg)", 15.000, "Biometric", "Collected", "27030300145"),
+        ),
+    ),
+}
+
 DEFAULT_DISTRICT_FIGURES: dict[str, str] = {
     "ration_cards": "5,000",
     "fps_count": "50",
@@ -95,11 +302,13 @@ DEFAULT_DISTRICT_FIGURES: dict[str, str] = {
 def create_app(
     sample_records: tuple[RationCardPresentation, ...] | None = None,
     district_figures: dict[str, str] | None = None,
+    card_details: dict[str, CardDetailPresentation] | None = None,
 ) -> Flask:
     """Create and configure the Nightkeep console Flask application."""
     app = Flask(__name__)
     records_pool = sample_records if sample_records is not None else DEFAULT_SAMPLE_RECORDS
     figures = district_figures if district_figures is not None else DEFAULT_DISTRICT_FIGURES
+    card_details_pool = card_details if card_details is not None else DEFAULT_CARD_DETAILS
 
     @app.route("/", methods=["GET"])
     @app.route("/search", methods=["GET"])
@@ -148,6 +357,20 @@ def create_app(
             talukas=c.TALUKAS,
             schemes=c.SCHEMES,
             statuses=c.CARD_STATUSES,
+        )
+
+    @app.route("/card/<card_no>", methods=["GET"])
+    def card_detail(card_no: str) -> tuple[str, int] | str:
+        detail = card_details_pool.get(card_no)
+        if detail is None:
+            return render_template("card_not_found.html", card_no=card_no), 404
+        total_entitlement_kg = round(
+            sum(e.monthly_allotment_kg for e in detail.entitlements), 3
+        )
+        return render_template(
+            "card_detail.html",
+            card=detail,
+            total_entitlement_kg=total_entitlement_kg,
         )
 
     return app

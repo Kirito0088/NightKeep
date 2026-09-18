@@ -136,6 +136,8 @@ def test_no_em_dashes_in_console_assets():
         CONSOLE_DIR / "static" / "style.css",
         CONSOLE_DIR / "templates" / "base.html",
         CONSOLE_DIR / "templates" / "search.html",
+        CONSOLE_DIR / "templates" / "card_detail.html",
+        CONSOLE_DIR / "templates" / "card_not_found.html",
         CONSOLE_DIR / "app.py",
         CONSOLE_DIR / "__init__.py",
         CONSOLE_DIR / "__main__.py",
@@ -224,4 +226,121 @@ def test_main_content_has_max_width_constraint():
     assert "max-width: 1280px;" in content
     assert "transform: translateY(1px);" in content
     assert "text-wrap: pretty;" in content
+
+
+def test_card_detail_returns_200(client):
+    response = client.get("/card/110300512847")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert "Ration Card Detail: 110300512847" in html
+    assert "Sunita Ramesh Kadam" in html
+
+
+def test_card_detail_household_summary(client):
+    response = client.get("/card/110300512847")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    assert "Household Details" in html
+    assert "110300512847" in html
+    assert "Sunita Ramesh Kadam" in html
+    assert "Priority Household (NFSA-PHH)" in html
+    assert "Active" in html
+    assert "Plot 14, Ghodbunder Road, Navghar, Thane" in html
+    assert "Thane / Navghar" in html
+    assert "14 Mar 2021" in html
+    assert "98XXXXXX41" in html
+    assert "27030300145" in html
+    assert "Jai Bhavani Swasta Dhanya Dukan" in html
+    assert "1 Cylinder (HP Gas)" in html
+    assert "3 of 4 members seeded" in html
+
+
+def test_card_detail_monthly_entitlement(client):
+    response = client.get("/card/110300512847")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    assert "Monthly Entitlement" in html
+    assert "Free under PMGKAY" in html
+    assert "Rice" in html
+    assert "12.000 kg" in html
+    assert "Wheat" in html
+    assert "8.000 kg" in html
+    assert "20.000 kg" in html
+    assert "3.000 kg per member" in html
+    assert "2.000 kg per member" in html
+
+
+def test_card_detail_family_members_table(client):
+    response = client.get("/card/110300512847")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    assert "Family Members" in html
+    assert "4 members registered" in html
+    assert '<th scope="col">Sr No</th>' in html
+    assert '<th scope="col">Member Name</th>' in html
+    assert '<th scope="col">Relation to Head</th>' in html
+    assert '<th scope="col">Sex</th>' in html
+    assert '<th scope="col">Age</th>' in html
+    assert '<th scope="col">Aadhaar Seeded</th>' in html
+    assert '<th scope="col">e-KYC Status</th>' in html
+
+    # Verify member rows
+    assert "Sunita Ramesh Kadam" in html
+    assert "Ramesh Ananda Kadam" in html
+    assert "Amit Ramesh Kadam" in html
+    assert "Priya Ramesh Kadam" in html
+
+    # Verify e-KYC statuses
+    assert "Done" in html
+    assert "Pending" in html
+
+
+def test_card_detail_epos_transactions(client):
+    response = client.get("/card/110300512847")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    assert "ePoS Collection History" in html
+    assert '<th scope="col">Date &amp; Time</th>' in html
+    assert '<th scope="col">Allotment Month</th>' in html
+    assert '<th scope="col">Commodity / Quantity</th>' in html
+    assert '<th scope="col">Fair Price Shop</th>' in html
+    assert '<th scope="col">Authentication Mode</th>' in html
+    assert '<th scope="col">Status</th>' in html
+
+    assert "2026-09-08 11:24" in html
+    assert "Biometric" in html
+    assert "Collected" in html
+
+
+def test_card_detail_not_found_404(client):
+    response = client.get("/card/999999999999")
+    assert response.status_code == 404
+    html = response.get_data(as_text=True)
+    assert "Ration Card Not Found" in html
+    assert "999999999999" in html
+    assert "Return to Ration Card Search" in html
+
+
+def test_card_detail_disclaimer_and_skip_link(client):
+    response = client.get("/card/110300512847")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    assert "Prototype on invented data. Not a live government system." in html
+    assert '<a href="#main-content" class="skip-link">Skip to main content</a>' in html
+    assert 'id="main-content"' in html
+
+
+def test_all_default_sample_cards_open_successfully(client):
+    for record in DEFAULT_SAMPLE_RECORDS:
+        response = client.get(f"/card/{record.card_no}")
+        assert response.status_code == 200, f"Card {record.card_no} failed to load"
+        html = response.get_data(as_text=True)
+        assert record.head_of_family in html
+        assert record.card_no in html
+
 

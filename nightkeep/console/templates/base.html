@@ -64,7 +64,12 @@
 
   <!-- Chrome 6: White Page Heading Band -->
   <div class="page-heading-band">
-    <h1>{% block page_heading %}Ration Card Search{% endblock %}</h1>
+    <div class="page-heading-inner">
+      <h1>{% block page_heading %}Ration Card Search{% endblock %}</h1>
+      <div class="page-heading-actions">
+        {% block page_heading_actions %}{% endblock %}
+      </div>
+    </div>
   </div>
 
   <!-- Main Semantic Content -->
