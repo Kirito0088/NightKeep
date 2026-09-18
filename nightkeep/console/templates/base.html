@@ -48,7 +48,10 @@
   <nav class="site-nav" aria-label="Primary Navigation">
     <ul class="nav-list">
       <li class="nav-item">
-        <a href="{{ url_for('search_cards') }}" class="nav-link active" aria-current="page">Ration Card Search</a>
+        <a href="{{ url_for('search_cards') }}" class="nav-link {% if active_page != 'safety' %}active{% endif %}" {% if active_page != 'safety' %}aria-current="page"{% endif %}>Ration Card Search</a>
+      </li>
+      <li class="nav-item">
+        <a href="{{ url_for('nightkeep_home') }}" class="nav-link {% if active_page == 'safety' %}active{% endif %}" {% if active_page == 'safety' %}aria-current="page"{% endif %}>Data Safety</a>
       </li>
     </ul>
   </nav>

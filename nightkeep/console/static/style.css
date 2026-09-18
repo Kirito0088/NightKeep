@@ -889,3 +889,99 @@ html, body {
   color: var(--color-body-text);
   line-height: 1.4;
 }
+
+/* Screen 4: Nightkeep Home (Data Safety) Styles */
+.safety-screen-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.safety-alert-banner {
+  border: 1px solid var(--color-safe-green);
+  background-color: #eaf5ee;
+  padding: 16px var(--block-inner-gutter);
+  border-radius: 0;
+}
+
+.safety-alert-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.safety-alert-badge {
+  align-self: flex-start;
+  background-color: var(--color-safe-green);
+  color: #ffffff;
+  font-size: var(--font-size-utility);
+  font-weight: 700;
+  padding: 2px 8px;
+  letter-spacing: 0.5px;
+}
+
+.safety-alert-title {
+  font-size: var(--font-size-status);
+  font-weight: 700;
+  color: var(--color-safe-green);
+  line-height: 1.2;
+}
+
+.safety-alert-description {
+  font-size: var(--font-size-body);
+  color: var(--color-body-text);
+  text-wrap: pretty;
+}
+
+.safety-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .safety-summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .safety-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.safety-stat-card {
+  display: flex;
+  flex-direction: column;
+  border-left: 3px solid var(--color-safe-green);
+  padding-left: 10px;
+}
+
+.safety-stat-value {
+  font-size: var(--font-size-status);
+  font-weight: 700;
+  color: var(--color-primary-navy);
+  line-height: 1.1;
+}
+
+.safety-stat-label {
+  font-size: var(--font-size-caption);
+  color: var(--color-secondary-text);
+  font-weight: 500;
+}
+
+.it-panel-body {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.it-panel-text {
+  font-size: var(--font-size-table);
+  color: var(--color-secondary-text);
+  max-width: 800px;
+  text-wrap: pretty;
+}

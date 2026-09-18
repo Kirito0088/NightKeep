@@ -139,6 +139,7 @@ def test_no_em_dashes_in_console_assets():
         CONSOLE_DIR / "templates" / "card_detail.html",
         CONSOLE_DIR / "templates" / "card_not_found.html",
         CONSOLE_DIR / "templates" / "locked.html",
+        CONSOLE_DIR / "templates" / "safety.html",
         CONSOLE_DIR / "app.py",
         CONSOLE_DIR / "__init__.py",
         CONSOLE_DIR / "__main__.py",
@@ -441,6 +442,131 @@ def test_locked_route_no_technical_detection_terms(client):
     ]
     for term in technical_terms:
         assert term not in html, f"Technical term '{term}' leaked to clerk-facing locked screen"
+
+
+def test_safety_home_returns_200(client):
+    response = client.get("/safety")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert "Data Safety" in html
+
+
+def test_safety_home_protection_headline(client):
+    response = client.get("/safety")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert "Your records are safe" in html
+    assert "STATUS: NORMAL" in html
+
+
+def test_safety_home_protected_record_count(client):
+    response = client.get("/safety")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert "5,000" in html
+    assert "ration cards protected" in html
+
+
+def test_safety_home_clean_point(client):
+    response = client.get("/safety")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert "Day 9, 01:20" in html
+    assert "24" in html
+    assert "safe copies on Vault" in html
+
+
+def test_safety_home_night_tasks_table(client):
+    response = client.get("/safety")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    assert "Night Tasks Activity" in html
+    assert '<th scope="col">Task</th>' in html
+    assert '<th scope="col">Usually</th>' in html
+    assert '<th scope="col">Last night</th>' in html
+    assert '<th scope="col">Status</th>' in html
+
+    # Verify all 6 documented task names
+    assert "Day-end upload" in html
+    assert "Allotment file creation" in html
+    assert "Safe copy of the database" in html
+    assert "Old file clean-up" in html
+    assert "Data format maintenance" in html
+    assert "Counter clerk entries" in html
+
+    # Count rows in tbody
+    tbody_content = html.split("<tbody>")[1].split("</tbody>")[0]
+    row_count = tbody_content.count("<tr")
+    assert row_count == 6
+
+
+def test_safety_home_later_than_usual_state(client):
+    response = client.get("/safety")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    assert "Later than usual" in html
+    assert "03:40 (6 files modified)" in html
+
+
+def test_safety_home_for_it_person_present(client):
+    response = client.get("/safety")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    assert "For the IT person" in html
+    assert "btn-it-access" in html
+    # Check no dead anchor href="#"
+    assert '<a href="#"' not in html, "Found dead anchor href='#' in safety template"
+
+
+def test_safety_home_retains_government_chrome(client):
+    response = client.get("/safety")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    assert "जिल्हा पुरवठा कार्यालय, ठाणे" in html
+    assert "District Supply Office, Thane" in html
+    assert "Prototype on invented data. Not a live government system." in html
+    assert '<a href="#main-content" class="skip-link">Skip to main content</a>' in html
+    assert 'id="main-content"' in html
+
+
+def test_safety_home_no_technical_detection_terms_in_clerk_sections(client):
+    response = client.get("/safety")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    # Inspect clerk-facing content only (preceding the IT-person section)
+    clerk_content = html.split('class="panel-block it-person-section"')[0]
+    technical_terms = [
+        "entropy",
+        "SHA-256",
+        "sha256",
+        "Habit Score",
+        "habit score",
+        "MAD",
+        "snapshot ID",
+        "verdict table",
+    ]
+    for term in technical_terms:
+        assert term not in clerk_content, f"Technical term '{term}' leaked to clerk-facing safety content"
+
+
+def test_search_and_locked_open_data_safety_link_to_safety(client):
+    # Test search screen link
+    search_resp = client.get("/search")
+    assert search_resp.status_code == 200
+    search_html = search_resp.get_data(as_text=True)
+    assert 'href="/safety"' in search_html
+
+    # Test locked screen link
+    locked_resp = client.get("/locked")
+    assert locked_resp.status_code == 200
+    locked_html = locked_resp.get_data(as_text=True)
+    assert 'href="/safety"' in locked_html
+
 
 
 

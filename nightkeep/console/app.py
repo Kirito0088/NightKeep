@@ -86,6 +86,71 @@ class CardDetailPresentation:
         return f"{self.seeded_member_count} of {self.member_count} members seeded"
 
 
+@dataclass(frozen=True)
+class NightTaskPresentation:
+    task_name: str
+    usually: str
+    last_night: str
+    status: str
+
+
+@dataclass(frozen=True)
+class SafetyHomePresentation:
+    protection_status: str
+    protected_cards_count: str
+    fps_count: str
+    safe_copies_count: str
+    clean_point: str
+    tasks: tuple[NightTaskPresentation, ...]
+
+
+DEFAULT_SAFETY_HOME_DATA: SafetyHomePresentation = SafetyHomePresentation(
+    protection_status="Your records are safe",
+    protected_cards_count="5,000",
+    fps_count="50",
+    safe_copies_count="24",
+    clean_point="Day 9, 01:20",
+    tasks=(
+        NightTaskPresentation(
+            task_name="Day-end upload",
+            usually="01:00 to 02:30, writes ~240 rows",
+            last_night="01:14 (248 rows)",
+            status="Normal",
+        ),
+        NightTaskPresentation(
+            task_name="Allotment file creation",
+            usually="23:15 to 00:45, writes 50 files",
+            last_night="23:30 (50 files)",
+            status="Normal",
+        ),
+        NightTaskPresentation(
+            task_name="Safe copy of the database",
+            usually="10 to 45 min after upload",
+            last_night="01:45 (clean database backup)",
+            status="Normal",
+        ),
+        NightTaskPresentation(
+            task_name="Old file clean-up",
+            usually="03:00 to 04:30 when folder > 40 MB",
+            last_night="Did not run (folder under limit)",
+            status="Normal",
+        ),
+        NightTaskPresentation(
+            task_name="Data format maintenance",
+            usually="02:00 to 05:00, occasional nights",
+            last_night="03:40 (6 files modified)",
+            status="Later than usual",
+        ),
+        NightTaskPresentation(
+            task_name="Counter clerk entries",
+            usually="10:00 to 17:00, Mon to Sat",
+            last_night="10:15 to 16:50 (24 entries)",
+            status="Normal",
+        ),
+    ),
+)
+
+
 # Five realistic initial presentation records modeled strictly after
 # Thane district conventions (ADR-0003, ADR-0005, ADR-0006).
 # Kept isolated as route presentation defaults so mock_pds data can
@@ -303,12 +368,14 @@ def create_app(
     sample_records: tuple[RationCardPresentation, ...] | None = None,
     district_figures: dict[str, str] | None = None,
     card_details: dict[str, CardDetailPresentation] | None = None,
+    safety_home_data: SafetyHomePresentation | None = None,
 ) -> Flask:
     """Create and configure the Nightkeep console Flask application."""
     app = Flask(__name__)
     records_pool = sample_records if sample_records is not None else DEFAULT_SAMPLE_RECORDS
     figures = district_figures if district_figures is not None else DEFAULT_DISTRICT_FIGURES
     card_details_pool = card_details if card_details is not None else DEFAULT_CARD_DETAILS
+    safety_pool = safety_home_data if safety_home_data is not None else DEFAULT_SAFETY_HOME_DATA
 
     @app.route("/", methods=["GET"])
     @app.route("/search", methods=["GET"])
@@ -357,6 +424,7 @@ def create_app(
             talukas=c.TALUKAS,
             schemes=c.SCHEMES,
             statuses=c.CARD_STATUSES,
+            active_page="search",
         )
 
     @app.route("/card/<card_no>", methods=["GET"])
@@ -371,6 +439,7 @@ def create_app(
             "card_detail.html",
             card=detail,
             total_entitlement_kg=total_entitlement_kg,
+            active_page="search",
         )
 
     @app.route("/locked", methods=["GET"])
@@ -381,6 +450,15 @@ def create_app(
             talukas=c.TALUKAS,
             schemes=c.SCHEMES,
             statuses=c.CARD_STATUSES,
+            active_page="search",
+        )
+
+    @app.route("/safety", methods=["GET"])
+    def nightkeep_home() -> str:
+        return render_template(
+            "safety.html",
+            safety=safety_pool,
+            active_page="safety",
         )
 
     return app

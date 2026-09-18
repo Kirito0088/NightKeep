@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Data Safety - District Supply Office, Thane{% endblock %}
+{% block page_heading %}Data Safety{% endblock %}
+
+{% block breadcrumb %}
+<a href="{{ url_for('nightkeep_home') }}">Home</a>
+<span class="breadcrumb-separator" aria-hidden="true">/</span>
+<span aria-current="page">Data Safety</span>
+{% endblock %}
+
+{% block content %}
+<div class="safety-screen-layout">
+  <!-- Calm Status Banner (Parity with Screen 3 incident banner) -->
+  <div class="safety-alert-banner" role="status" aria-live="polite">
+    <div class="safety-alert-content">
+      <div class="safety-alert-badge">STATUS: NORMAL</div>
+      <h2 class="safety-alert-title">{{ safety.protection_status }}</h2>
+      <p class="safety-alert-description">
+        All 5,000 ration cards are protected and continuous monitoring is active. Safe copies are preserved on the isolated Vault.
+      </p>
+    </div>
+  </div>
+
+  <!-- Protection Summary Section -->
+  <section class="panel-block safety-summary-section" aria-labelledby="safety-summary-heading">
+    <div class="panel-header">
+      <h2 id="safety-summary-heading">Protection Summary</h2>
+    </div>
+    <div class="panel-body">
+      <div class="safety-summary-grid">
+        <div class="safety-stat-card">
+          <span class="safety-stat-value tabular-number">{{ safety.protected_cards_count }}</span>
+          <span class="safety-stat-label">ration cards protected</span>
+        </div>
+        <div class="safety-stat-card">
+          <span class="safety-stat-value tabular-number">{{ safety.fps_count }}</span>
+          <span class="safety-stat-label">fair price shops active</span>
+        </div>
+        <div class="safety-stat-card">
+          <span class="safety-stat-value tabular-number">{{ safety.safe_copies_count }}</span>
+          <span class="safety-stat-label">safe copies on Vault</span>
+        </div>
+        <div class="safety-stat-card">
+          <span class="safety-stat-value tabular-number">{{ safety.clean_point }}</span>
+          <span class="safety-stat-label">latest clean copy</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Night Tasks Activity Table -->
+  <section class="panel-block night-tasks-section" aria-labelledby="night-tasks-heading">
+    <div class="panel-header">
+      <h2 id="night-tasks-heading">Night Tasks Activity</h2>
+    </div>
+    <div class="panel-body">
+      <div class="table-responsive">
+        <table class="pds-table">
+          <caption>Operational status of the six monitored night tasks</caption>
+          <thead>
+            <tr>
+              <th scope="col">Task</th>
+              <th scope="col">Usually</th>
+              <th scope="col">Last night</th>
+              <th scope="col">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for task in safety.tasks %}
+              <tr>
+                <td><strong>{{ task.task_name }}</strong></td>
+                <td>{{ task.usually }}</td>
+                <td class="tabular-number">{{ task.last_night }}</td>
+                <td>
+                  {% if task.status == 'Normal' %}
+                    <span class="status-badge status-badge-active">{{ task.status }}</span>
+                  {% else %}
+                    <span class="status-badge status-badge-suspended">{{ task.status }}</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- For the IT person Entry Point -->
+  <section class="panel-block it-person-section" aria-labelledby="it-person-heading">
+    <div class="panel-header">
+      <h2 id="it-person-heading">For the IT person</h2>
+    </div>
+    <div class="panel-body it-panel-body">
+      <p class="it-panel-text">
+        Technical diagnostics, baseline habit cards, and Vault snapshot manifests are available for authorized staff.
+      </p>
+      <button type="button" class="btn btn-secondary btn-it-access">Open IT View</button>
+    </div>
+  </section>
+</div>
+{% endblock %}
