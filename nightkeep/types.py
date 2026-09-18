@@ -11,6 +11,28 @@ from typing import Any
 
 
 @dataclass(frozen=True)
+class Event:
+    """A filesystem event observed on the PDS server.
+
+    Captured by watcher, evaluated by judge alongside habit scores.
+    Contains no scoring logic or detection conclusions.
+    """
+
+    timestamp: datetime
+    event_type: str  # "created", "modified", "deleted", "moved"
+    path: str
+    is_directory: bool
+    extension: str
+    size_bytes: int
+    old_path: str | None = None
+    process_id: int | None = None
+    process_name: str | None = None
+
+
+FileEvent = Event
+
+
+@dataclass(frozen=True)
 class JobRun:
     """The operational facts of one completed run of one job.
 
