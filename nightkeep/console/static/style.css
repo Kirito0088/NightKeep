@@ -291,6 +291,7 @@ html, body {
   font-weight: 700;
   color: var(--color-body-text);
   line-height: 1.2;
+  text-wrap: pretty;
 }
 
 /* Main Content Wrapper */
@@ -409,6 +410,14 @@ html, body {
   transform: translateY(1px);
 }
 
+.btn:disabled {
+  background-color: var(--color-bg-subtle);
+  border-color: var(--color-border);
+  color: var(--color-secondary-text);
+  cursor: not-allowed;
+  transform: none;
+}
+
 .btn-primary {
   background-color: var(--color-primary-navy);
   color: #ffffff;
@@ -478,6 +487,14 @@ html, body {
   border: 1px solid var(--color-safe-green);
   font-size: var(--font-size-caption);
   font-weight: 700;
+}
+
+/* .data-safety-status-box is a flex column, which stretches inline-block
+   children to full width by default. Both badge variants used in that
+   box need to stay compact instead of spanning the panel. */
+.data-safety-status-box > .data-safety-badge,
+.data-safety-status-box > .status-badge {
+  align-self: flex-start;
 }
 
 .data-safety-description {
@@ -655,6 +672,12 @@ html, body {
   padding-bottom: 8px;
 }
 
+/* The household details grid holds an odd number of fields, which would
+   otherwise leave the last one stranded next to an empty cell. */
+.kv-grid .kv-item:last-child {
+  grid-column: 1 / -1;
+}
+
 .kv-label {
   font-size: var(--font-size-caption);
   color: var(--color-secondary-text);
@@ -700,7 +723,7 @@ html, body {
 /* 404 Record Not Found Styles */
 .not-found-layout {
   max-width: 640px;
-  margin: 40px auto;
+  margin: 0 auto;
 }
 
 .not-found-body {
@@ -762,6 +785,7 @@ html, body {
   font-weight: 700;
   color: var(--color-incident-red);
   line-height: 1.2;
+  text-wrap: pretty;
 }
 
 .locked-alert-description {
@@ -925,6 +949,7 @@ html, body {
   font-weight: 700;
   color: var(--color-safe-green);
   line-height: 1.2;
+  text-wrap: pretty;
 }
 
 .safety-alert-description {
@@ -1021,6 +1046,7 @@ html, body {
   font-weight: 700;
   color: var(--color-incident-red);
   line-height: 1.2;
+  text-wrap: pretty;
 }
 
 .alert-incident-description {
@@ -1177,6 +1203,7 @@ html, body {
   font-weight: 700;
   color: var(--color-primary-navy);
   line-height: 1.2;
+  text-wrap: pretty;
 }
 
 .restore-summary-description {
@@ -1211,8 +1238,9 @@ html, body {
 }
 
 .restore-step-indicator {
-  width: 28px;
+  min-width: 28px;
   height: 28px;
+  padding: 0 6px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1382,7 +1410,7 @@ html, body {
   padding: 14px 16px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  gap: 16px;
   flex: 1;
   box-sizing: border-box;
 }
@@ -1457,7 +1485,6 @@ html, body {
 }
 
 .server-alert-footer {
-  margin-top: auto;
   display: flex;
   flex-direction: column;
   gap: 6px;
