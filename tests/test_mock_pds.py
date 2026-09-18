@@ -29,13 +29,24 @@ def _build(tmp_path, name, seed=20260922, district=DISTRICT):
     return out_dir, conn
 
 
-def test_creates_the_database_and_the_six_folders(tmp_path):
+def test_creates_the_database_and_the_district_folders(tmp_path):
     out_dir, conn = _build(tmp_path, "run")
     conn.close()
 
     assert (out_dir / "data" / "district.db").is_file()
-    for folder in ("data", "exports", "allocations", "reports", "archive", "logs"):
+    for folder in ("data", "reports", "archive", "logs"):
         assert (out_dir / folder).is_dir(), folder
+    # ADR-0007: the one folder shared read-only with the Vault.
+    for folder in ("exports", "allocations", "backups"):
+        assert (out_dir / "share" / folder).is_dir(), folder
+
+
+def test_the_live_database_is_never_inside_the_share(tmp_path):
+    # ADR-0007 and MVP F7: the Vault never copies the live database.
+    out_dir, conn = _build(tmp_path, "run")
+    conn.close()
+
+    assert list((out_dir / "share").rglob("*.db")) == []
 
 
 def test_row_counts_match_the_configured_district_size(tmp_path):

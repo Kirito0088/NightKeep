@@ -71,6 +71,7 @@ A third register, **counter-clerk language**, is what appears on the main path o
 | **INCIDENT** | High confidence. Needs at least one tripwire, never habit score alone. Pauses the process and sets the data folder read-only. |
 | **Reversible action** | Suspend, not kill. Read-only, not delete. A wrong call costs minutes, not data. |
 | **Vault** | The separate machine that holds the backups. In this prototype, Laptop B or a VM. |
+| **Share** | The one folder on the PDS server, `share/`, that the Vault pulls from: day-end exports, allotment files and the nightly safe copy of the database. Read-only, open only to the Vault's address. The live database is never in it. See ADR-0007. |
 | **Pull** | The Vault opens every connection. The PDS server never pushes, and **holds no path, credential or address for the Vault**. This is rule 3. |
 | **Snapshot** | One pull. Files stored by SHA-256 in a content-addressed store, plus one manifest. |
 | **Manifest** | The JSON record of one snapshot: path to hash, size, time, entropy, header validity, record count, and the previous manifest's hash. |

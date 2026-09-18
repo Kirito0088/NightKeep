@@ -122,7 +122,7 @@ def test_the_day_end_export_writes_the_days_transactions_in_its_window(tmp_path)
 
     [created] = line["created"]
     export = district_dir / created
-    assert export.parent == district_dir / "exports"
+    assert export.parent == district_dir / "share" / "exports"
     assert export.suffix == ".csv"
     assert line["modified"] == line["renamed"] == line["deleted"] == []
     assert line["extensions"] == [".csv"]
@@ -144,7 +144,7 @@ def test_the_export_skips_a_network_down_night_and_says_so(tmp_path):
     assert line["skipped"] == "network down"
     assert line["created"] == line["modified"] == []
     assert line["bytes_written"] == 0
-    assert list((district_dir / "exports").iterdir()) == []
+    assert list((district_dir / "share" / "exports").iterdir()) == []
 
 
 def test_the_export_row_count_moves_with_each_days_transactions(tmp_path):
@@ -193,7 +193,8 @@ def test_the_safe_copy_is_a_readable_database_that_grows_through_the_month(tmp_p
         assert line["skipped"] is None
         [created] = line["created"]
         copy = district_dir / created
-        assert copy.parent == district_dir / "data"
+        # ADR-0007: in the share, where the Vault pulls it from.
+        assert copy.parent == district_dir / "share" / "backups"
         assert line["extensions"] == [".db"]
         assert line["bytes_written"] == copy.stat().st_size
         conn = sqlite3.connect(copy)

@@ -5,8 +5,8 @@ day-end export. It knows nothing about Nightkeep: standard library only,
 everything it needs through argv.
 
 It copies data/district.db with SQLite's own backup API, so the copy is
-consistent even while the live database is open, and names it after the
-business day. It appends what it really did to its own ground-truth log,
+consistent even while the live database is open, names it after the
+business day, and places it in share/backups/ for the Vault to pull. It appends what it really did to its own ground-truth log,
 logs/_truth/db_backup.jsonl.
 """
 
@@ -42,7 +42,7 @@ def main() -> None:
 
 def _back_up(root: Path, business_date: str) -> tuple[bool, Path]:
     live = root / "data" / "district.db"
-    copy = root / "data" / f"district-backup-{business_date}.db"
+    copy = root / "share" / "backups" / f"district-backup-{business_date}.db"
     existed = copy.exists()
     # Read-only, so the backup never touches the live database.
     source = sqlite3.connect(f"{live.as_uri()}?mode=ro", uri=True)

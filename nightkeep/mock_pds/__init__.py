@@ -17,15 +17,19 @@ from nightkeep.mock_pds import _day, _generate, conventions
 from nightkeep.mock_pds._clock import DayClock
 from nightkeep.mock_pds._schema import create_schema
 
-_SIBLING_FOLDERS = ("exports", "allocations", "reports", "archive", "logs")
+_SIBLING_FOLDERS = ("reports", "archive", "logs")
+# ADR-0007: the one folder the PDS server shares, read-only, with the Vault.
+# The live database in data/ is never inside it.
+_SHARED_FOLDERS = ("exports", "allocations", "backups")
 
 
 def build_district(seed: int, district: District, out_dir: Path) -> Path:
     """Build a fresh Thane district database and its folder layout.
 
-    Creates out_dir/data/district.db, plus the exports, allocations,
-    reports, archive and logs folders the nightly jobs will later write
-    into. The same seed always reproduces the same district. Returns
+    Creates out_dir/data/district.db, the reports, archive and logs
+    folders, and share/ with its exports, allocations and backups folders:
+    the one folder the Vault pulls from (ADR-0007). The nightly jobs write
+    into these. The same seed always reproduces the same district. Returns
     out_dir.
     """
     out_dir = Path(out_dir)
@@ -33,6 +37,8 @@ def build_district(seed: int, district: District, out_dir: Path) -> Path:
     data_dir.mkdir(parents=True, exist_ok=True)
     for folder in _SIBLING_FOLDERS:
         (out_dir / folder).mkdir(parents=True, exist_ok=True)
+    for folder in _SHARED_FOLDERS:
+        (out_dir / "share" / folder).mkdir(parents=True, exist_ok=True)
 
     db_path = data_dir / "district.db"
     db_path.unlink(missing_ok=True)

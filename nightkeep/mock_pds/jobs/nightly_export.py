@@ -3,7 +3,7 @@
 A job the district PDS software runs by itself each night. It knows nothing
 about Nightkeep: standard library only, everything it needs through argv.
 
-It writes one CSV of the business day's transactions into exports/. On a
+It writes one CSV of the business day's transactions into share/exports/. On a
 night the network is down there is nothing to upload to, so it writes
 nothing. Either way it appends what it really did to its own ground-truth
 log, logs/_truth/nightly_export.jsonl.
@@ -62,7 +62,7 @@ def _export(root: Path, business_date: str) -> tuple[bool, Path]:
     finally:
         conn.close()
 
-    path = root / "exports" / f"epos_day_end_{business_date.replace('-', '')}.csv"
+    path = root / "share" / "exports" / f"epos_day_end_{business_date.replace('-', '')}.csv"
     existed = path.exists()
     with path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
