@@ -115,7 +115,7 @@ def test_repo_config_gives_every_job_its_own_hours_and_variation():
 
     # The zip-and-delete job only runs when the folder crosses a size limit,
     # which is what makes it fire on random nights.
-    assert jobs.archive_old.size_threshold_mb > 0
+    assert jobs.archive_old.size_threshold_kb > 0
 
     # The database backup runs after the export, so its start time drifts with
     # the export rather than sitting in a window of its own.

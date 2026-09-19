@@ -164,7 +164,7 @@ class ArchiveOld:
 
     start_window: StartWindow
     volume_variation: float
-    size_threshold_mb: int
+    size_threshold_kb: int
     files_zipped_per_run: Span
 
 
@@ -315,7 +315,7 @@ def _read_jobs(reader: _Reader) -> Jobs:
     archive_old = ArchiveOld(
         start_window=_read_start_window(archive),
         volume_variation=archive.number("volume_variation"),
-        size_threshold_mb=archive.integer("size_threshold_mb"),
+        size_threshold_kb=archive.integer("size_threshold_kb"),
         files_zipped_per_run=_read_span(archive, "files_zipped_per_run"),
     )
     archive.done()

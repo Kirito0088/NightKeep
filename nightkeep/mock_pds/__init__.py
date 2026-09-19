@@ -172,7 +172,7 @@ def run_day(
     _day.launch(
         "archive_old", district_dir, day_no, launched, day.scale,
         "--files", str(archive_files),
-        "--threshold-mb", str(archive.size_threshold_mb),
+        "--threshold-kb", str(archive.size_threshold_kb),
     )
 
     day.wait_until(day.end)

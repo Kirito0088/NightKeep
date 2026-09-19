@@ -40,6 +40,13 @@ NETWORK_DOWN = replace(
     REPO.jobs,
     nightly_export=replace(REPO.jobs.nightly_export, network_down_probability=1.0),
 )
+# The clean-up put out of reach, for the tests that read exports back off disk
+# days later. archive_old legitimately zips and deletes them once the folder
+# crosses its threshold, which is a few nights' worth.
+NO_CLEAN_UP = replace(
+    NETWORK_UP,
+    archive_old=replace(NETWORK_UP.archive_old, size_threshold_kb=1_000_000),
+)
 # Day 1 is the day after the district was built (SIMULATED_TODAY, 26 Sept).
 DAY_ONE = date(2026, 9, 27)
 
@@ -176,7 +183,7 @@ def test_the_export_skips_a_network_down_night_and_says_so(tmp_path):
 def test_the_export_row_count_moves_with_each_days_transactions(tmp_path):
     district_dir = _district(tmp_path)
     for day_no in (1, 2, 3):
-        _run(district_dir, day_no)
+        _run(district_dir, day_no, jobs=NO_CLEAN_UP)
 
     counts = []
     for day_no, line in enumerate(_truth(district_dir, "nightly_export"), start=1):

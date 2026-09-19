@@ -6,7 +6,7 @@ set "DAY="
 set "SIMSTART="
 set "SCALE="
 set "FILES="
-set "THRESHOLDMB="
+set "THRESHOLDKB="
 
 :parse
 if "%~1"=="" goto :parsed
@@ -15,7 +15,7 @@ if /I "%~1"=="--day" (set "DAY=%~2" & shift & shift & goto :parse)
 if /I "%~1"=="--sim-start" (set "SIMSTART=%~2" & shift & shift & goto :parse)
 if /I "%~1"=="--scale" (set "SCALE=%~2" & shift & shift & goto :parse)
 if /I "%~1"=="--files" (set "FILES=%~2" & shift & shift & goto :parse)
-if /I "%~1"=="--threshold-mb" (set "THRESHOLDMB=%~2" & shift & shift & goto :parse)
+if /I "%~1"=="--threshold-kb" (set "THRESHOLDKB=%~2" & shift & shift & goto :parse)
 shift
 goto :parse
 :parsed
@@ -36,7 +36,7 @@ REM folder: a clean-up job that eats a future trap file (attack 10 in
 REM SOLUTION_DESIGN.md) is a false INCIDENT.
 set "PATTERN=epos_day_end_*.csv"
 
-set /a THRESHOLDBYTES=%THRESHOLDMB%*1048576
+set /a THRESHOLDBYTES=%THRESHOLDKB%*1024
 set /a TOTALBYTES=0
 if exist "%EXPORTS%\%PATTERN%" (
   for %%F in ("%EXPORTS%\%PATTERN%") do set /a TOTALBYTES+=%%~zF

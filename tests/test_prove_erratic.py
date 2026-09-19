@@ -122,23 +122,20 @@ def test_every_job_reports_what_the_ticket_asks_for(week):
         entry = week["jobs"][job]
         assert entry["start_time"]["spread_minutes"] >= 0
         assert isinstance(entry["extensions"], list)
-        if job == "archive_old":
-            continue  # The known gap below.
         for kind in ("created", "modified", "renamed", "deleted"):
             assert set(entry["files"][kind]) == {"low", "high", "spread"}
         assert set(entry["bytes_written"]) == {"low", "high", "spread"}
 
 
-@pytest.mark.xfail(
-    reason="issue #8: the clean-up's 40 MB threshold is out of reach in a "
-           "ten-day run, so it sits out every night. Fixing that issue should "
-           "turn this green, and this assertion is what it has to satisfy.",
-    strict=True,
-)
 def test_the_old_file_clean_up_runs_on_some_nights_and_not_others(week):
+    # The rhythm is the point: the exports pile up, the clean-up zips them and
+    # deletes the originals, the folder drops back under the line, and the job
+    # goes quiet until they pile up again.
     archive_old = week["jobs"]["archive_old"]
 
     assert 0 < archive_old["nights_ran"] < 7
+    assert archive_old["nights_skipped"] > 0
+    assert archive_old["skipped_because"] == ["below size threshold"]
 
 
 def test_the_day_end_exports_row_count_moves_by_roughly_a_third(week):

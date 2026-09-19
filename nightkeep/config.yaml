@@ -55,10 +55,15 @@ jobs:
 
   archive_old:
     # Zips old exports and deletes the originals. Only fires when the folder
-    # crosses the size limit, so it lands on random nights.
+    # crosses the size limit, so it lands on random nights. A night's export
+    # measures 16 to 25 KB (a harvest surge night about twice that), so the
+    # folder crosses this line every third or fourth night, empties itself,
+    # and goes quiet until the exports pile up again. In kilobytes, not
+    # megabytes: the job's own arithmetic is cmd integer maths, so a fraction
+    # of a megabyte cannot be expressed.
     start_window: {earliest: "03:00", latest: "04:30"}
     volume_variation: 0.25
-    size_threshold_mb: 40
+    size_threshold_kb: 60
     files_zipped_per_run: {low: 20, high: 90}
 
   db_backup:

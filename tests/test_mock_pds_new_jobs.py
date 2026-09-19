@@ -129,14 +129,19 @@ def _seed_old_exports(district_dir: Path, count: int, size_bytes: int) -> None:
 
 
 def test_archive_old_skips_below_its_size_threshold(tmp_path):
+    # Pinned, like its sibling below: this test is about what the job does on
+    # either side of the line, not about where config.yaml currently draws it.
+    high_threshold = replace(
+        NETWORK_UP, archive_old=replace(NETWORK_UP.archive_old, size_threshold_kb=1_000)
+    )
     district_dir = _district(tmp_path)
     _seed_old_exports(district_dir, 3, 100)
     seeded = {p.name for p in (district_dir / "share" / "exports").iterdir()}
 
-    _run(district_dir, 2)
+    _run(district_dir, 2, jobs=high_threshold)
 
     [line] = _truth(district_dir, "archive_old")
-    assert line["skipped"] is not None
+    assert line["skipped"] == "below size threshold"
     assert line["created"] == line["deleted"] == []
     # Nothing seeded was touched. (The night's own real export, written by
     # nightly_export, may also be sitting alongside them.)
@@ -146,7 +151,7 @@ def test_archive_old_skips_below_its_size_threshold(tmp_path):
 
 def test_archive_old_zips_and_deletes_only_its_own_pattern(tmp_path):
     tiny_threshold = replace(
-        REPO.jobs, archive_old=replace(REPO.jobs.archive_old, size_threshold_mb=0)
+        NETWORK_UP, archive_old=replace(NETWORK_UP.archive_old, size_threshold_kb=0)
     )
     district_dir = _district(tmp_path)
     _seed_old_exports(district_dir, 5, 100)
