@@ -189,6 +189,7 @@ Recorded as ADRs in `docs/adr/`. These beat the plain document precedence order.
 | 0006 | The district is the real Thane, talukas Thane and Kalyan; every record attached to it stays invented |
 | 0007 | The PDS server shares one folder, `share/` (exports, allocations, backups), read-only with the Vault; the live database is never in it |
 | 0008 | Console is a shallow presentation layer with plain-language main path and strict color rules |
+| 0009 | The erratic-week proof is a script inside `mock_pds`, run by the entrypoint, not a third entry in the module table |
 
 Resolved without an ADR, because the newer document already says so: the product is **Nightkeep** (not QuirkGuard); the console binds to `127.0.0.1` only (MVP.md section 8 reverses SOLUTION_DESIGN's LAN web page); there are **6** erratic jobs (not 3); learning is **7** simulated days plus **3** guard days (not 5 nights); one simulated day is **30 s** (not 20 s).
 

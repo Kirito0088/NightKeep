@@ -8,6 +8,10 @@ Public interface:
 Hides 5,000 ration cards, 6 erratic jobs, their randomness, the simulated
 clock and the hidden truth log. Nothing outside this package and tests/ may
 read logs/_truth/.
+
+prove_erratic.py sits alongside these two as a script the entrypoint runs,
+not as a third function for other modules to call. It lives here because it
+reads the truth logs. See docs/adr/0009-prove-erratic-lives-with-mock-pds.md.
 """
 
 import sqlite3

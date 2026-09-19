@@ -116,6 +116,9 @@ TRUTH_FIELDS = {
     "job", "day", "sim_start", "sim_end", "skipped", "created", "modified",
     "renamed", "deleted", "bytes_written", "extensions",
 }
+# The export carries a row count of its own, so the week's summary can report
+# how far its volume moves without re-deriving it from the database.
+EXPORT_FIELDS = TRUTH_FIELDS | {"rows"}
 
 
 def _truth(district_dir: Path, job: str) -> list[dict]:
@@ -133,7 +136,7 @@ def test_the_day_end_export_writes_the_days_transactions_in_its_window(tmp_path)
     _run(district_dir, 1)
 
     [line] = _truth(district_dir, "nightly_export")
-    assert set(line) == TRUTH_FIELDS
+    assert set(line) == EXPORT_FIELDS
     assert line["job"] == "nightly_export" and line["day"] == 1
     assert line["skipped"] is None
 

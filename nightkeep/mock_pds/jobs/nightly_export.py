@@ -36,20 +36,21 @@ def main() -> None:
     began = time.monotonic()
 
     truth = {"skipped": None, "created": [], "modified": [], "renamed": [],
-             "deleted": [], "bytes_written": 0, "extensions": []}
+             "deleted": [], "bytes_written": 0, "extensions": [], "rows": None}
     if args.network_down:
         truth["skipped"] = "network down"
     else:
-        existed, export = _export(args.root, args.business_date)
+        existed, export, rows = _export(args.root, args.business_date)
         name = export.relative_to(args.root).as_posix()
         truth["modified" if existed else "created"].append(name)
         truth["bytes_written"] = export.stat().st_size
         truth["extensions"] = [export.suffix]
+        truth["rows"] = rows
 
     _append_truth(args, began, truth)
 
 
-def _export(root: Path, business_date: str) -> tuple[bool, Path]:
+def _export(root: Path, business_date: str) -> tuple[bool, Path, int]:
     db = root / "data" / "district.db"
     # Read-only, so the export never touches the live database.
     conn = sqlite3.connect(f"{db.as_uri()}?mode=ro", uri=True)
@@ -72,7 +73,7 @@ def _export(root: Path, business_date: str) -> tuple[bool, Path]:
             row = list(row)
             row[quantity] = f"{row[quantity]:.3f}"
             writer.writerow(row)
-    return existed, path
+    return existed, path, len(rows)
 
 
 def _append_truth(args: argparse.Namespace, began: float, truth: dict) -> None:
