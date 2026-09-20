@@ -85,6 +85,16 @@ class _Reader:
             )
         return tuple(value)
 
+    def texts(self, key: str) -> tuple[str, ...]:
+        value = self._take(key)
+        if not isinstance(value, list) or any(
+            not isinstance(item, str) for item in value
+        ):
+            raise ConfigError(
+                f"config.yaml: {self._at(key)} must be a list of text lines"
+            )
+        return tuple(value)
+
     def clock_time(self, key: str) -> time:
         """A 24-hour HH:MM string, turned into a real time of day."""
         value = self.text(key)
@@ -226,6 +236,54 @@ class HarvestSurge:
 
 
 @dataclass(frozen=True)
+class Watcher:
+    """How closely the watcher looks, and how long a run's events trail it."""
+
+    poll_seconds: int
+    settle_seconds: float
+
+
+@dataclass(frozen=True)
+class Habit:
+    """How far from its own habit card a run has to sit to look unusual."""
+
+    mad_multiplier: float
+    min_runs_before_scoring: int
+    minimum_spread_fraction: float
+
+
+@dataclass(frozen=True)
+class Judge:
+    """The tripwires. Fixed, live from minute one, and never widened."""
+
+    odd_score: float
+    rename_burst: int
+    entropy_jump: float
+    entropy_floor: float
+    recovery_commands: tuple[str, ...]
+    trap_files: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class Vault:
+    """The Vault's own clock and its own judgement. No path to the server."""
+
+    pull_every_simulated_minutes: int
+    suspect_entropy: float
+    restore_folder_name: str
+
+
+@dataclass(frozen=True)
+class Simulator:
+    """The safe simulator: a known key, an echo, and a path it cannot leave."""
+
+    locked_extension: str
+    ransom_note_name: str
+    key: str
+    delay_between_files_seconds: float
+
+
+@dataclass(frozen=True)
 class Config:
     """Every tunable number Nightkeep has, already validated."""
 
@@ -234,6 +292,11 @@ class Config:
     clock: Clock
     harvest_surge: HarvestSurge
     jobs: Jobs
+    watcher: Watcher
+    habit: Habit
+    judge: Judge
+    vault: Vault
+    simulator: Simulator
 
 
 def _read_span(reader: _Reader, key: str) -> Span:
@@ -357,6 +420,65 @@ def _read_jobs(reader: _Reader) -> Jobs:
     )
 
 
+def _read_watcher(reader: _Reader) -> Watcher:
+    watcher = Watcher(
+        poll_seconds=reader.integer("poll_seconds"),
+        settle_seconds=reader.number("settle_seconds"),
+    )
+    reader.done()
+    return watcher
+
+
+def _read_habit(reader: _Reader) -> Habit:
+    habit = Habit(
+        mad_multiplier=reader.number("mad_multiplier"),
+        min_runs_before_scoring=reader.integer("min_runs_before_scoring"),
+        minimum_spread_fraction=reader.number("minimum_spread_fraction"),
+    )
+    reader.done()
+    return habit
+
+
+def _read_judge(reader: _Reader) -> Judge:
+    judge = Judge(
+        odd_score=reader.number("odd_score"),
+        rename_burst=reader.integer("rename_burst"),
+        entropy_jump=reader.number("entropy_jump"),
+        entropy_floor=reader.number("entropy_floor"),
+        recovery_commands=reader.texts("recovery_commands"),
+        trap_files=reader.texts("trap_files"),
+    )
+    reader.done()
+    if not judge.trap_files:
+        raise ConfigError("config.yaml: judge.trap_files must name at least one trap")
+    if not judge.recovery_commands:
+        raise ConfigError(
+            "config.yaml: judge.recovery_commands must name at least one command"
+        )
+    return judge
+
+
+def _read_vault(reader: _Reader) -> Vault:
+    vault = Vault(
+        pull_every_simulated_minutes=reader.integer("pull_every_simulated_minutes"),
+        suspect_entropy=reader.number("suspect_entropy"),
+        restore_folder_name=reader.text("restore_folder_name"),
+    )
+    reader.done()
+    return vault
+
+
+def _read_simulator(reader: _Reader) -> Simulator:
+    simulator = Simulator(
+        locked_extension=reader.text("locked_extension"),
+        ransom_note_name=reader.text("ransom_note_name"),
+        key=reader.text("key"),
+        delay_between_files_seconds=reader.number("delay_between_files_seconds"),
+    )
+    reader.done()
+    return simulator
+
+
 def load_config(path: str | Path) -> Config:
     """Read config.yaml and return it as a typed, frozen structure.
 
@@ -381,6 +503,11 @@ def load_config(path: str | Path) -> Config:
         clock=_read_clock(top.block("clock")),
         harvest_surge=_read_harvest_surge(top.block("harvest_surge")),
         jobs=_read_jobs(top.block("jobs")),
+        watcher=_read_watcher(top.block("watcher")),
+        habit=_read_habit(top.block("habit")),
+        judge=_read_judge(top.block("judge")),
+        vault=_read_vault(top.block("vault")),
+        simulator=_read_simulator(top.block("simulator")),
     )
     top.done()
     return config

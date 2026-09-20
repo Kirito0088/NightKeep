@@ -86,3 +86,65 @@ jobs:
     volume_variation: 0.50
     edits_per_day: {low: 5, high: 40}
     skip_sundays: true
+
+watcher:
+  # How often psutil is asked which process is writing. MVP F3 says 2 s.
+  poll_seconds: 2
+  # A job's last writes can land a moment after its process exits. Events
+  # inside this many seconds of the run's end still belong to that run.
+  settle_seconds: 1.0
+
+habit:
+  # A feature counts as unusual when it sits outside median +/- k * MAD.
+  # 3.0 is the usual robust-statistics choice and survives the harvest surge.
+  mad_multiplier: 3.0
+  # Below this many observed runs there is no card yet, so there is no score
+  # to give. A job seen for the first time is flagged novel, not unusual.
+  min_runs_before_scoring: 3
+  # A MAD of zero (a job that never varies) would make every run infinitely
+  # unusual. Treat the spread as at least this fraction of the median.
+  minimum_spread_fraction: 0.10
+
+judge:
+  # MVP section 10. The learned score alone never crosses any of these.
+  odd_score: 0.5
+  # S4: this many renames to an extension no job has ever produced.
+  rename_burst: 10
+  # S3: entropy is bits per byte, 0 to 8. A rewrite is a scramble when the
+  # file's entropy climbs by this much AND ends above the floor AND its
+  # header stops matching its extension. All three, never one alone.
+  entropy_jump: 1.5
+  entropy_floor: 7.0
+  # S5: recovery-killing command text. Matched as text in a file or a
+  # process command line. Nightkeep never runs these, and neither does the
+  # simulator: it only echoes them.
+  recovery_commands:
+    - "vssadmin delete shadows"
+    - "wbadmin delete catalog"
+    - "bcdedit /set recoveryenabled no"
+  # S2: decoy files that look like real exports. No legitimate job touches
+  # them. Reading one is fine; changing, renaming or deleting one is not.
+  trap_files:
+    - "share/exports/epos_day_end_20240101.csv"
+    - "allocations/fps_quota_2024_01.csv"
+
+vault:
+  # The Vault opens every connection, on its own clock. One pull an hour of
+  # simulated time. The PDS server is never asked and never told.
+  pull_every_simulated_minutes: 60
+  # A file whose entropy is above this and whose header no longer matches
+  # its extension makes the whole snapshot SUSPECT.
+  suspect_entropy: 7.0
+  # Restores land here, beside the damaged data and never on top of it.
+  restore_folder_name: "restored"
+
+simulator:
+  # The safe ransomware simulator. It refuses to run outside the demo folder.
+  locked_extension: ".locked"
+  # Written into every folder it touches, as real ransomware does.
+  ransom_note_name: "HOW_TO_GET_YOUR_FILES_BACK.txt"
+  # The known key, so decrypt.py can always put everything back. A real
+  # sample would never ship its key: that is exactly the point.
+  key: "nightkeep-demo-key-not-a-secret"
+  # Pause between files, so a human on stage can watch it happen.
+  delay_between_files_seconds: 0.01
