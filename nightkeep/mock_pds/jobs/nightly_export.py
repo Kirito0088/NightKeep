@@ -13,8 +13,7 @@ import argparse
 import csv
 import json
 import sqlite3
-import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 JOB = "nightly_export"
@@ -30,10 +29,9 @@ def main() -> None:
     parser.add_argument("--day", type=int, required=True)
     parser.add_argument("--business-date", required=True)
     parser.add_argument("--sim-start", required=True)
-    parser.add_argument("--scale", type=float, required=True)
+    parser.add_argument("--sim-end", required=True)
     parser.add_argument("--network-down", action="store_true")
     args = parser.parse_args()
-    began = time.monotonic()
 
     truth = {"skipped": None, "created": [], "modified": [], "renamed": [],
              "deleted": [], "bytes_written": 0, "extensions": [], "rows": None}
@@ -47,7 +45,7 @@ def main() -> None:
         truth["extensions"] = [export.suffix]
         truth["rows"] = rows
 
-    _append_truth(args, began, truth)
+    _append_truth(args, truth)
 
 
 def _export(root: Path, business_date: str) -> tuple[bool, Path, int]:
@@ -76,9 +74,9 @@ def _export(root: Path, business_date: str) -> tuple[bool, Path, int]:
     return existed, path, len(rows)
 
 
-def _append_truth(args: argparse.Namespace, began: float, truth: dict) -> None:
+def _append_truth(args: argparse.Namespace, truth: dict) -> None:
     sim_start = datetime.fromisoformat(args.sim_start)
-    sim_end = sim_start + timedelta(seconds=(time.monotonic() - began) * args.scale)
+    sim_end = datetime.fromisoformat(args.sim_end)
     line = {"job": JOB, "day": args.day, "sim_start": sim_start.isoformat(),
             "sim_end": sim_end.isoformat(timespec="seconds"), **truth}
     log = args.root / "logs" / "_truth" / f"{JOB}.jsonl"

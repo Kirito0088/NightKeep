@@ -4,7 +4,7 @@ setlocal EnableDelayedExpansion
 set "ROOT="
 set "DAY="
 set "SIMSTART="
-set "SCALE="
+set "SIMEND="
 set "FILES="
 set "THRESHOLDKB="
 
@@ -13,7 +13,7 @@ if "%~1"=="" goto :parsed
 if /I "%~1"=="--root" (set "ROOT=%~2" & shift & shift & goto :parse)
 if /I "%~1"=="--day" (set "DAY=%~2" & shift & shift & goto :parse)
 if /I "%~1"=="--sim-start" (set "SIMSTART=%~2" & shift & shift & goto :parse)
-if /I "%~1"=="--scale" (set "SCALE=%~2" & shift & shift & goto :parse)
+if /I "%~1"=="--sim-end" (set "SIMEND=%~2" & shift & shift & goto :parse)
 if /I "%~1"=="--files" (set "FILES=%~2" & shift & shift & goto :parse)
 if /I "%~1"=="--threshold-kb" (set "THRESHOLDKB=%~2" & shift & shift & goto :parse)
 shift
@@ -89,5 +89,5 @@ call :write_truth
 goto :eof
 
 :write_truth
-powershell -NoProfile -Command "$c=$env:CREATED -split '\|' | Where-Object {$_ -ne ''}; $m=$env:MODIFIED -split '\|' | Where-Object {$_ -ne ''}; $r=$env:RENAMED -split '\|' | Where-Object {$_ -ne ''}; $d=$env:DELETED -split '\|' | Where-Object {$_ -ne ''}; $e=$env:EXT -split '\|' | Where-Object {$_ -ne ''}; $skip = if ($env:SKIPPED) {$env:SKIPPED} else {$null}; $obj=[ordered]@{job=$env:JOB;day=[int]$env:DAY;sim_start=$env:SIMSTART;sim_end=$env:SIMSTART;skipped=$skip;created=@($c);modified=@($m);renamed=@($r);deleted=@($d);bytes_written=[int64]$env:BYTES;extensions=@($e)}; ($obj | ConvertTo-Json -Compress) | Add-Content -Path $env:TRUTHFILE -Encoding ascii"
+powershell -NoProfile -Command "$c=$env:CREATED -split '\|' | Where-Object {$_ -ne ''}; $m=$env:MODIFIED -split '\|' | Where-Object {$_ -ne ''}; $r=$env:RENAMED -split '\|' | Where-Object {$_ -ne ''}; $d=$env:DELETED -split '\|' | Where-Object {$_ -ne ''}; $e=$env:EXT -split '\|' | Where-Object {$_ -ne ''}; $skip = if ($env:SKIPPED) {$env:SKIPPED} else {$null}; $obj=[ordered]@{job=$env:JOB;day=[int]$env:DAY;sim_start=$env:SIMSTART;sim_end=$env:SIMEND;skipped=$skip;created=@($c);modified=@($m);renamed=@($r);deleted=@($d);bytes_written=[int64]$env:BYTES;extensions=@($e)}; ($obj | ConvertTo-Json -Compress) | Add-Content -Path $env:TRUTHFILE -Encoding ascii"
 goto :eof

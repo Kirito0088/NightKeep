@@ -1,8 +1,12 @@
 """One simulated day: the shop day, then the jobs due that night.
 
-Every random choice for a day is drawn up front, in a fixed order, from one
+Every random choice for a day is drawn up front, in a fixed order, from a
 random.Random seeded by (seed, day_no). A day therefore replays exactly on
-its own, whichever days ran before it.
+its own, whichever days ran before it, and on whatever machine.
+
+There are two such streams: day_rng decides what the jobs do, timeline_rng
+how long they take. Keeping them apart means a run length can be retuned
+without re-rolling a single one of the night's other decisions.
 """
 
 import random
@@ -20,6 +24,16 @@ from nightkeep.mock_pds import conventions as c
 def day_rng(seed: int, day_no: int) -> random.Random:
     # A str seed is hashed with SHA-512, so it is stable across processes.
     return random.Random(f"{seed}/day/{day_no}")
+
+
+def timeline_rng(seed: int, day_no: int) -> random.Random:
+    """The stream tonight's run lengths are drawn from.
+
+    Kept apart from day_rng so that how long a job takes cannot shift what it
+    does: the two are independent facts about the night, and giving each its
+    own stream means tuning one never silently re-rolls the other.
+    """
+    return random.Random(f"{seed}/timeline/{day_no}")
 
 
 def draw_transaction_count(
@@ -97,20 +111,24 @@ def _job_path(job: str) -> Path:
 
 
 def launch(job: str, district_dir: Path, day_no: int, sim_start: datetime,
-           scale: float, *arguments: str) -> None:
+           sim_end: datetime, *arguments: str) -> None:
     """Run one job as a real subprocess and wait for it to finish.
 
     A .py job runs under -I (isolated mode), which keeps this repository off
     its import path, so a job that tried to import Nightkeep would fail
     here, not just in a test. The job writes its own ground-truth line. The
     scheduler never does.
+
+    Both simulated times are handed in already decided, so no job has to ask
+    the wall clock what time it is. Real time is left to pace the run; it
+    never reaches the ground truth.
     """
     path = _job_path(job)
     command = _INTERPRETERS[path.suffix](path) + [
         "--root", str(district_dir),
         "--day", str(day_no),
         "--sim-start", sim_start.isoformat(),
-        "--scale", repr(scale),
+        "--sim-end", sim_end.isoformat(),
         *arguments,
     ]
     subprocess.run(command, check=True)

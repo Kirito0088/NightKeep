@@ -17,8 +17,8 @@ Dim fso, args, i
 Set fso = CreateObject("Scripting.FileSystemObject")
 Set args = WScript.Arguments
 
-Dim root, day, simStart, shouldRun
-root = "" : day = "" : simStart = "" : shouldRun = False
+Dim root, day, simStart, simEnd, shouldRun
+root = "" : day = "" : simStart = "" : simEnd = "" : shouldRun = False
 
 i = 0
 Do While i < args.Count
@@ -29,8 +29,8 @@ Do While i < args.Count
       day = args(i + 1) : i = i + 2
     Case "--sim-start"
       simStart = args(i + 1) : i = i + 2
-    Case "--scale"
-      i = i + 2
+    Case "--sim-end"
+      simEnd = args(i + 1) : i = i + 2
     Case "--run"
       shouldRun = True : i = i + 1
     Case Else
@@ -130,7 +130,7 @@ End If
 
 Dim line
 line = "{""job"": ""fix_dat"", ""day"": " & day & _
-  ", ""sim_start"": """ & simStart & """, ""sim_end"": """ & simStart & """" & _
+  ", ""sim_start"": """ & simStart & """, ""sim_end"": """ & simEnd & """" & _
   ", ""skipped"": " & skippedJson & _
   ", ""created"": [], ""modified"": " & JsonArray(modified) & _
   ", ""renamed"": " & JsonArray(renamed) & _

@@ -154,6 +154,7 @@ class NightlyExport:
     volume_variation: float
     rows_per_run: Span
     network_down_probability: float
+    runs_for_minutes: Span
 
 
 @dataclass(frozen=True)
@@ -166,6 +167,7 @@ class AllocationGen:
     double_run_probability: float
     files_on_month_start: Span
     files_on_a_top_up: Span
+    runs_for_minutes: Span
 
 
 @dataclass(frozen=True)
@@ -176,6 +178,7 @@ class ArchiveOld:
     volume_variation: float
     size_threshold_kb: int
     files_zipped_per_run: Span
+    runs_for_minutes: Span
 
 
 @dataclass(frozen=True)
@@ -184,6 +187,7 @@ class DbBackup:
 
     delay_after_export_minutes: Span
     volume_variation: float
+    runs_for_minutes: Span
 
 
 @dataclass(frozen=True)
@@ -193,6 +197,7 @@ class FixDat:
     start_window: StartWindow
     volume_variation: float
     run_probability: float
+    runs_for_minutes: Span
 
 
 @dataclass(frozen=True)
@@ -203,6 +208,7 @@ class OperatorActivity:
     volume_variation: float
     edits_per_day: Span
     skip_sundays: bool
+    runs_for_minutes: Span
 
 
 @dataclass(frozen=True)
@@ -360,6 +366,7 @@ def _read_jobs(reader: _Reader) -> Jobs:
         volume_variation=export.number("volume_variation"),
         rows_per_run=_read_span(export, "rows_per_run"),
         network_down_probability=export.number("network_down_probability"),
+        runs_for_minutes=_read_span(export, "runs_for_minutes"),
     )
     export.done()
 
@@ -371,6 +378,7 @@ def _read_jobs(reader: _Reader) -> Jobs:
         double_run_probability=allocation.number("double_run_probability"),
         files_on_month_start=_read_span(allocation, "files_on_month_start"),
         files_on_a_top_up=_read_span(allocation, "files_on_a_top_up"),
+        runs_for_minutes=_read_span(allocation, "runs_for_minutes"),
     )
     allocation.done()
 
@@ -380,6 +388,7 @@ def _read_jobs(reader: _Reader) -> Jobs:
         volume_variation=archive.number("volume_variation"),
         size_threshold_kb=archive.integer("size_threshold_kb"),
         files_zipped_per_run=_read_span(archive, "files_zipped_per_run"),
+        runs_for_minutes=_read_span(archive, "runs_for_minutes"),
     )
     archive.done()
 
@@ -389,6 +398,7 @@ def _read_jobs(reader: _Reader) -> Jobs:
             backup, "delay_after_export_minutes"
         ),
         volume_variation=backup.number("volume_variation"),
+        runs_for_minutes=_read_span(backup, "runs_for_minutes"),
     )
     backup.done()
 
@@ -397,6 +407,7 @@ def _read_jobs(reader: _Reader) -> Jobs:
         start_window=_read_start_window(fix),
         volume_variation=fix.number("volume_variation"),
         run_probability=fix.number("run_probability"),
+        runs_for_minutes=_read_span(fix, "runs_for_minutes"),
     )
     fix.done()
 
@@ -406,6 +417,7 @@ def _read_jobs(reader: _Reader) -> Jobs:
         volume_variation=operator.number("volume_variation"),
         edits_per_day=_read_span(operator, "edits_per_day"),
         skip_sundays=operator.flag("skip_sundays"),
+        runs_for_minutes=_read_span(operator, "runs_for_minutes"),
     )
     operator.done()
 

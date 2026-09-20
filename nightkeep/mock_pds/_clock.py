@@ -5,6 +5,12 @@ next morning, so a shop day and the night that follows it sit in one day.
 The whole day takes simulated_day_seconds of real time. The clock only ever
 moves forward: waiting for a moment already passed returns at once, with
 the simulated time actually reached.
+
+Real time paces the day; it never dates it. Every simulated moment the
+truth log records is drawn from the seed, so a night reads the same however
+fast or slow the machine running it happened to be. A job that overruns its
+slot still pushes the next job later, but by its own seeded run length
+rather than by however long its subprocess really took.
 """
 
 import random
@@ -29,11 +35,9 @@ class DayClock:
         self.end = self.start + _DAY
         self._seconds_per_day = seconds_per_day
         self._real_start = wall.monotonic()
-
-    @property
-    def scale(self) -> float:
-        """Simulated seconds that pass per real second."""
-        return _DAY.total_seconds() / self._seconds_per_day
+        # How far tonight's work has got in simulated time. Only a job's own
+        # seeded run length moves it, never the wall clock.
+        self._reached = self.start
 
     def at(self, time_of_day: time) -> datetime:
         """The moment inside this day that falls at time_of_day.
@@ -57,19 +61,31 @@ class DayClock:
         """A seeded gap, to the second, of between minutes.low and .high."""
         return timedelta(seconds=rng.randint(minutes.low * 60, minutes.high * 60))
 
-    def wait_until(self, moment: datetime) -> datetime:
-        """Sleep until moment, and return the simulated time now reached.
+    def draw_run_length(self, rng: random.Random, minutes: Span) -> timedelta:
+        """How long a job takes tonight, in simulated minutes, from the seed.
 
-        That is moment itself, or later if the day is already running behind,
-        say because a job overran into the next job's slot.
+        This is the job's simulated duration, not its real one. The two are
+        unrelated on purpose: the recorded night must not change because a
+        machine was busy.
+        """
+        return self.draw_delay(rng, minutes)
+
+    def wait_until(self, moment: datetime) -> datetime:
+        """Sleep for pacing, and return the simulated time now reached.
+
+        That is moment itself, or later if tonight is already running behind,
+        say because a job overran into the next job's slot. Behind is measured
+        against the seeded run lengths reported through ran_until, so the
+        answer is the same on every machine.
         """
         offset = (moment - self.start) / _DAY * self._seconds_per_day
         remaining = self._real_start + offset - wall.monotonic()
         if remaining > 0:
             wall.sleep(remaining)
-            return moment
-        return max(moment, self._now())
+        reached = max(moment, self._reached)
+        self._reached = reached
+        return reached
 
-    def _now(self) -> datetime:
-        elapsed = wall.monotonic() - self._real_start
-        return self.start + timedelta(seconds=round(elapsed * self.scale))
+    def ran_until(self, moment: datetime) -> None:
+        """Record that a job occupied the night up to moment."""
+        self._reached = max(self._reached, moment)

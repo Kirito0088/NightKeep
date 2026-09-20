@@ -34,7 +34,11 @@ harvest_surge:
 jobs:
   # The six jobs a district PDS setup really runs, each messy on purpose.
   # Times are 24-hour HH:MM. volume_variation is a fraction: 0.30 means the
-  # run's volume moves plus or minus 30 percent.
+  # run's volume moves plus or minus 30 percent. runs_for_minutes is how long
+  # the job occupies the night in simulated minutes, drawn from the seed.
+  # It is deliberately not the subprocess's real duration: the truth log has
+  # to read the same on a fast machine and a slow one, and a job that overruns
+  # must push the next job later by a seeded amount, not a measured one.
 
   nightly_export:
     # Day-end export of transactions for the state server.
@@ -42,6 +46,7 @@ jobs:
     volume_variation: 0.30
     rows_per_run: {low: 180, high: 320}
     network_down_probability: 0.12
+    runs_for_minutes: {low: 4, high: 30}
 
   allocation_gen:
     # Next month's grain quota file for each shop. Big run on the 1st, small
@@ -52,6 +57,7 @@ jobs:
     double_run_probability: 0.15
     files_on_month_start: {low: 50, high: 50}
     files_on_a_top_up: {low: 3, high: 12}
+    runs_for_minutes: {low: 2, high: 15}
 
   archive_old:
     # Zips old exports and deletes the originals. Only fires when the folder
@@ -65,12 +71,14 @@ jobs:
     volume_variation: 0.25
     size_threshold_kb: 60
     files_zipped_per_run: {low: 20, high: 90}
+    runs_for_minutes: {low: 1, high: 12}
 
   db_backup:
     # The nightly database backup file the Vault pulls. Runs after the export,
     # so its start time drifts with it rather than having a window of its own.
     delay_after_export_minutes: {low: 10, high: 45}
     volume_variation: 0.15
+    runs_for_minutes: {low: 3, high: 20}
 
   fix_dat:
     # The undocumented script. Renames .tmp to .dat and rewrites allocation
@@ -79,6 +87,7 @@ jobs:
     start_window: {earliest: "02:00", latest: "05:00"}
     volume_variation: 0.40
     run_probability: 0.45
+    runs_for_minutes: {low: 1, high: 9}
 
   operator_activity:
     # Clerks editing records in office hours. Never on a Sunday.
@@ -86,6 +95,7 @@ jobs:
     volume_variation: 0.50
     edits_per_day: {low: 5, high: 40}
     skip_sundays: true
+    runs_for_minutes: {low: 20, high: 120}
 
 watcher:
   # How often psutil is asked which process is writing. MVP F3 says 2 s.
