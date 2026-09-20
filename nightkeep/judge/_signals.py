@@ -1,7 +1,8 @@
 """The tripwires: S2, S3, S4 and S5.
 
-Every one of these is a fixed rule with a number from `config.yaml`. None of
-them consults a habit card, and no learning path reaches into this file.
+Every one of these is a fixed rule whose numbers arrive as arguments from
+the entrypoint. None of them consults a habit card, and no learning path
+reaches into this file.
 That is rule 2, and `tests/test_judge.py` holds it by reading this module's
 syntax tree rather than trusting the comment you are reading now.
 

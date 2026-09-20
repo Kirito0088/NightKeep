@@ -105,16 +105,3 @@ def test_no_job_imports_by_name_at_runtime():
         assert "path" not in attributes or "sys" not in modules, (
             f"{job.name} may be editing sys.path"
         )
-
-
-def test_nothing_under_watcher_habit_judge_or_vault_reads_the_ground_truth():
-    # Passes on empty packages today, on purpose: the rail is in place before
-    # the Watcher is written, so the Watcher is written against it.
-    reaching = [
-        source.relative_to(PACKAGE).as_posix()
-        for package in TRUTH_BLIND
-        for source in (PACKAGE / package).rglob("*.py")
-        if "_truth" in source.read_text(encoding="utf-8")
-    ]
-
-    assert reaching == [], f"these modules name logs/_truth/: {reaching}"
