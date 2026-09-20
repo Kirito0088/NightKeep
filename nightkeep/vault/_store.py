@@ -26,6 +26,12 @@ def write_locked(path: Path, data: bytes) -> None:
     the Vault, meets read-only files.
     """
     path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        # Take the lock off so the Vault's own process can replace the
+        # file; it goes back on below. (On filesystems where even root
+        # cannot write through 0o444, skipping this raises PermissionError
+        # on the second CLEAN pull.)
+        path.chmod(0o644)
     path.write_bytes(data)
     path.chmod(0o444)
 
