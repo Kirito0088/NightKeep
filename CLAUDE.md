@@ -41,7 +41,7 @@ This is the entire public surface. **If a module needs a bigger interface than t
 | `watcher` | `events_since(t) -> [Event]`, `is_alive()` | watchdog wiring, psutil polling, file-to-process attribution, the append-only log |
 | `habit` | `score(run) -> HabitScore(value, reasons)`, `learn(run)` | feature extraction, median/MAD ranges, novelty flags, card versions, SQLite storage |
 | `judge` | `verdict(run, events) -> Verdict(level, reasons, actions)` | all six signals, the verdict table, suspend/read-only actions and their undo |
-| `vault` | `pull()`, `snapshots()`, `restore(snapshot_id) -> RestoreResult` | SMB read, content-addressed blobs, manifests, hash chain, health check, clean points, verification |
+| `vault` | `pull()`, `snapshots()`, `restore(snapshot_id) -> RestoreResult`, plus the S6 liveness surface recorded in ADR-0010 | SMB read, content-addressed blobs, manifests, hash chain, health check, clean points, verification, the watcher heartbeat and Protect mode |
 | `console` | Flask routes only | rendering, nothing else |
 
 Rules that follow:
@@ -190,6 +190,7 @@ Recorded as ADRs in `docs/adr/`. These beat the plain document precedence order.
 | 0007 | The PDS server shares one folder, `share/` (exports, allocations, backups), read-only with the Vault; the live database is never in it |
 | 0008 | Console is a shallow presentation layer with plain-language main path and strict color rules |
 | 0009 | The erratic-week proof is a script inside `mock_pds`, run by the entrypoint, not a third entry in the module table |
+| 0010 | S6 liveness is Vault-owned; the Vault's public interface widens to carry it, in three documented tiers |
 
 Resolved without an ADR, because the newer document already says so: the product is **Nightkeep** (not QuirkGuard); the console binds to `127.0.0.1` only (MVP.md section 8 reverses SOLUTION_DESIGN's LAN web page); there are **6** erratic jobs (not 3); learning is **7** simulated days plus **3** guard days (not 5 nights); one simulated day is **30 s** (not 20 s).
 
