@@ -265,6 +265,31 @@ def test_s6_with_suspect_snapshot_is_incident(tmp_path):
         _stop(agent)
 
 
+# -- heartbeat machinery must not pollute the data health check ------------
+
+
+def test_leftover_heartbeat_tmp_does_not_poison_pull(tmp_path):
+    # The agent writes the heartbeat atomically (temp file, then rename).
+    # If the agent dies mid-write -- exactly the S6 scenario -- the temp
+    # file can be left behind in the share. It is a signal, not backup
+    # data, so the next pull must still be CLEAN instead of SUSPECT for a
+    # "new file type" that was never data.
+    root = tmp_path / "demo"
+    share = _share_with_csv(root)
+    vault = _vault(tmp_path, share)
+
+    baseline = vault.pull()
+    assert baseline.health == CLEAN
+
+    (share / (HEARTBEAT_FILENAME + ".tmp")).write_text(
+        '{"written_at": "2026-09-21T00:00:00+00:00", "pid": 1}',
+        encoding="utf-8",
+    )
+    again = vault.pull(taken_at=baseline.taken_at + timedelta(days=1))
+    assert again.health == CLEAN
+    assert again.is_clean_point is True
+
+
 # -- the composition rule at the edges --------------------------------------
 
 

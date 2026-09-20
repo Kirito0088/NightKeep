@@ -460,10 +460,16 @@ class Vault:
         for path in sorted(self._share.rglob("*")):
             if not path.is_file() or path.is_symlink():
                 continue
-            if path.name == HEARTBEAT_FILENAME:
+            if path.name == HEARTBEAT_FILENAME or path.name.startswith(
+                HEARTBEAT_FILENAME + "."
+            ):
                 # The liveness heartbeat is a signal, not backup data. It
-                # changes every few seconds by design; pulling it would
-                # pollute the data health check. The Vault reads it through
+                # changes every few seconds by design, and the agent writes
+                # it atomically (temp file, then rename): a kill landing
+                # mid-write can leave the temp behind. Pulling either file
+                # would pollute the data health check, so both stay out of
+                # snapshots -- the same way the Watcher ignores them. The
+                # Vault reads the heartbeat through
                 # check_watcher_liveness() instead.
                 continue
             relpath = path.relative_to(self._share).as_posix()
