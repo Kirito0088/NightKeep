@@ -19,6 +19,7 @@ from nightkeep.mock_pds import prove_erratic
 DEFAULT_CONFIG = Path(__file__).resolve().parent / "config.yaml"
 DEMO_DIR = Path(__file__).resolve().parent.parent / "demo"
 ERRATIC_DIR = DEMO_DIR / "erratic_week"
+DEMO_RUN_DIR = DEMO_DIR / "demo_run"
 
 
 def main(arguments: list[str]) -> int:
@@ -31,6 +32,16 @@ def main(arguments: list[str]) -> int:
     parser.add_argument(
         "--prove-erratic", action="store_true",
         help="live the learning week and report how erratic the six jobs are",
+    )
+    parser.add_argument(
+        "--demo-run", action="store_true",
+        help="run the end-to-end MVP proof: learning days, guard days, "
+             "simulator attack, vault snapshots and restore",
+    )
+    parser.add_argument(
+        "--variant", default="fast",
+        choices=["fast", "impersonator", "recovery-killer"],
+        help="which safe ransomware simulator variant --demo-run launches",
     )
     parser.add_argument("--seed", type=int, help="overrides the seed in config.yaml")
     parser.add_argument(
@@ -69,6 +80,9 @@ def main(arguments: list[str]) -> int:
     if args.console:
         return _console(config, args.out_dir)
 
+    if args.demo_run:
+        return _demo_run(config, DEMO_RUN_DIR, args.variant)
+
     clock = config.clock
     print(f"Nightkeep, seed {config.seed}, config from {args.config}")
     print(
@@ -98,6 +112,12 @@ def _console(config: Config, out_dir: Path) -> int:
     print("Nightkeep console on http://127.0.0.1:5000 (loopback only)")
     app.run(host="127.0.0.1", port=5000, debug=False)
     return 0
+
+
+def _demo_run(config: Config, out_dir: Path, variant: str) -> int:
+    from nightkeep import demo_run
+
+    return demo_run.main(config, out_dir, variant=variant)
 
 
 def _prove_erratic(config: Config, out_dir: Path) -> int:
