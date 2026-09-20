@@ -103,6 +103,11 @@ watcher:
   # A job's last writes can land a moment after its process exits. Events
   # inside this many seconds of the run's end still belong to that run.
   settle_seconds: 1.0
+  # F11: the heartbeat worker rewrites the liveness file in the share this
+  # often, so the Vault can tell a live watcher from a killed one.
+  heartbeat_interval_seconds: 2
+  # F11: silence longer than this is S6 -- the watcher may be dead.
+  silence_threshold_seconds: 10
 
 habit:
   # A feature counts as unusual when it sits outside median +/- k * MAD.

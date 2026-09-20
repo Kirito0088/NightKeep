@@ -45,15 +45,89 @@ from nightkeep.config import Config
 from nightkeep.habit import open_habit
 from nightkeep.judge import Judge
 from nightkeep.mock_pds import _day
-from nightkeep.types import INCIDENT, CLEAN, SUSPECT, JobRun
-from nightkeep.vault import Vault
+from nightkeep.types import (
+    CLEAN,
+    INCIDENT,
+    NORMAL,
+    SUSPECT,
+    SUSPICIOUS,
+    JobRun,
+    WatcherLiveness,
+)
+from nightkeep.vault import Vault, combined_verdict
 from nightkeep.watcher import Watcher
+from nightkeep.watcher.__main__ import heartbeat_path
 
 REPORT_NAME = "demo_run.json"
 
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
+
+
+# --- the F11 heartbeat worker ------------------------------------------------
+
+# argv the demo uses to start the worker. The watcher-killer finds it by
+# these same markers plus the demo root; nothing else on the machine looks
+# like this.
+
+
+def _start_heartbeat_worker(
+    district_dir: Path, interval_seconds: float
+) -> subprocess.Popen:
+    """Launch the liveness heartbeat as its own process.
+
+    A separate process on purpose: the watcher-killer terminates exactly
+    this, and the demo must survive that. The worker writes into the
+    share; the Vault reads it back through the share, so the one-way pull
+    model and the separation of the two machines are untouched.
+    """
+    proc = subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "nightkeep.watcher",
+            "--heartbeat",
+            "--root",
+            str(district_dir),
+            "--interval",
+            str(interval_seconds),
+        ]
+    )
+    # The worker stamps the file before its first sleep, but importing
+    # nightkeep takes a moment: wait until the first beat actually lands.
+    deadline = time.monotonic() + 30
+    while not heartbeat_path(district_dir).exists():
+        if proc.poll() is not None:
+            raise RuntimeError("the heartbeat worker exited before its first beat")
+        if time.monotonic() > deadline:
+            raise RuntimeError("the heartbeat worker never wrote its first beat")
+        time.sleep(0.1)
+    return proc
+
+
+def _stop_heartbeat_worker(proc: subprocess.Popen) -> None:
+    if proc.poll() is None:
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+
+
+def _await_silence(vault: Vault, timeout_seconds: float) -> WatcherLiveness:
+    """Wait until the Vault's own clock calls the watcher silent.
+
+    Real timing, not a claim: this returns only when a fresh
+    check_watcher_liveness() actually reports silence, or when the
+    timeout expires (in which case the returned liveness says so).
+    """
+    deadline = time.monotonic() + timeout_seconds
+    liveness = vault.check_watcher_liveness()
+    while liveness.alive and time.monotonic() < deadline:
+        time.sleep(0.5)
+        liveness = vault.check_watcher_liveness()
+    return liveness
 
 
 # --- observing job runs without touching module logic ----------------------
@@ -149,7 +223,7 @@ def run_demo(config: Config, out_dir: Path,
     Raises nothing of its own: a failed expectation is recorded in the
     report and reflected in the entrypoint's exit code via `main`.
     """
-    out_dir = Path(out_dir)
+    out_dir = Path(out_dir).resolve()
     if out_dir.exists():
         shutil.rmtree(out_dir)
     district_dir = out_dir / "district"
@@ -195,6 +269,13 @@ def run_demo(config: Config, out_dir: Path,
         poll_seconds=watcher_cfg.poll_seconds,
         settle_seconds=watcher_cfg.settle_seconds,
     ).start()
+    # F11: the heartbeat worker runs beside the watcher as its own
+    # process, so the watcher-killer can terminate it without taking the
+    # demo down. The Vault reads its beats through the share.
+    heartbeat_proc = _start_heartbeat_worker(
+        district_dir, watcher_cfg.heartbeat_interval_seconds
+    )
+    say("watcher heartbeat worker running (the vault checks it, S6)")
     habit = open_habit(
         district_dir,
         habit_cfg.mad_multiplier,
@@ -223,6 +304,7 @@ def run_demo(config: Config, out_dir: Path,
         suspect_record_drop_fraction=(
             vault_cfg.suspect_record_drop_fraction),
         restore_folder_name=vault_cfg.restore_folder_name,
+        watcher_silence_seconds=watcher_cfg.silence_threshold_seconds,
     )
     # The first Vault pull happens after day 1's jobs, not before them:
     # the Vault judges each pull against the last CLEAN snapshot, and a
@@ -291,6 +373,10 @@ def run_demo(config: Config, out_dir: Path,
                  "snapshot": snap.snapshot_id, "health": snap.health})
 
         say("--- attack: safe ransomware simulator ---")
+        liveness_before = vault.check_watcher_liveness()
+        say(f"watcher liveness before attack: "
+            f"{'alive' if liveness_before.alive else 'SILENT'} "
+            f"({liveness_before.reason})")
         attack_start = _utcnow()
         subprocess.run(
             [sys.executable, "-m", "nightkeep.simulator",
@@ -303,6 +389,18 @@ def run_demo(config: Config, out_dir: Path,
              *simulator_extra_args],
             check=True,
         )
+        worker_terminated: bool | None = None
+        if variant == "watcher-killer":
+            # The killer just terminated the heartbeat worker. Wait for the
+            # silence to actually age past the configured threshold: the
+            # Vault detects it by its own clock, nothing is asserted early.
+            worker_terminated = heartbeat_proc.poll() is not None
+            say(f"heartbeat worker terminated by the killer: "
+                f"{worker_terminated}")
+            _await_silence(
+                vault,
+                timeout_seconds=watcher_cfg.silence_threshold_seconds + 30,
+            )
         # The watcher stamps delivery time on what it sees, so wait out
         # its settle window before closing the attack's event window;
         # otherwise the attack's tail could arrive after the window closed
@@ -325,6 +423,10 @@ def run_demo(config: Config, out_dir: Path,
             say(f"  why: {reason}")
         for action in attack_verdict.actions:
             say(f"  did: {action}")
+        liveness_after = vault.check_watcher_liveness()
+        say(f"watcher liveness after attack: "
+            f"{'alive' if liveness_after.alive else 'SILENT'} "
+            f"({liveness_after.reason})")
         report["attack"] = {
             "variant": variant,
             "level": attack_verdict.level,
@@ -332,6 +434,21 @@ def run_demo(config: Config, out_dir: Path,
             "reasons": list(attack_verdict.reasons),
             "actions": list(attack_verdict.actions),
             "events_observed": len(attack_events),
+        }
+        report["watcher_liveness"] = {
+            "before_attack": {
+                "alive": liveness_before.alive,
+                "reason": liveness_before.reason,
+            },
+            "after_attack": {
+                "alive": liveness_after.alive,
+                "reason": liveness_after.reason,
+            },
+            "heartbeat_interval_seconds":
+                watcher_cfg.heartbeat_interval_seconds,
+            "silence_threshold_seconds":
+                watcher_cfg.silence_threshold_seconds,
+            "worker_terminated": worker_terminated,
         }
 
         say("--- vault after the attack ---")
@@ -346,6 +463,13 @@ def run_demo(config: Config, out_dir: Path,
         report["attack"]["snapshot"] = damaged.snapshot_id
         report["attack"]["snapshot_health"] = damaged.health
         report["attack"]["clean_pin_held"] = pin_before == pin_after
+        report["attack"]["pin_snapshot_id"] = pin_after
+        # The Vault's own call from its two witnesses: S6 liveness plus
+        # S7 data health. Kept out of the snapshot on purpose -- the
+        # snapshot still describes only the data.
+        vault_side = combined_verdict(liveness_after, damaged.health)
+        say(f"vault-side call from S6 liveness + S7 data health: {vault_side}")
+        report["watcher_liveness"]["vault_side_verdict"] = vault_side
 
         say("--- recovery: restore the pinned clean snapshot ---")
         restore_result = vault.restore(pin_after)
@@ -368,23 +492,56 @@ def run_demo(config: Config, out_dir: Path,
     finally:
         observer.stop()
         watcher.stop()
+        _stop_heartbeat_worker(heartbeat_proc)
 
     incidents_on_quiet_days = sum(
         1 for v in report["verdicts"] if v["level"] == INCIDENT)
     attack_ok = report["attack"]["level"] == INCIDENT
     suspect_ok = report["attack"]["snapshot_health"] == SUSPECT
     pin_ok = report["attack"]["clean_pin_held"]
+    liveness = report["watcher_liveness"]
     restore = report["restore"]
     restore_ok = (restore["ok"] and restore["records_verified"]
                   == restore["records_expected"]
                   == config.district.ration_cards)
-    report["checks"] = {
-        "no_incident_on_learning_or_guard_days": incidents_on_quiet_days == 0,
-        "attack_judged_incident": attack_ok,
-        "damaged_snapshot_suspect": suspect_ok,
-        "clean_pin_held": pin_ok,
-        "restore_ok_5000_of_5000": restore_ok,
-    }
+    if variant == "watcher-killer":
+        # F11's story: the killer stops the agent without touching a file.
+        # The server-side Judge rightly sees nothing (NORMAL); the Vault
+        # still raises the alarm from the silence (S6). The data is
+        # untouched, so the post-kill pull is CLEAN and honestly becomes
+        # the new pin -- the check is that the pin still covers clean,
+        # identical data, not that it froze.
+        pin_snapshot_id = report["attack"]["pin_snapshot_id"]
+        pin_is_clean = (
+            pin_snapshot_id == report["attack"]["snapshot"]
+            and report["attack"]["snapshot_health"] == CLEAN
+        )
+        report["checks"] = {
+            "no_incident_on_learning_or_guard_days":
+                incidents_on_quiet_days == 0,
+            "heartbeat_alive_before_kill":
+                liveness["before_attack"]["alive"],
+            "killer_terminated_heartbeat_worker":
+                liveness["worker_terminated"] is True,
+            "server_judge_saw_no_attack":
+                report["attack"]["level"] == NORMAL,
+            "vault_detected_silence_s6":
+                not liveness["after_attack"]["alive"],
+            "vault_side_call_suspicious":
+                liveness["vault_side_verdict"] == SUSPICIOUS,
+            "clean_pin_covers_untouched_data": pin_is_clean,
+            "restore_ok_5000_of_5000": restore_ok,
+        }
+    else:
+        report["checks"] = {
+            "no_incident_on_learning_or_guard_days":
+                incidents_on_quiet_days == 0,
+            "attack_judged_incident": attack_ok,
+            "damaged_snapshot_suspect": suspect_ok,
+            "clean_pin_held": pin_ok,
+            "watcher_stayed_alive": liveness["after_attack"]["alive"],
+            "restore_ok_5000_of_5000": restore_ok,
+        }
     passed = all(report["checks"].values())
     say("--- proof " + ("PASSED" if passed else "FAILED") + " ---")
     for name, ok in report["checks"].items():

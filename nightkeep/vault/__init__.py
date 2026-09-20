@@ -2,13 +2,16 @@
 
 Public interface:
     Vault(root, share, suspect_entropy, suspect_changed_fraction,
-          suspect_record_drop_fraction, restore_folder_name)
+          suspect_record_drop_fraction, restore_folder_name,
+          watcher_silence_seconds=30.0)
     pull() -> Snapshot
+    check_watcher_liveness() -> WatcherLiveness
     snapshots() -> list[Snapshot]
     restore(snapshot_id) -> RestoreResult
 
 Hides the content-addressed blob store, JSON manifests, the hash chain, the
-S7 health check, pinned clean points and restore verification.
+S7 health check, the S6 liveness check, pinned clean points and restore
+verification.
 
 The PDS server never gets a path, credential or address for the Vault. The
 share path and every threshold arrive here as arguments from the Vault's own
@@ -18,12 +21,19 @@ reads the share, never writes to it.
 
 from datetime import datetime, timezone
 from pathlib import Path
+import json
 
 from nightkeep.types import (
     CLEAN,
+    HEARTBEAT_FILENAME,
+    INCIDENT,
+    NORMAL,
+    SUSPECT,
+    SUSPICIOUS,
     Check,
     RestoreResult,
     Snapshot,
+    WatcherLiveness,
 )
 from nightkeep.vault import _health, _manifest, _store
 from nightkeep.vault._health import FileEntry
@@ -34,6 +44,21 @@ CLEAN_POINT_FILE = "clean_point"
 
 class VaultError(Exception):
     """The Vault could not do what was asked, in plain words."""
+
+
+def combined_verdict(liveness: WatcherLiveness, health: str) -> str:
+    """The Vault's own call from its two independent witnesses.
+
+    Per the design-doc verdict table: S6 silence together with S7 data
+    damage is an INCIDENT; either one alone is SUSPICIOUS (loud alert,
+    clean pin held). This lives outside Snapshot.health on purpose: the
+    snapshot still describes only the data.
+    """
+    if not liveness.alive and health == SUSPECT:
+        return INCIDENT
+    if not liveness.alive or health == SUSPECT:
+        return SUSPICIOUS
+    return NORMAL
 
 
 class Vault:
@@ -48,6 +73,7 @@ class Vault:
         suspect_changed_fraction: float,
         suspect_record_drop_fraction: float,
         restore_folder_name: str,
+        watcher_silence_seconds: float = 30.0,
     ) -> None:
         self._root = Path(root)
         self._share = Path(share)
@@ -55,6 +81,7 @@ class Vault:
         self._suspect_changed_fraction = suspect_changed_fraction
         self._suspect_record_drop_fraction = suspect_record_drop_fraction
         self._restore_folder_name = restore_folder_name
+        self._watcher_silence_seconds = watcher_silence_seconds
 
     # -- pulls ----------------------------------------------------------
 
@@ -131,11 +158,62 @@ class Vault:
             reasons=reasons,
         )
 
+    def check_watcher_liveness(self) -> WatcherLiveness:
+        """S6: has the Watcher checked in through the share recently?
+
+        The Vault asks by reading; the server only answers by writing the
+        heartbeat file. No connection is opened, nothing is written to the
+        server, and the server never learns the Vault is asking. A missing
+        or stale heartbeat is S6, kept as its own state: it says nothing
+        about the data, so it never changes a snapshot's health.
+        """
+        checked_at = datetime.now(timezone.utc)
+        heartbeat = self._share / HEARTBEAT_FILENAME
+        try:
+            payload = json.loads(heartbeat.read_text(encoding="utf-8"))
+            written_at = datetime.fromisoformat(payload["written_at"])
+        except (OSError, ValueError, KeyError):
+            return WatcherLiveness(
+                alive=False,
+                last_seen=None,
+                checked_at=checked_at,
+                reason=(
+                    "S6: the watcher is silent -- no readable heartbeat in "
+                    "the share"
+                ),
+            )
+        if written_at.tzinfo is None:
+            written_at = written_at.replace(tzinfo=timezone.utc)
+        age = (checked_at - written_at).total_seconds()
+        if age > self._watcher_silence_seconds:
+            return WatcherLiveness(
+                alive=False,
+                last_seen=written_at,
+                checked_at=checked_at,
+                reason=(
+                    f"S6: the watcher has been silent for {age:.0f} s, over "
+                    f"the {self._watcher_silence_seconds:.0f} s limit "
+                    f"(last heartbeat {written_at.isoformat()})"
+                ),
+            )
+        return WatcherLiveness(
+            alive=True,
+            last_seen=written_at,
+            checked_at=checked_at,
+            reason=f"the watcher checked in {age:.1f} s ago",
+        )
+
     def _pull_files(self) -> dict[str, tuple[FileEntry, float]]:
         """Read every file under share/, storing new blobs. Never writes there."""
         entries: dict[str, tuple[FileEntry, float]] = {}
         for path in sorted(self._share.rglob("*")):
             if not path.is_file() or path.is_symlink():
+                continue
+            if path.name == HEARTBEAT_FILENAME:
+                # The liveness heartbeat is a signal, not backup data. It
+                # changes every few seconds by design; pulling it would
+                # pollute the data health check. The Vault reads it through
+                # check_watcher_liveness() instead.
                 continue
             relpath = path.relative_to(self._share).as_posix()
             data = path.read_bytes()

@@ -148,6 +148,29 @@ SUSPECT = "SUSPECT"
 
 HEALTH_STATES = (CLEAN, SUSPECT)
 
+# The liveness heartbeat the Watcher writes into the shared folder, and the
+# only thing the Vault is allowed to read from the server besides backup
+# data. A dotfile so it never looks like an export, and a fixed name so
+# both sides agree without a conversation (the server never learns the
+# Vault's address, and the Vault never writes to the server).
+HEARTBEAT_FILENAME = ".watcher-heartbeat"
+
+
+@dataclass(frozen=True)
+class WatcherLiveness:
+    """The Vault's S6 answer: has the Watcher checked in recently?
+
+    Kept separate from Snapshot.health on purpose: a silent watcher says
+    nothing about whether the *data* is damaged, and a damaged snapshot
+    says nothing about whether the watcher is alive. The two are combined
+    by the vault's own verdict rule, not by overloading either one.
+    """
+
+    alive: bool
+    last_seen: datetime | None
+    checked_at: datetime
+    reason: str
+
 
 @dataclass(frozen=True)
 class Snapshot:
