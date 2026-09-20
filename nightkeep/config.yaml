@@ -103,6 +103,17 @@ watcher:
   # A job's last writes can land a moment after its process exits. Events
   # inside this many seconds of the run's end still belong to that run.
   settle_seconds: 1.0
+  # F11: the watcher agent rewrites the liveness file in the share this
+  # often, so the Vault can tell a live watcher from a killed one.
+  # SOLUTION_DESIGN.md S6: the Vault asks every 10 s [TUNE].
+  heartbeat_interval_seconds: 10
+  # F11: silence longer than this is S6 -- the watcher may be dead.
+  # SOLUTION_DESIGN.md S6: no answer for 30 s [TUNE].
+  silence_threshold_seconds: 30
+  # F11: the Vault checks the watcher's liveness this often during normal
+  # operation. The Vault asks; the server only answers, through the share.
+  # SOLUTION_DESIGN.md S6: every 10 s [TUNE].
+  liveness_check_interval_seconds: 10
 
 habit:
   # A feature counts as unusual when it sits outside median +/- k * MAD.

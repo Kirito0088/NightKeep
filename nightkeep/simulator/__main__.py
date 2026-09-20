@@ -23,8 +23,11 @@ passes the values through, for example:
         --ransom-note-name HOW_TO_GET_YOUR_FILES_BACK.txt --delay 0.01 \\
         --command "vssadmin delete shadows" --command "wbadmin delete catalog"
 
+    python -m nightkeep.simulator --variant watcher-killer --root <demo dir>
+
 The demo-folder boundary is hard-coded in the simulator module and cannot
-be tuned away.
+be tuned away. The watcher-killer touches no files: it terminates only the
+watcher agent process marked for that demo root.
 """
 
 from __future__ import annotations
@@ -56,7 +59,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--variant",
         required=True,
-        choices=["fast", "impersonator", "recovery-killer"],
+        choices=["fast", "impersonator", "recovery-killer", "watcher-killer"],
     )
     _common_arguments(parser)
     parser.add_argument(
@@ -100,6 +103,8 @@ def main(argv: list[str] | None = None) -> int:
                 ransom_note_name=args.ransom_note_name,
                 delay_between_files_seconds=args.delay,
             )
+        elif args.variant == "watcher-killer":
+            report = simulator.watcher_killer(args.root)
         else:
             report = simulator.recovery_killer(
                 args.root,
@@ -113,10 +118,16 @@ def main(argv: list[str] | None = None) -> int:
         print(f"refused: {exc}", file=sys.stderr)
         return 2
 
-    print(
-        f"{report.variant}: encrypted {report.files_encrypted} files, "
-        f"renamed {report.files_renamed}, notes {report.notes_written}"
-    )
+    if report.variant == "watcher-killer":
+        print(
+            "watcher-killer: terminated watcher agent pids "
+            f"{list(report.killed_pids)}"
+        )
+    else:
+        print(
+            f"{report.variant}: encrypted {report.files_encrypted} files, "
+            f"renamed {report.files_renamed}, notes {report.notes_written}"
+        )
     return 0
 
 

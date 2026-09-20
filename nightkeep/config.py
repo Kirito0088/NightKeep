@@ -247,6 +247,13 @@ class Watcher:
 
     poll_seconds: int
     settle_seconds: float
+    # F11: the watcher agent rewrites the liveness file every this many
+    # seconds; the Vault calls S6 after this many seconds of silence, and
+    # checks liveness itself every this many seconds. Design-doc S6 values,
+    # all [TUNE].
+    heartbeat_interval_seconds: float
+    silence_threshold_seconds: float
+    liveness_check_interval_seconds: float
 
 
 @dataclass(frozen=True)
@@ -446,6 +453,11 @@ def _read_watcher(reader: _Reader) -> Watcher:
     watcher = Watcher(
         poll_seconds=reader.integer("poll_seconds"),
         settle_seconds=reader.number("settle_seconds"),
+        heartbeat_interval_seconds=reader.number("heartbeat_interval_seconds"),
+        silence_threshold_seconds=reader.number("silence_threshold_seconds"),
+        liveness_check_interval_seconds=reader.number(
+            "liveness_check_interval_seconds"
+        ),
     )
     reader.done()
     return watcher

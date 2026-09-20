@@ -148,6 +148,65 @@ SUSPECT = "SUSPECT"
 
 HEALTH_STATES = (CLEAN, SUSPECT)
 
+# The liveness heartbeat the Watcher writes into the shared folder, and the
+# only thing the Vault is allowed to read from the server besides backup
+# data. A dotfile so it never looks like an export, and a fixed name so
+# both sides agree without a conversation (the server never learns the
+# Vault's address, and the Vault never writes to the server).
+HEARTBEAT_FILENAME = ".watcher-heartbeat"
+
+
+@dataclass(frozen=True)
+class WatcherLiveness:
+    """The Vault's S6 answer: has the Watcher checked in recently?
+
+    Kept separate from Snapshot.health on purpose: a silent watcher says
+    nothing about whether the *data* is damaged, and a damaged snapshot
+    says nothing about whether the watcher is alive. The two are combined
+    by the vault's own verdict rule, not by overloading either one.
+    """
+
+    alive: bool
+    last_seen: datetime | None
+    checked_at: datetime
+    reason: str
+
+
+@dataclass(frozen=True)
+class VaultState:
+    """The Vault's recorded call from its two independent witnesses.
+
+    This is where the documented response to S6 lives -- not in
+    Snapshot.health. S6 alone (or S7 alone) is SUSPICIOUS and puts the
+    Vault in Protect mode; the two together are INCIDENT. The snapshot
+    still describes only the data; this is the Vault's own verdict about
+    the situation, recorded every time it changes so the alert is real
+    even when nobody calls back for it.
+    """
+
+    verdict: str  # NORMAL / SUSPICIOUS / INCIDENT (no habit here, no ODD)
+    protect_mode: bool
+    watcher_alive: bool | None  # None before the monitor's first check
+    snapshot_health: str | None  # None before the first pull
+    previous_verdict: str
+
+    def __post_init__(self) -> None:
+        if self.verdict not in VERDICT_LEVELS:
+            raise ValueError(
+                f"vault verdict must be one of {VERDICT_LEVELS}, "
+                f"got {self.verdict!r}"
+            )
+        if self.snapshot_health not in (None, CLEAN, SUSPECT):
+            raise ValueError(
+                "snapshot health must be None, CLEAN or SUSPECT, got "
+                f"{self.snapshot_health!r}"
+            )
+        if self.protect_mode != (self.verdict in (SUSPICIOUS, INCIDENT)):
+            raise ValueError(
+                "protect mode must be on exactly when the verdict is "
+                f"SUSPICIOUS or INCIDENT, got {self.verdict!r}"
+            )
+
 
 @dataclass(frozen=True)
 class Snapshot:

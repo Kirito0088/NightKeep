@@ -25,9 +25,25 @@ from pathlib import Path
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
-from nightkeep.types import CREATED, DELETED, MODIFIED, RENAMED, Event
+from nightkeep.types import (
+    CREATED,
+    DELETED,
+    HEARTBEAT_FILENAME,
+    MODIFIED,
+    RENAMED,
+    Event,
+)
 from nightkeep.watcher._log import LOG_NAME, EventLog
 from nightkeep.watcher._processes import ProcessPoll
+
+
+def event_log_for(root: Path) -> EventLog:
+    """The agent's append-only event log for this folder.
+
+    Lets another process (the demo runner, the console) read what the
+    Watcher saw without joining the Watcher process.
+    """
+    return EventLog(Path(root) / "logs" / LOG_NAME)
 
 # The truth logs prove, after the fact, that learning was correct. Nightkeep
 # must never be able to see them, not even as a filename. CLAUDE.md makes
@@ -81,7 +97,7 @@ class Watcher:
         self.settle_seconds = settle_seconds
         self._events: list[Event] = []
         self._lock = threading.Lock()
-        self._log = EventLog(self.root / "logs" / LOG_NAME)
+        self._log = event_log_for(self.root)
         self._poll = ProcessPoll(str(self.root), poll_seconds)
         self._observer = Observer()
         self._observer.schedule(_Handler(self), str(self.root), recursive=True)
@@ -149,6 +165,14 @@ class Watcher:
     def _ignored(self, path: Path) -> bool:
         if path.name == LOG_NAME:
             # Watching ourselves write would never stop.
+            return True
+        if path.name == HEARTBEAT_FILENAME or path.name.startswith(
+            HEARTBEAT_FILENAME + "."
+        ):
+            # The liveness heartbeat is the Vault's business, not the
+            # Judge's: its writes -- including the atomic temp file the
+            # worker renames into place -- must never become events, habit
+            # observations or judge input.
             return True
         return _TRUTH_FOLDER in path.parts
 
