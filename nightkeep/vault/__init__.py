@@ -6,6 +6,9 @@ Public interface:
           watcher_silence_seconds=30.0)
     pull() -> Snapshot
     check_watcher_liveness() -> WatcherLiveness
+    start_liveness_monitor(on_change=None) / stop_liveness_monitor()
+    last_liveness -> WatcherLiveness | None
+    liveness_check_count -> int
     snapshots() -> list[Snapshot]
     restore(snapshot_id) -> RestoreResult
 
@@ -22,6 +25,7 @@ reads the share, never writes to it.
 from datetime import datetime, timezone
 from pathlib import Path
 import json
+import threading
 
 from nightkeep.types import (
     CLEAN,
@@ -74,7 +78,13 @@ class Vault:
         suspect_record_drop_fraction: float,
         restore_folder_name: str,
         watcher_silence_seconds: float = 30.0,
+        liveness_check_interval_seconds: float = 10.0,
     ) -> None:
+        if liveness_check_interval_seconds <= 0:
+            raise VaultError(
+                "the liveness check interval must be positive, got "
+                f"{liveness_check_interval_seconds}"
+            )
         self._root = Path(root)
         self._share = Path(share)
         self._suspect_entropy = suspect_entropy
@@ -82,6 +92,15 @@ class Vault:
         self._suspect_record_drop_fraction = suspect_record_drop_fraction
         self._restore_folder_name = restore_folder_name
         self._watcher_silence_seconds = watcher_silence_seconds
+        self._liveness_check_interval_seconds = liveness_check_interval_seconds
+        # The periodic S6 check the design doc asks the Vault to run during
+        # normal operation: every interval the Vault asks (by reading the
+        # share); the server only answers (by writing the heartbeat).
+        self._liveness_lock = threading.Lock()
+        self._last_liveness: WatcherLiveness | None = None
+        self._liveness_checks = 0
+        self._monitor_thread: threading.Thread | None = None
+        self._monitor_stop = threading.Event()
 
     # -- pulls ----------------------------------------------------------
 
@@ -202,6 +221,75 @@ class Vault:
             checked_at=checked_at,
             reason=f"the watcher checked in {age:.1f} s ago",
         )
+
+    # -- the periodic liveness check -------------------------------------
+
+    def start_liveness_monitor(self, on_change=None) -> None:
+        """Ask the Watcher for liveness every check interval, in the
+        background. This is the design doc's "the Vault checks every 10 s":
+        the Vault asks by reading the share, the server only answers by
+        writing the heartbeat, and nothing is ever written to the server.
+
+        The latest answer is always available as `last_liveness`;
+        `on_change` (if given) is called with each WatcherLiveness whose
+        alive/silent state differs from the previous check -- the seam a
+        console alert would hook into. Idempotent: starting twice keeps
+        the one running monitor.
+        """
+        with self._liveness_lock:
+            if (
+                self._monitor_thread is not None
+                and self._monitor_thread.is_alive()
+            ):
+                return
+            self._monitor_stop.clear()
+            self._monitor_thread = threading.Thread(
+                target=self._liveness_loop,
+                args=(on_change,),
+                name="vault-liveness-monitor",
+                daemon=True,
+            )
+            self._monitor_thread.start()
+
+    def stop_liveness_monitor(self) -> None:
+        """Stop the background check. Safe to call when it never started."""
+        with self._liveness_lock:
+            thread = self._monitor_thread
+        if thread is None:
+            return
+        self._monitor_stop.set()
+        thread.join(timeout=5)
+        with self._liveness_lock:
+            self._monitor_thread = None
+
+    @property
+    def last_liveness(self) -> WatcherLiveness | None:
+        """The monitor's latest answer, or None before its first check."""
+        with self._liveness_lock:
+            return self._last_liveness
+
+    @property
+    def liveness_check_count(self) -> int:
+        """How many periodic checks the monitor has run so far."""
+        with self._liveness_lock:
+            return self._liveness_checks
+
+    def _liveness_loop(self, on_change) -> None:
+        previous_alive: bool | None = None
+        while True:
+            liveness = self.check_watcher_liveness()
+            with self._liveness_lock:
+                self._last_liveness = liveness
+                self._liveness_checks += 1
+            if (
+                on_change is not None
+                and previous_alive is not None
+                and liveness.alive != previous_alive
+            ):
+                on_change(liveness)
+            previous_alive = liveness.alive
+            if self._monitor_stop.wait(self._liveness_check_interval_seconds):
+                break
 
     def _pull_files(self) -> dict[str, tuple[FileEntry, float]]:
         """Read every file under share/, storing new blobs. Never writes there."""

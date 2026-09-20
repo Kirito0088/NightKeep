@@ -36,6 +36,15 @@ from nightkeep.types import (
 from nightkeep.watcher._log import LOG_NAME, EventLog
 from nightkeep.watcher._processes import ProcessPoll
 
+
+def event_log_for(root: Path) -> EventLog:
+    """The agent's append-only event log for this folder.
+
+    Lets another process (the demo runner, the console) read what the
+    Watcher saw without joining the Watcher process.
+    """
+    return EventLog(Path(root) / "logs" / LOG_NAME)
+
 # The truth logs prove, after the fact, that learning was correct. Nightkeep
 # must never be able to see them, not even as a filename. CLAUDE.md makes
 # this a hard rail, and tests/test_rails.py holds it.
@@ -88,7 +97,7 @@ class Watcher:
         self.settle_seconds = settle_seconds
         self._events: list[Event] = []
         self._lock = threading.Lock()
-        self._log = EventLog(self.root / "logs" / LOG_NAME)
+        self._log = event_log_for(self.root)
         self._poll = ProcessPoll(str(self.root), poll_seconds)
         self._observer = Observer()
         self._observer.schedule(_Handler(self), str(self.root), recursive=True)

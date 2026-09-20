@@ -8,8 +8,9 @@ its file events and the judge can suspend it mid-run:
   runs it with the scheduler's exact argv shape.
 - ``recovery_killer`` does a short burst of encryption, then lingers as a
   shell whose command line only *echoes* recovery-killing text.
-- ``watcher_killer`` terminates the Watcher heartbeat worker process, so
-  the Vault's S6 liveness check goes silent. It touches no files at all.
+- ``watcher_killer`` terminates the Watcher agent process, so the Vault's
+  S6 liveness check goes silent and no more events are recorded. It
+  touches no files at all.
 
 Safety rails. Every one is enforced in code and covered by tests, not just
 promised in this docstring:
@@ -490,37 +491,38 @@ def recovery_killer(
 
 # --- variant 4: the watcher-killer -------------------------------------------
 
-# The dedicated marker the heartbeat worker runs with, plus the demo root.
+# The dedicated marker the watcher agent runs with, plus the demo root.
 # A process is only ever touched when its command line carries all of
 # these; anything else -- this process, its parent, a pytest run, another
 # demo -- is left alone.
-_HEARTBEAT_MODULE = "nightkeep.watcher"
-_HEARTBEAT_FLAG = "--heartbeat"
+_WATCHER_MODULE = "nightkeep.watcher"
+_WATCHER_RUN_FLAG = "--run"
 
 
-def _is_heartbeat_worker(cmdline: list[str], root: str) -> bool:
+def _is_watcher_agent(cmdline: list[str], root: str) -> bool:
     """The dedicated marker plus the correct demo root, nothing less.
 
     Exact argv-element matching, not substring: a demo rooted at
-    ``.../district`` must never match a worker for ``.../district2``.
+    ``.../district`` must never match an agent for ``.../district2``.
     """
     return (
-        _HEARTBEAT_MODULE in cmdline
-        and _HEARTBEAT_FLAG in cmdline
+        _WATCHER_MODULE in cmdline
+        and _WATCHER_RUN_FLAG in cmdline
         and root in cmdline
     )
 
 
 def watcher_killer(root: str | Path) -> AttackReport:
-    """Terminate the Watcher heartbeat worker for this demo root.
+    """Terminate the Watcher agent for this demo root.
 
     What an attacker with admin rights does first: stop the security tool,
-    then work in the dark. The kill is real -- SIGTERM to the worker
-    process -- which is why the worker runs as its own process rather than
-    a thread of the demo: killing it must not kill the demonstration.
+    then work in the dark. The kill is real -- SIGTERM to the agent
+    process -- which is why the agent runs as its own process rather than
+    inside the demo: killing it must not kill the demonstration. Both the
+    watching and the heartbeats stop with it.
 
     Safety: only a process whose command line carries the dedicated
-    ``--heartbeat`` marker *and* this demo root is touched. This process
+    ``--run`` marker *and* this demo root is touched. This process
     and its parent are never candidates, no matter what they are called.
     Touches no files; the demo-folder boundary still applies to the root.
     """
@@ -537,7 +539,7 @@ def watcher_killer(root: str | Path) -> AttackReport:
             cmdline = proc.info["cmdline"] or []
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
-        if _is_heartbeat_worker([str(part) for part in cmdline], root_text):
+        if _is_watcher_agent([str(part) for part in cmdline], root_text):
             targets.append(proc)
 
     killed: list[int] = []

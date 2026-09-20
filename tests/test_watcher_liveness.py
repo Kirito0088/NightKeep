@@ -1,11 +1,13 @@
-"""F11: the Watcher heartbeat worker, Vault S6 liveness, and the killer.
+"""F11: the Watcher agent, Vault S6 liveness, and the killer.
 
 Covers the pieces the demo runner wires together:
-- the heartbeat worker creates its file and re-stamps it on schedule
+- the watcher agent watches the folder AND writes the liveness heartbeat
+  on schedule (one process: killing it is killing the agent)
 - the Watcher ignores heartbeat writes (no events, no habit, no judge)
 - Vault S6: healthy beat -> alive; stale/missing/corrupt -> silent
-- the watcher-killer terminates only the marked worker for its demo root
-- the killer cannot touch its parent, an unrelated process, or a worker
+- the Vault's liveness monitor asks on its own clock every check interval
+- the watcher-killer terminates only the marked agent for its demo root
+- the killer cannot touch its parent, an unrelated process, or an agent
   for a different root
 - the silence threshold genuinely gates detection (no faked instant S6)
 - S6 + S7 combine to the vault-side verdict per the design-doc table
@@ -25,7 +27,7 @@ from pathlib import Path
 
 import pytest
 
-from nightkeep.simulator import _is_heartbeat_worker, guard_root, watcher_killer
+from nightkeep.simulator import _is_watcher_agent, guard_root, watcher_killer
 from nightkeep.types import (
     CLEAN,
     HEARTBEAT_FILENAME,
@@ -48,7 +50,8 @@ INTERVAL = 0.2
 THRESHOLD = 1.5
 
 
-def _vault(tmp_path: Path, share: Path, silence: float = THRESHOLD) -> Vault:
+def _vault(tmp_path: Path, share: Path, silence: float = THRESHOLD,
+           check_interval: float = 0.2) -> Vault:
     return Vault(
         tmp_path / "vault",
         share,
@@ -57,16 +60,18 @@ def _vault(tmp_path: Path, share: Path, silence: float = THRESHOLD) -> Vault:
         suspect_record_drop_fraction=0.02,
         restore_folder_name="restored",
         watcher_silence_seconds=silence,
+        liveness_check_interval_seconds=check_interval,
     )
 
 
-def _spawn_worker(root: Path, interval: float = INTERVAL) -> subprocess.Popen:
+def _spawn_agent(root: Path, interval: float = INTERVAL) -> subprocess.Popen:
+    """The watcher agent: watches the folder and heartbeats, one process."""
     proc = subprocess.Popen(
         [
             PYTHON,
             "-m",
             "nightkeep.watcher",
-            "--heartbeat",
+            "--run",
             "--root",
             str(root),
             "--interval",
@@ -75,8 +80,8 @@ def _spawn_worker(root: Path, interval: float = INTERVAL) -> subprocess.Popen:
     )
     deadline = time.monotonic() + 30
     while not heartbeat_path(root).exists():
-        assert proc.poll() is None, "heartbeat worker died on startup"
-        assert time.monotonic() < deadline, "worker never wrote its first beat"
+        assert proc.poll() is None, "watcher agent died on startup"
+        assert time.monotonic() < deadline, "agent never wrote its first beat"
         time.sleep(0.05)
     return proc
 
@@ -90,13 +95,13 @@ def _stop(proc: subprocess.Popen) -> None:
             proc.kill()
 
 
-# -- the heartbeat worker ------------------------------------------------
+# -- the watcher agent ----------------------------------------------------
 
 
-def test_heartbeat_worker_creates_the_file_and_restamps_it(tmp_path):
+def test_watcher_agent_heartbeats_on_schedule(tmp_path):
     root = tmp_path / "root"
     (root / "share").mkdir(parents=True)
-    proc = _spawn_worker(root)
+    proc = _spawn_agent(root)
     try:
         first = json.loads(heartbeat_path(root).read_text(encoding="utf-8"))
         assert first["pid"] == proc.pid
@@ -108,9 +113,42 @@ def test_heartbeat_worker_creates_the_file_and_restamps_it(tmp_path):
         _stop(proc)
 
 
-def test_heartbeat_worker_refuses_a_non_positive_interval():
+def test_watcher_agent_is_the_thing_that_watches(tmp_path):
+    """The killed process is the agent, not a heartbeat sidecar: while it
+    runs it records real file events in its log, and its own heartbeat
+    writes never pollute that log."""
+    from nightkeep.watcher import event_log_for
+
+    root = tmp_path / "root"
+    share = root / "share"
+    share.mkdir(parents=True)
+    proc = _spawn_agent(root)
+    try:
+        start = datetime.now(timezone.utc)
+        (share / "evidence.txt").write_text("the agent should see this")
+        deadline = time.monotonic() + 10
+        seen = []
+        while time.monotonic() < deadline:
+            seen = [
+                e for e in event_log_for(root).read_all()
+                if e.at >= start and "evidence.txt" in e.path
+            ]
+            if seen:
+                break
+            time.sleep(0.2)
+        assert seen, "the agent recorded no event for the new file"
+        heartbeat_events = [
+            e for e in event_log_for(root).read_all()
+            if HEARTBEAT_FILENAME in e.path
+        ]
+        assert heartbeat_events == []
+    finally:
+        _stop(proc)
+
+
+def test_watcher_agent_refuses_a_non_positive_interval():
     done = subprocess.run(
-        [PYTHON, "-m", "nightkeep.watcher", "--heartbeat",
+        [PYTHON, "-m", "nightkeep.watcher", "--run",
          "--root", "/tmp", "--interval", "0"],
         capture_output=True,
         text=True,
@@ -194,13 +232,13 @@ def test_silence_is_detected_after_the_threshold_not_before(tmp_path):
     root = DEMO_DIR / "test_silence_timing"
     root.mkdir(parents=True, exist_ok=True)
     (root / "share").mkdir(exist_ok=True)
-    worker = _spawn_worker(root)
+    agent = _spawn_agent(root)
     vault = _vault(tmp_path, root / "share")
     try:
         assert vault.check_watcher_liveness().alive is True
         report = watcher_killer(root)
-        assert report.killed_pids == (worker.pid,)
-        worker.wait(timeout=10)
+        assert report.killed_pids == (agent.pid,)
+        agent.wait(timeout=10)
         # Just killed: the last beat is seconds old, under the threshold.
         assert vault.check_watcher_liveness().alive is True
         time.sleep(THRESHOLD + 1.0)
@@ -208,8 +246,61 @@ def test_silence_is_detected_after_the_threshold_not_before(tmp_path):
         assert liveness.alive is False
         assert "S6" in liveness.reason
     finally:
-        _stop(worker)
+        _stop(agent)
         shutil.rmtree(root, ignore_errors=True)
+
+
+# -- the vault asks on its own clock ------------------------------------------
+
+
+def test_vault_liveness_monitor_checks_periodically(tmp_path):
+    """The design doc's "the Vault checks every 10 s": the monitor asks on
+    its own interval, records the latest answer, and reports alive/silent
+    transitions through the on-change hook."""
+    share = tmp_path / "share"
+    share.mkdir()
+    vault = _vault(tmp_path, share, silence=THRESHOLD, check_interval=0.2)
+    transitions = []
+    vault.start_liveness_monitor(on_change=transitions.append)
+    try:
+        # No heartbeat yet: the monitor's own checks call it silent.
+        deadline = time.monotonic() + 5
+        while vault.last_liveness is None and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert vault.last_liveness is not None
+        assert vault.last_liveness.alive is False
+        assert vault.liveness_check_count >= 1
+
+        # A fresh beat flips it to alive, and the hook sees the change.
+        write_heartbeat(heartbeat_path(tmp_path))
+        deadline = time.monotonic() + 5
+        while not transitions and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert vault.last_liveness.alive is True
+        assert [t.alive for t in transitions] == [True]
+
+        # Starting twice does not start a second monitor.
+        before = vault.liveness_check_count
+        vault.start_liveness_monitor()
+        time.sleep(0.5)
+        assert vault.liveness_check_count - before < 10
+    finally:
+        vault.stop_liveness_monitor()
+    # Stopped: no more checks accumulate.
+    frozen = vault.liveness_check_count
+    time.sleep(0.5)
+    assert vault.liveness_check_count == frozen
+    # Stopping twice is safe.
+    vault.stop_liveness_monitor()
+
+
+def test_vault_rejects_a_non_positive_check_interval(tmp_path):
+    from nightkeep.vault import VaultError
+
+    share = tmp_path / "share"
+    share.mkdir()
+    with pytest.raises(VaultError):
+        _vault(tmp_path, share, check_interval=0)
 
 
 # -- the killer only kills what is marked ------------------------------------
@@ -217,50 +308,50 @@ def test_silence_is_detected_after_the_threshold_not_before(tmp_path):
 
 def test_killer_matches_marker_plus_exact_root():
     root = "/repo/demo/district"
-    assert _is_heartbeat_worker(
-        ["python", "-m", "nightkeep.watcher", "--heartbeat",
-         "--root", root, "--interval", "2"],
+    assert _is_watcher_agent(
+        ["python", "-m", "nightkeep.watcher", "--run",
+         "--root", root, "--interval", "10"],
         root,
     )
-    # Missing the flag: not a worker.
-    assert not _is_heartbeat_worker(
+    # Missing the flag: not an agent.
+    assert not _is_watcher_agent(
         ["python", "-m", "nightkeep.watcher", "--root", root], root
     )
-    # A different module: not a worker.
-    assert not _is_heartbeat_worker(
-        ["python", "-m", "nightkeep.simulator", "--heartbeat",
+    # A different module: not an agent.
+    assert not _is_watcher_agent(
+        ["python", "-m", "nightkeep.simulator", "--run",
          "--root", root],
         root,
     )
     # A sibling root is not this root: substring must not match.
-    assert not _is_heartbeat_worker(
-        ["python", "-m", "nightkeep.watcher", "--heartbeat",
-         "--root", root + "2", "--interval", "2"],
+    assert not _is_watcher_agent(
+        ["python", "-m", "nightkeep.watcher", "--run",
+         "--root", root + "2", "--interval", "10"],
         root,
     )
-    # A different root entirely: not this worker.
-    assert not _is_heartbeat_worker(
-        ["python", "-m", "nightkeep.watcher", "--heartbeat",
-         "--root", "/somewhere/else", "--interval", "2"],
+    # A different root entirely: not this agent.
+    assert not _is_watcher_agent(
+        ["python", "-m", "nightkeep.watcher", "--run",
+         "--root", "/somewhere/else", "--interval", "10"],
         root,
     )
 
 
-def test_killer_terminates_only_the_marked_worker_for_its_root():
+def test_killer_terminates_only_the_marked_agent_for_its_root():
     target_root = DEMO_DIR / "test_killer_target"
     other_root = DEMO_DIR / "test_killer_other"
     for root in (target_root, other_root):
         root.mkdir(parents=True, exist_ok=True)
         (root / "share").mkdir(exist_ok=True)
-    target = _spawn_worker(target_root)
-    other = _spawn_worker(other_root)
+    target = _spawn_agent(target_root)
+    other = _spawn_agent(other_root)
     bystander = subprocess.Popen(["sleep", "30"])
     try:
         report = watcher_killer(target_root)
         assert report.variant == "watcher-killer"
         assert report.killed_pids == (target.pid,)
         assert target.wait(timeout=10) is not None
-        # The other root's worker, the bystander and this test process
+        # The other root's agent, the bystander and this test process
         # are all untouched.
         assert other.poll() is None
         assert bystander.poll() is None
@@ -273,7 +364,7 @@ def test_killer_terminates_only_the_marked_worker_for_its_root():
         shutil.rmtree(other_root, ignore_errors=True)
 
 
-def test_killer_with_no_worker_kills_nothing():
+def test_killer_with_no_agent_kills_nothing():
     root = DEMO_DIR / "test_killer_empty"
     root.mkdir(parents=True, exist_ok=True)
     try:

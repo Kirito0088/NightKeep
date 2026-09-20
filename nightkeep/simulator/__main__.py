@@ -27,7 +27,7 @@ passes the values through, for example:
 
 The demo-folder boundary is hard-coded in the simulator module and cannot
 be tuned away. The watcher-killer touches no files: it terminates only the
-heartbeat worker process marked for that demo root.
+watcher agent process marked for that demo root.
 """
 
 from __future__ import annotations
@@ -120,7 +120,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if report.variant == "watcher-killer":
         print(
-            "watcher-killer: terminated heartbeat worker pids "
+            "watcher-killer: terminated watcher agent pids "
             f"{list(report.killed_pids)}"
         )
     else:

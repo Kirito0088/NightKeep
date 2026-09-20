@@ -1,8 +1,9 @@
 """F11 end to end: the watcher-killer demo path.
 
-Runs the real demo runner with variant="watcher-killer": the heartbeat
-worker runs beside the watcher, the killer terminates it, and the Vault
-detects the silence by its own clock after the configured threshold.
+Runs the real demo runner with variant="watcher-killer": the watcher
+agent runs as its own process (watching + heartbeating), the killer
+terminates that agent, and the Vault detects the silence by its own
+clock after the configured threshold.
 
 The Windows-only day loop (cscript.exe/cmd.exe jobs) is stubbed out like
 in test_demo_run.py: it cannot run on Linux and is irrelevant to the S6
@@ -62,15 +63,22 @@ def test_demo_runner_detects_the_killed_watcher_as_s6(
     assert report["passed"] is True
 
     liveness = report["watcher_liveness"]
-    # The worker was beating before the attack...
+    # The agent was beating before the attack...
     assert liveness["before_attack"]["alive"] is True
-    # ...the killer terminated exactly that process...
-    assert liveness["worker_terminated"] is True
+    # ...the killer terminated exactly that agent process...
+    assert liveness["agent_terminated"] is True
     # ...and the Vault called S6 after the configured silence.
     assert liveness["after_attack"]["alive"] is False
     assert "S6" in liveness["after_attack"]["reason"]
     assert (liveness["silence_threshold_seconds"]
             == config.watcher.silence_threshold_seconds)
+    # Design-doc S6 values, still tunable in config.
+    assert liveness["heartbeat_interval_seconds"] == 10
+    assert liveness["silence_threshold_seconds"] == 30
+    assert (liveness["liveness_check_interval_seconds"]
+            == config.watcher.liveness_check_interval_seconds)
+    # The Vault's own monitor asked on its clock during the run.
+    assert liveness["vault_liveness_checks"] >= 1
 
     # The point of F11: the server-side Judge saw no attack at all
     # (NORMAL -- no files were touched), while the Vault still raised
