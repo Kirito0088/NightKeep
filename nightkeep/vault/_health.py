@@ -11,6 +11,7 @@ than importing the judge's.
 """
 
 import math
+import os
 import sqlite3
 import tempfile
 from dataclasses import dataclass
@@ -83,15 +84,27 @@ def newest_backup(entries: dict[str, FileEntry]) -> str | None:
 
 
 def count_cards(data: bytes) -> int | None:
-    """Rows in the cards table of a database backup. None if unreadable."""
+    """Rows in the cards table of a database backup. None if unreadable.
+
+    The temp file is fully closed before sqlite3 opens it: on Windows a
+    second open of a file that is still held open (as NamedTemporaryFile
+    with delete=True does) fails, and the swallowed exception used to turn
+    every record count into None there.
+    """
+    handle = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
     try:
-        with tempfile.NamedTemporaryFile(suffix=".db", delete=True) as tmp:
-            tmp.write(data)
-            tmp.flush()
-            with sqlite3.connect(tmp.name) as conn:
-                return conn.execute("SELECT COUNT(*) FROM cards").fetchone()[0]
+        handle.write(data)
+        handle.close()
+        with sqlite3.connect(handle.name) as conn:
+            return conn.execute("SELECT COUNT(*) FROM cards").fetchone()[0]
     except Exception:
         return None
+    finally:
+        handle.close()
+        try:
+            os.unlink(handle.name)
+        except OSError:
+            pass
 
 
 def assess(
