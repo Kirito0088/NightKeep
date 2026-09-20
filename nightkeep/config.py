@@ -292,6 +292,13 @@ class Simulator:
 
 
 @dataclass(frozen=True)
+class Console:
+    """The Vault's own screen: what unlocks the PIN-gated actions."""
+
+    supervisor_pin: str
+
+
+@dataclass(frozen=True)
 class Config:
     """Every tunable number Nightkeep has, already validated."""
 
@@ -305,6 +312,7 @@ class Config:
     judge: Judge
     vault: Vault
     simulator: Simulator
+    console: Console
 
 
 def _read_span(reader: _Reader, key: str) -> Span:
@@ -495,6 +503,14 @@ def _read_simulator(reader: _Reader) -> Simulator:
     return simulator
 
 
+def _read_console(reader: _Reader) -> Console:
+    console = Console(
+        supervisor_pin=reader.text("supervisor_pin"),
+    )
+    reader.done()
+    return console
+
+
 def load_config(path: str | Path) -> Config:
     """Read config.yaml and return it as a typed, frozen structure.
 
@@ -524,6 +540,7 @@ def load_config(path: str | Path) -> Config:
         judge=_read_judge(top.block("judge")),
         vault=_read_vault(top.block("vault")),
         simulator=_read_simulator(top.block("simulator")),
+        console=_read_console(top.block("console")),
     )
     top.done()
     return config

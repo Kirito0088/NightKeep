@@ -41,6 +41,13 @@ def main(arguments: list[str]) -> int:
         "--day-seconds", type=int,
         help="overrides how much real time one simulated day takes",
     )
+    parser.add_argument(
+        "--console", action="store_true",
+        help=(
+            "run the Vault's console on 127.0.0.1:5000 with real runtime "
+            "state from --out-dir"
+        ),
+    )
     args = parser.parse_args(arguments)
 
     try:
@@ -59,6 +66,9 @@ def main(arguments: list[str]) -> int:
     if args.prove_erratic:
         return _prove_erratic(config, args.out_dir)
 
+    if args.console:
+        return _console(config, args.out_dir)
+
     clock = config.clock
     print(f"Nightkeep, seed {config.seed}, config from {args.config}")
     print(
@@ -74,6 +84,19 @@ def main(arguments: list[str]) -> int:
 
     district_dir = mock_pds.build_district(config.seed, config.district, DEMO_DIR)
     print(f"District built at {district_dir}")
+    return 0
+
+
+def _console(config: Config, out_dir: Path) -> int:
+    from nightkeep.console.__main__ import create_console_app
+
+    app = create_console_app(
+        config,
+        district_dir=out_dir / "district",
+        vault_dir=out_dir / "vault",
+    )
+    print("Nightkeep console on http://127.0.0.1:5000 (loopback only)")
+    app.run(host="127.0.0.1", port=5000, debug=False)
     return 0
 
 
