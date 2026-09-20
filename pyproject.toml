@@ -18,4 +18,7 @@ dev = ["pytest>=8.0"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = [
+    "slow: touches the filesystem, a subprocess or the simulated clock. Skip with -m 'not slow'",
+]
 

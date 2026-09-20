@@ -63,6 +63,12 @@ class JobRun:
     started_at: datetime
     finished_at: datetime
     events: tuple[Event, ...] = ()
+    # The simulated clock time the run began at. The two clocks answer
+    # different questions: `started_at` is when files really changed, which
+    # is how events are attributed, and `sim_started_at` is the 02:14 that
+    # makes "later than usual" mean anything.
+    sim_started_at: datetime | None = None
+    day_no: int | None = None
 
     @property
     def seconds(self) -> float:
