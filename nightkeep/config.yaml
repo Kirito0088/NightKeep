@@ -147,6 +147,12 @@ vault:
   suspect_entropy: 7.0
   # Restores land here, beside the damaged data and never on top of it.
   restore_folder_name: "restored"
+  # Fraction of files changed versus the last clean snapshot that marks a
+  # pull SUSPECT.
+  suspect_changed_fraction: 0.5
+  # Fractional drop in the ration-card record count versus the last clean
+  # snapshot that marks a pull SUSPECT.
+  suspect_record_drop_fraction: 0.02
 
 simulator:
   # The safe ransomware simulator. It refuses to run outside the demo folder.

@@ -36,6 +36,8 @@ import pytest
 from nightkeep.habit import Habit
 from nightkeep.judge import Judge
 from nightkeep.types import CREATED, MODIFIED, RENAMED, Event, JobRun
+from nightkeep.vault import Vault
+from nightkeep.vault import _manifest
 from nightkeep.watcher import Watcher
 
 PACKAGE = Path(__file__).resolve().parent.parent / "nightkeep"
@@ -202,6 +204,30 @@ def test_no_truth_blind_module_reads_the_truth_folder_at_runtime(
     verdict = judge.verdict(_a_run(8, ordinary + truth_events))
 
     assert verdict is not None
+
+    # The Vault pulls the same district. Its walk must stay inside share/
+    # and never open a truth log, even though the folder sits right there.
+    (district / "share" / "exports" / "epos_day_end_20260920.csv").write_text(
+        "card_no,date\n110300512847,2026-09-20\n", encoding="utf-8"
+    )
+    vault = Vault(
+        district / "vault_store",
+        district / "share",
+        suspect_entropy=7.0,
+        suspect_changed_fraction=0.5,
+        suspect_record_drop_fraction=0.02,
+        restore_folder_name="restored",
+    )
+    snapshot = vault.pull()
+    assert snapshot.health == "CLEAN"
+    pulled = _manifest.read_manifest(
+        district / "vault_store", snapshot.snapshot_id
+    )["files"]
+    # The judge's trap file is in the share too; both must be pulled, and
+    # neither may be a truth log.
+    assert "exports/epos_day_end_20260920.csv" in pulled
+    assert not any("_truth" in path for path in pulled)
+
     assert forbid_reading_the_truth == [], (
         f"these truth files were opened: {forbid_reading_the_truth}"
     )
