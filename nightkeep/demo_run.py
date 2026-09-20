@@ -210,6 +210,10 @@ def run_demo(config: Config, out_dir: Path,
         entropy_floor=judge_cfg.entropy_floor,
         recovery_commands=tuple(judge_cfg.recovery_commands),
         trap_files=tuple(judge_cfg.trap_files),
+        # F9: the office computer shows its own pop-up the moment this
+        # Judge decides INCIDENT. The trap-planting Judge above never
+        # judges a run, so it needs no flag.
+        server_alerts=True,
     )
     vault = Vault(
         root=vault_dir,
