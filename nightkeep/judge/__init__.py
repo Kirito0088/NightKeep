@@ -2,7 +2,7 @@
 
 Public interface:
     Judge(root, habit, odd_score, rename_burst, entropy_jump, entropy_floor,
-          recovery_commands, trap_files)
+          recovery_commands, trap_files, server_alerts=False)
     verdict(run, events) -> Verdict
     undo()
 
@@ -28,6 +28,7 @@ from pathlib import Path
 from nightkeep.habit import Habit
 from nightkeep.judge import _actions, _signals
 from nightkeep.judge._baseline import DATABASE_NAME, Baseline
+from nightkeep import server_alert
 from nightkeep.types import (
     INCIDENT,
     NORMAL,
@@ -68,6 +69,7 @@ class Judge:
         entropy_floor: float,
         recovery_commands: tuple[str, ...],
         trap_files: tuple[str, ...],
+        server_alerts: bool = False,
     ) -> None:
         self.root = Path(root).resolve()
         self._habit = habit
@@ -77,6 +79,7 @@ class Judge:
         self._entropy_floor = entropy_floor
         self._recovery_commands = recovery_commands
         self._trap_files = trap_files
+        self._server_alerts = server_alerts
         self._baseline = Baseline(self.root / "data" / DATABASE_NAME)
         self._taken = _actions.Taken()
         self._history: list[tuple[JobRun, Verdict]] = []
@@ -249,12 +252,19 @@ class Judge:
         else:
             actions = ["logged it"]
 
-        return Verdict(
+        verdict = Verdict(
             level=level,
             reasons=reasons,
             actions=tuple(actions),
             signals=signals,
         )
+        if level == INCIDENT and self._server_alerts:
+            # The office computer's own pop-up, raised here on the server
+            # side the moment the verdict is decided. The Vault console only
+            # renders this alert later; nobody has to open anything for the
+            # pop-up to appear.
+            server_alert.raise_for_verdict(verdict)
+        return verdict
 
     @staticmethod
     def _busiest_pid(events: list[Event]) -> int | None:
