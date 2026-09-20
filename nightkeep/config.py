@@ -271,6 +271,8 @@ class Vault:
     pull_every_simulated_minutes: int
     suspect_entropy: float
     restore_folder_name: str
+    suspect_changed_fraction: float
+    suspect_record_drop_fraction: float
 
 
 @dataclass(frozen=True)
@@ -463,6 +465,8 @@ def _read_vault(reader: _Reader) -> Vault:
         pull_every_simulated_minutes=reader.integer("pull_every_simulated_minutes"),
         suspect_entropy=reader.number("suspect_entropy"),
         restore_folder_name=reader.text("restore_folder_name"),
+        suspect_changed_fraction=reader.number("suspect_changed_fraction"),
+        suspect_record_drop_fraction=reader.number("suspect_record_drop_fraction"),
     )
     reader.done()
     return vault
