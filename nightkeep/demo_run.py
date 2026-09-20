@@ -544,6 +544,7 @@ def run_demo(config: Config, out_dir: Path,
         report["attack"]["snapshot_health"] = damaged.health
         report["attack"]["clean_pin_held"] = pin_before == pin_after
         report["attack"]["pin_snapshot_id"] = pin_after
+        report["attack"]["pin_before_snapshot_id"] = pin_before
         # The Vault's own call from its two witnesses: S6 liveness plus
         # S7 data health. Kept out of the snapshot on purpose -- the
         # snapshot still describes only the data.
@@ -587,13 +588,15 @@ def run_demo(config: Config, out_dir: Path,
     if variant == "watcher-killer":
         # F11's story: the killer stops the agent itself without touching
         # a file. The server-side Judge rightly sees nothing (NORMAL);
-        # the Vault still raises the alarm from the silence (S6). The data
-        # is untouched, so the post-kill pull is CLEAN and honestly
-        # becomes the new pin -- the check is that the pin still covers
-        # clean, identical data, not that it froze.
+        # the Vault still raises the alarm from the silence (S6) and
+        # enters Protect mode, which holds the last clean point. The
+        # data is untouched, so the post-kill pull is still CLEAN -- but
+        # it must NOT become the new pin while protection is active. The
+        # check is that the pin still covers clean, identical data, now
+        # by holding the pre-kill clean point instead of advancing.
         pin_snapshot_id = report["attack"]["pin_snapshot_id"]
         pin_is_clean = (
-            pin_snapshot_id == report["attack"]["snapshot"]
+            pin_snapshot_id == report["attack"]["pin_before_snapshot_id"]
             and report["attack"]["snapshot_health"] == CLEAN
         )
         report["checks"] = {

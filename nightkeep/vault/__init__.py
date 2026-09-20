@@ -138,8 +138,11 @@ class Vault:
     def pull(self, *, taken_at: datetime | None = None) -> Snapshot:
         """Copy the share into the store and health-check it.
 
-        Returns the new Snapshot, CLEAN or SUSPECT. A CLEAN pull becomes the
-        pinned clean point; a SUSPECT pull is kept but never promoted.
+        Returns the new Snapshot, CLEAN or SUSPECT. A CLEAN pull becomes
+        the pinned clean point -- unless Protect mode is active, in
+        which case the pin is held on the last pre-protection clean
+        snapshot per the design doc (the pull itself stays CLEAN; only
+        the pin is held). A SUSPECT pull is kept but never promoted.
         """
         if not self._share.is_dir():
             raise VaultError(f"the share is not there to pull: {self._share}")
@@ -189,7 +192,12 @@ class Vault:
         }
         manifest_hash = _manifest.write_manifest(self._root, payload)
 
-        is_clean_point = assessment.health == CLEAN
+        # The design doc's Protect mode holds the last clean point:
+        # while the Vault's own verdict is SUSPICIOUS or INCIDENT, even
+        # a CLEAN pull must not advance the pin. Snapshot.health stays
+        # data-only (the pull is still recorded CLEAN); only the pin is
+        # held, until the verdict returns to NORMAL.
+        is_clean_point = assessment.health == CLEAN and not self.protect_mode
         if is_clean_point:
             _store.write_locked(
                 self._root / CLEAN_POINT_FILE, snapshot_id.encode("utf-8")
@@ -359,11 +367,14 @@ class Vault:
     def protect_mode(self) -> bool:
         """True once the Vault has called SUSPICIOUS or INCIDENT.
 
-        The design doc's Protect mode: the clean pin is held (only CLEAN
-        snapshots ever advance it), and the alert has been raised. There
-        is no automatic backup clean-up in this build to stop, and new
-        snapshots keep their data-only health -- the S6 suspicion lives
-        in this flag and the verdict, not in Snapshot.health.
+        The design doc's Protect mode: the last clean point is held --
+        while this is on, even a CLEAN pull is recorded as CLEAN but
+        does not advance the pin (the pin moves again only once the
+        Vault's own verdict returns to NORMAL) -- and the alert has
+        been raised. There is no automatic backup clean-up in this
+        build to stop, and new snapshots keep their data-only health:
+        the S6 suspicion lives in this flag and the verdict, not in
+        Snapshot.health.
         """
         return self.vault_verdict in (SUSPICIOUS, INCIDENT)
 

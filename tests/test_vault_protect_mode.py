@@ -5,20 +5,24 @@ Proves the documented behavior is real, not computed on demand:
   S6 -> the Vault records SUSPICIOUS, enters Protect mode, and raises
   the alert (state hook + durable alert log)
 - S6 + a SUSPECT snapshot -> INCIDENT
+- Protect mode holds the last clean point: a CLEAN pull taken while
+  protection is active stays CLEAN (Snapshot.health is data-only) but
+  does not advance the pin; the pin stays on the pre-S6 snapshot.
 - Snapshot.health stays strictly about the data throughout: S6 never
-  rewrites it, and a clean pull taken after S6 still pins clean data.
+  rewrites it.
 
 Real watcher-agent subprocesses and real timing, with small intervals so
 the suite stays fast. Marked slow like the other subprocess tests.
 """
 
 import csv
+import json
 import os
 import sqlite3
 import subprocess
 import sys
 import time
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -182,13 +186,18 @@ def test_killed_watcher_drives_vault_to_suspicious_and_protect_mode(tmp_path):
             assert "S6" in logged[0]["liveness_reason"]
 
             # S6 says nothing about the data: an unchanged pull is still
-            # CLEAN, the pin still covers untouched clean data, the
-            # verdict stays put, and nothing re-alerts.
+            # CLEAN, but Protect mode holds the clean point -- the pin
+            # stays on the pre-S6 snapshot, the verdict stays put, and
+            # nothing re-alerts.
             again = vault.pull(
                 taken_at=baseline.taken_at + timedelta(days=1)
             )
             assert again.health == CLEAN
-            assert again.is_clean_point is True
+            assert again.is_clean_point is False
+            pinned = [s for s in vault.snapshots() if s.is_clean_point]
+            assert [s.snapshot_id for s in pinned] == [
+                baseline.snapshot_id
+            ]
             assert vault.vault_verdict == SUSPICIOUS
             assert vault.protect_mode is True
             assert len(events) == 1
@@ -197,6 +206,54 @@ def test_killed_watcher_drives_vault_to_suspicious_and_protect_mode(tmp_path):
             vault.stop_liveness_monitor()
     finally:
         _stop(agent)
+
+
+# -- Protect mode holds the clean point ------------------------------------
+
+
+def test_protect_mode_holds_clean_point_on_clean_pull(tmp_path):
+    # The design doc's "hold the last clean point": once the Vault
+    # enters Protect mode, a later unchanged CLEAN pull must not
+    # advance the pin. The snapshot itself stays CLEAN -- S6 says
+    # nothing about the data -- only the pin is held, until
+    # protection is cleared.
+    root = tmp_path / "demo"
+    share = _share_with_csv(root)
+    vault = _vault(tmp_path, share)
+
+    baseline = vault.pull()
+    assert baseline.health == CLEAN
+    assert baseline.is_clean_point is True
+
+    # S6 without a subprocess: a heartbeat stale enough that the
+    # monitor reads it as silence.
+    stale = (datetime.now(timezone.utc) - timedelta(seconds=10)).isoformat()
+    (share / HEARTBEAT_FILENAME).write_text(
+        json.dumps({"written_at": stale, "pid": 99999}), encoding="utf-8"
+    )
+    events = []
+    vault.start_liveness_monitor(on_state_change=events.append)
+    try:
+        _wait_for(
+            lambda: vault.vault_verdict == SUSPICIOUS and vault.protect_mode,
+            what="stale heartbeat to raise SUSPICIOUS + protect mode",
+        )
+
+        # The data is untouched, so the pull is still CLEAN -- but the
+        # pin must stay on the pre-S6 snapshot.
+        again = vault.pull(taken_at=baseline.taken_at + timedelta(days=1))
+        assert again.health == CLEAN
+        assert again.is_clean_point is False
+        pinned = [s for s in vault.snapshots() if s.is_clean_point]
+        assert [s.snapshot_id for s in pinned] == [baseline.snapshot_id]
+
+        # The verdict never moved and nothing re-alerted.
+        assert vault.vault_verdict == SUSPICIOUS
+        assert vault.protect_mode is True
+        assert len(events) == 1
+        assert len(vault.alerts()) == 1
+    finally:
+        vault.stop_liveness_monitor()
 
 
 # -- S6 + S7 -> INCIDENT -----------------------------------------------------
