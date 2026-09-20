@@ -124,10 +124,17 @@ class Habit:
             ]
             if not history:
                 continue
+            value = features.numbers[feature]
+            if not any(history) and value == 0:
+                # A job that has never renamed a file, and did not rename one
+                # tonight, has told us nothing. Counting that as evidence of
+                # normality would let three silent features outvote the one
+                # that is screaming, which is exactly how an attack scores
+                # below the line. A job that has never renamed and tonight
+                # renamed four thousand files is counted, and loudly.
+                continue
             considered += 1
-            reason = self._judge_feature(
-                feature, features.numbers[feature], history
-            )
+            reason = self._judge_feature(feature, value, history)
             if reason is not None:
                 unusual.append(reason)
 
