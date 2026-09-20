@@ -240,8 +240,10 @@ def test_the_safe_copy_is_a_readable_database_that_grows_through_the_month(tmp_p
 
 
 def test_the_safe_copy_never_overlaps_the_export_and_reports_when_it_really_began(tmp_path):
-    # At 1 s a day the export overruns the safe copy's slot. The safe copy
-    # must wait for it, and its truth line must say when it really began.
+    # The safe copy may not start before the export has finished, and its
+    # truth line must say when it really began. Both times come from the
+    # seed, so this holds at any day length rather than only at one that
+    # happens to make the export overrun in real time.
     district_dir = _district(tmp_path)
     _run(district_dir, 1)
 
@@ -259,10 +261,9 @@ def test_the_same_seed_replays_the_same_day(tmp_path):
 
     for job in ("nightly_export", "db_backup"):
         for a, b in zip(_truth(first, job), _truth(second, job), strict=True):
-            # Timing follows the real wall clock, and a job running long
-            # pushes the next one later. What each job did is exact.
-            for timing in ("sim_start", "sim_end"):
-                a.pop(timing), b.pop(timing)
+            # The whole truth line, timing included. Run lengths are drawn
+            # from the seed, not measured, so two replays agree on the clock
+            # as exactly as they agree on what each job did.
             assert a == b
             for name in a["created"]:
                 assert (first / name).read_bytes() == (second / name).read_bytes()

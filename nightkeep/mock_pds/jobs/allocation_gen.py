@@ -15,8 +15,7 @@ logs/_truth/allocation_gen.jsonl.
 import argparse
 import json
 import sqlite3
-import time
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from pathlib import Path
 
 JOB = "allocation_gen"
@@ -28,10 +27,9 @@ def main() -> None:
     parser.add_argument("--day", type=int, required=True)
     parser.add_argument("--business-date", required=True)
     parser.add_argument("--sim-start", required=True)
-    parser.add_argument("--scale", type=float, required=True)
+    parser.add_argument("--sim-end", required=True)
     parser.add_argument("--files", type=int, required=True)
     args = parser.parse_args()
-    began = time.monotonic()
 
     business_date = date.fromisoformat(args.business_date)
     allotment_month = _next_month(business_date)
@@ -50,7 +48,7 @@ def main() -> None:
     if not fps_ids:
         truth["skipped"] = "no shops to allocate for"
 
-    _append_truth(args, began, truth)
+    _append_truth(args, truth)
 
 
 def _next_month(business_date: date) -> str:
@@ -80,9 +78,9 @@ def _write_allocation(root: Path, fps_id: str, allotment_month: str) -> tuple[bo
     return existed, path
 
 
-def _append_truth(args: argparse.Namespace, began: float, truth: dict) -> None:
+def _append_truth(args: argparse.Namespace, truth: dict) -> None:
     sim_start = datetime.fromisoformat(args.sim_start)
-    sim_end = sim_start + timedelta(seconds=(time.monotonic() - began) * args.scale)
+    sim_end = datetime.fromisoformat(args.sim_end)
     line = {"job": JOB, "day": args.day, "sim_start": sim_start.isoformat(),
             "sim_end": sim_end.isoformat(timespec="seconds"), **truth}
     log = args.root / "logs" / "_truth" / f"{JOB}.jsonl"

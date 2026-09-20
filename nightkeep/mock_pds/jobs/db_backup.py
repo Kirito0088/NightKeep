@@ -13,8 +13,7 @@ logs/_truth/db_backup.jsonl.
 import argparse
 import json
 import sqlite3
-import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 JOB = "db_backup"
@@ -26,9 +25,8 @@ def main() -> None:
     parser.add_argument("--day", type=int, required=True)
     parser.add_argument("--business-date", required=True)
     parser.add_argument("--sim-start", required=True)
-    parser.add_argument("--scale", type=float, required=True)
+    parser.add_argument("--sim-end", required=True)
     args = parser.parse_args()
-    began = time.monotonic()
 
     existed, copy = _back_up(args.root, args.business_date)
     name = copy.relative_to(args.root).as_posix()
@@ -37,7 +35,7 @@ def main() -> None:
              "extensions": [copy.suffix]}
     truth["modified" if existed else "created"].append(name)
 
-    _append_truth(args, began, truth)
+    _append_truth(args, truth)
 
 
 def _back_up(root: Path, business_date: str) -> tuple[bool, Path]:
@@ -55,9 +53,9 @@ def _back_up(root: Path, business_date: str) -> tuple[bool, Path]:
     return existed, copy
 
 
-def _append_truth(args: argparse.Namespace, began: float, truth: dict) -> None:
+def _append_truth(args: argparse.Namespace, truth: dict) -> None:
     sim_start = datetime.fromisoformat(args.sim_start)
-    sim_end = sim_start + timedelta(seconds=(time.monotonic() - began) * args.scale)
+    sim_end = datetime.fromisoformat(args.sim_end)
     line = {"job": JOB, "day": args.day, "sim_start": sim_start.isoformat(),
             "sim_end": sim_end.isoformat(timespec="seconds"), **truth}
     log = args.root / "logs" / "_truth" / f"{JOB}.jsonl"

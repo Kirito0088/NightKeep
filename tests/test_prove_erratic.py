@@ -57,6 +57,16 @@ def other_week(tmp_path_factory) -> dict:
     return _week(tmp_path_factory, "other_week", OTHER_SEED)
 
 
+def _report_bytes(tmp_path_factory, name: str, seed: int) -> bytes:
+    """Run a week and read back the report file prove() leaves behind."""
+    out_dir = tmp_path_factory.mktemp(name) / "district"
+    prove_erratic.prove(
+        seed=seed, district=DISTRICT, clock=FAST_CLOCK, jobs=REPO.jobs,
+        harvest_surge=REPO.harvest_surge, out_dir=out_dir,
+    )
+    return (out_dir / "reports" / prove_erratic.SUMMARY_NAME).read_bytes()
+
+
 def _ordinary_night_swing(summary: dict) -> float:
     """How far the export's rows move, harvest surge nights left out.
 
@@ -68,15 +78,6 @@ def _ordinary_night_swing(summary: dict) -> float:
         rows for night, rows in by_night.items() if int(night) not in SURGE_NIGHTS
     ]
     return (max(counts) - min(counts)) / (sum(counts) / len(counts)) * 100
-
-
-def _seeded_part(summary: dict) -> str:
-    """The summary minus the start times, which the machine has a say in."""
-    jobs = {
-        job: {key: value for key, value in entry.items() if key != "start_time"}
-        for job, entry in summary["jobs"].items()
-    }
-    return json.dumps({**summary, "jobs": jobs}, sort_keys=True)
 
 
 def _small_config(tmp_path: Path) -> Path:
@@ -161,16 +162,26 @@ def test_no_job_starts_at_the_same_time_every_night(week):
 
 
 def test_the_same_seed_reproduces_the_same_week(week, week_again):
-    # Everything the seed decides comes back identical. Start times are left
-    # out on purpose: a job that overruns its slot pushes the next one's real
-    # start later, and by how much is the machine's business, not the seed's.
-    # A day compressed into seconds magnifies that, so the two runs' clocks
-    # can differ by minutes while every number below is the same.
-    assert _seeded_part(week) == _seeded_part(week_again)
+    # The whole summary, start times included, with nothing left out. Run
+    # lengths are seeded rather than measured, so an overrun shoves the next
+    # job by the same amount on every machine and the clock in the truth log
+    # is the seed's business alone.
+    assert week == week_again
+
+
+def test_the_same_seed_writes_a_byte_for_byte_identical_report(
+    tmp_path_factory,
+):
+    # The file itself, not just the dict: the summary is a deliverable, and
+    # two runs of one seed must hand a judge the same bytes.
+    first = _report_bytes(tmp_path_factory, "report_once", SEED)
+    second = _report_bytes(tmp_path_factory, "report_twice", SEED)
+
+    assert first == second
 
 
 def test_a_different_seed_gives_a_different_but_equally_messy_week(week, other_week):
-    assert _seeded_part(other_week) != _seeded_part(week)
+    assert other_week != week
 
     for job in JOBS:
         assert other_week["jobs"][job]["start_time"]["spread_minutes"] > 0

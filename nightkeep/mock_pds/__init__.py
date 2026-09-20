@@ -120,12 +120,28 @@ def run_day(
         archive.files_zipped_per_run.low, archive.files_zipped_per_run.high
     )
 
+    # How long each job holds the night, drawn up front and in a fixed order
+    # from its own stream. Seeded, not measured: a job that overruns pushes
+    # the next one later by the same amount on every machine.
+    timeline = _day.timeline_rng(seed, day_no)
+    operator_runs_for = day.draw_run_length(timeline, operator.runs_for_minutes)
+    allocation_runs_for = day.draw_run_length(timeline, allocation.runs_for_minutes)
+    allocation_rerun_runs_for = day.draw_run_length(
+        timeline, allocation.runs_for_minutes
+    )
+    export_runs_for = day.draw_run_length(timeline, export.runs_for_minutes)
+    backup_runs_for = day.draw_run_length(timeline, jobs.db_backup.runs_for_minutes)
+    fix_dat_runs_for = day.draw_run_length(timeline, fix_dat.runs_for_minutes)
+    archive_runs_for = day.draw_run_length(timeline, archive.runs_for_minutes)
+
     launched = day.wait_until(operator_start)
+    finished = launched + operator_runs_for
     _day.launch(
-        "operator_activity", district_dir, day_no, launched, day.scale,
+        "operator_activity", district_dir, day_no, launched, finished,
         "--edits", str(operator_edits), "--edit-seed", str(operator_edit_seed),
         *(["--sunday"] if is_sunday else []),
     )
+    day.ran_until(finished)
 
     day.wait_until(day.at(conventions.SHOP_CLOSES))
     _day.land_transactions(
@@ -136,43 +152,59 @@ def run_day(
     allocation_args = (
         "--business-date", day.date.isoformat(), "--files", str(allocation_files),
     )
+    finished = launched + allocation_runs_for
     _day.launch(
-        "allocation_gen", district_dir, day_no, launched, day.scale,
+        "allocation_gen", district_dir, day_no, launched, finished,
         *allocation_args,
     )
+    day.ran_until(finished)
     if allocation_double_run:
+        # The vendor bug fires the job again the moment it finishes, so the
+        # second run picks up in simulated time exactly where the first left
+        # off. No extra wait: the two really do run back to back.
+        rerun_finished = finished + allocation_rerun_runs_for
         _day.launch(
-            "allocation_gen", district_dir, day_no, launched, day.scale,
+            "allocation_gen", district_dir, day_no, finished, rerun_finished,
             *allocation_args,
         )
+        day.ran_until(rerun_finished)
 
     launched = day.wait_until(export_start)
+    finished = launched + export_runs_for
     _day.launch(
-        "nightly_export", district_dir, day_no, launched, day.scale,
+        "nightly_export", district_dir, day_no, launched, finished,
         "--business-date", day.date.isoformat(),
         *(["--network-down"] if network_down else []),
     )
+    day.ran_until(finished)
 
-    # Jobs never overlap: launch returns once the export has exited, and a
-    # late export pushes the safe copy late rather than running alongside it,
-    # and the safe copy is told the time it really started.
+    # Jobs never overlap: launch returns once the export has exited, and an
+    # export that runs past the safe copy's slot pushes the safe copy late
+    # rather than running alongside it. Both the overrun and the shove are
+    # seeded, so the truth log tells the same story on every machine.
     launched = day.wait_until(backup_start)
+    finished = launched + backup_runs_for
     _day.launch(
-        "db_backup", district_dir, day_no, launched, day.scale,
+        "db_backup", district_dir, day_no, launched, finished,
         "--business-date", day.date.isoformat(),
     )
+    day.ran_until(finished)
 
     launched = day.wait_until(fix_dat_start)
+    finished = launched + fix_dat_runs_for
     _day.launch(
-        "fix_dat", district_dir, day_no, launched, day.scale,
+        "fix_dat", district_dir, day_no, launched, finished,
         *(["--run"] if fix_dat_should_run else []),
     )
+    day.ran_until(finished)
 
     launched = day.wait_until(archive_start)
+    finished = launched + archive_runs_for
     _day.launch(
-        "archive_old", district_dir, day_no, launched, day.scale,
+        "archive_old", district_dir, day_no, launched, finished,
         "--files", str(archive_files),
         "--threshold-kb", str(archive.size_threshold_kb),
     )
+    day.ran_until(finished)
 
     day.wait_until(day.end)
