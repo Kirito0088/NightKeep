@@ -164,3 +164,9 @@ simulator:
   key: "nightkeep-demo-key-not-a-secret"
   # Pause between files, so a human on stage can watch it happen.
   delay_between_files_seconds: 0.01
+
+console:
+  # The Vault's own screen. Restore, delete and settings need this PIN
+  # (MVP.md F9); the restore screen asks for it before Vault.restore()
+  # runs. Demo value: change it on the real Vault machine.
+  supervisor_pin: "246810"

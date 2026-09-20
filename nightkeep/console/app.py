@@ -5,10 +5,19 @@ Renders the plain-language reasons carried by HabitScore, Verdict and
 RestoreResult. It never re-derives them.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
 from flask import Flask, render_template, request
 
 from nightkeep.mock_pds import conventions as c
+
+if TYPE_CHECKING:
+    # Imported for annotations only: providers.py imports this module's
+    # presentation dataclasses, so a runtime import here would be circular.
+    from nightkeep.console.providers import PdsProvider, RestoreService
 
 
 @dataclass(frozen=True)
@@ -561,8 +570,19 @@ def create_app(
     alert_data: AlertScreenPresentation | None = None,
     restore_data: RestoreWizardPresentation | None = None,
     server_alert_data: ServerAlertPresentation | None = None,
+    pds: PdsProvider | None = None,
+    restore_wizard_data: RestoreWizardPresentation | None = None,
+    restore_service: RestoreService | None = None,
 ) -> Flask:
-    """Create and configure the Nightkeep console Flask application."""
+    """Create and configure the Nightkeep console Flask application.
+
+    The presentation pools keep their defaults: hardcoded demo values when
+    no real backend state is wired in. `pds` answers search/detail from the
+    real district database; `restore_wizard_data` is the pre-restore wizard
+    built from the real vault state; `restore_service` unlocks the POST
+    /restore route behind the supervisor PIN. All three are read-only from
+    the routes' point of view: they call the provider, they never decide.
+    """
     app = Flask(__name__)
     records_pool = sample_records if sample_records is not None else DEFAULT_SAMPLE_RECORDS
     figures = district_figures if district_figures is not None else DEFAULT_DISTRICT_FIGURES
@@ -613,11 +633,25 @@ def create_app(
             "status": status,
         }
 
+        if pds is not None:
+            records = pds.search(
+                card_no=card_no,
+                head_of_family=head_of_family,
+                taluka=taluka,
+                fps=fps,
+                scheme=scheme,
+                status=status,
+            )
+            page_figures = pds.district_figures()
+        else:
+            records = filtered
+            page_figures = figures
+
         return render_template(
             "search.html",
-            records=filtered,
+            records=records,
             query=query,
-            district_figures=figures,
+            district_figures=page_figures,
             talukas=c.TALUKAS,
             schemes=c.SCHEMES,
             statuses=c.CARD_STATUSES,
@@ -627,6 +661,8 @@ def create_app(
     @app.route("/card/<card_no>", methods=["GET"])
     def card_detail(card_no: str) -> tuple[str, int] | str:
         detail = card_details_pool.get(card_no)
+        if detail is None and pds is not None:
+            detail = pds.card_detail(card_no)
         if detail is None:
             return render_template("card_not_found.html", card_no=card_no), 404
         total_entitlement_kg = round(
@@ -666,11 +702,64 @@ def create_app(
             active_page="safety",
         )
 
-    @app.route("/restore", methods=["GET"])
+    @app.route("/restore", methods=["GET", "POST"])
     def restore_wizard() -> str:
+        """The restore wizard. GET shows it; POST needs the supervisor PIN.
+
+        The route only reads the PIN and hands it to the injected restore
+        service. The service checks the PIN and, only then, calls
+        Vault.restore(). A wrong PIN means nothing is touched.
+        """
+        wizard = (
+            restore_wizard_data
+            if restore_wizard_data is not None
+            else restore_pool
+        )
+
+        if request.method == "GET":
+            return render_template(
+                "restore.html",
+                restore=wizard,
+                active_page="safety",
+            )
+
+        from nightkeep.console.providers import (
+            PinRejected,
+            restore_result_wizard,
+        )
+        from nightkeep.vault import VaultError
+
+        pin = request.form.get("restore_pin", "")
+        if restore_service is None or not restore_service.available:
+            return render_template(
+                "restore.html",
+                restore=wizard,
+                restore_error=(
+                    "Restore is not available right now: there is no clean "
+                    "backup to restore from."
+                ),
+                active_page="safety",
+            )
+        try:
+            result = restore_service.attempt(pin)
+        except PinRejected as exc:
+            return render_template(
+                "restore.html",
+                restore=wizard,
+                restore_error=str(exc),
+                active_page="safety",
+            )
+        except VaultError as exc:
+            return render_template(
+                "restore.html",
+                restore=wizard,
+                restore_error=f"The restore could not finish: {exc}",
+                active_page="safety",
+            )
         return render_template(
             "restore.html",
-            restore=restore_pool,
+            restore=restore_result_wizard(result, pds),
+            restore_success=True,
             active_page="safety",
         )
 

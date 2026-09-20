@@ -60,14 +60,15 @@
   <!-- Five Plain-Language Verification Checks -->
   <section class="panel-block verification-section" aria-labelledby="verification-heading">
     <div class="panel-header">
-      <h2 id="verification-heading">Safety Verification (Five Checks Passed)</h2>
-      <span class="status-badge status-badge-active">5 of 5 Verified</span>
+      <h2 id="verification-heading">Safety Verification (Five Checks)</h2>
+      {% set passed = restore.checks | selectattr("status", "equalto", "Passed") | list | length %}
+      <span class="status-badge {% if passed == 5 %}status-badge-active{% else %}status-badge-suspended{% endif %}">{{ passed }} of 5 Verified</span>
     </div>
     <div class="panel-body">
       <ul class="verification-checks-list">
         {% for check in restore.checks %}
           <li class="verification-check-item">
-            <span class="verification-check-badge status-badge status-badge-active">{{ check.status }}</span>
+            <span class="verification-check-badge status-badge {% if check.status == 'Passed' %}status-badge-active{% else %}status-badge-suspended{% endif %}">{{ check.status }}</span>
             <span class="verification-check-text">{{ check.statement }}</span>
           </li>
         {% endfor %}
@@ -99,7 +100,17 @@
       <h2 id="restore-confirm-heading">Step 3: Authorisation and Confirmation</h2>
     </div>
     <div class="panel-body">
-      <div class="restore-form-block">
+      {% if restore_success %}
+        <div class="restore-result-box restore-result-success" role="status">
+          <p><strong>Restore complete.</strong> The clean backup was verified and the records were restored to the office computer.</p>
+        </div>
+      {% endif %}
+      {% if restore_error %}
+        <div class="restore-result-box restore-result-error" role="alert">
+          <p><strong>Restore did not run.</strong> {{ restore_error }}</p>
+        </div>
+      {% endif %}
+      <form class="restore-form-block" method="post" action="{{ url_for('restore_wizard') }}">
         <div class="form-group pin-form-group">
           <label for="restore_pin" class="form-label">Supervisor authorisation PIN</label>
           <input
@@ -117,14 +128,14 @@
         </div>
 
         <div class="restore-actions-bar">
-          <button type="button" class="btn btn-primary btn-restore-confirm" id="restore-confirm-btn">
+          <button type="submit" class="btn btn-primary btn-restore-confirm" id="restore-confirm-btn">
             Restore records to office computer
           </button>
           <a href="{{ url_for('nightkeep_alert') }}" class="btn btn-secondary btn-cancel-restore">
             Return to Incident Alert
           </a>
         </div>
-      </div>
+      </form>
     </div>
   </section>
 </div>

@@ -746,7 +746,8 @@ def test_restore_five_verification_checks_rendered(client):
     assert response.status_code == 200
     html = response.get_data(as_text=True)
 
-    assert "Safety Verification (Five Checks Passed)" in html
+    assert "Safety Verification (Five Checks)" in html
+    assert "5 of 5 Verified" in html
     assert "Every one of the 5,000 ration cards is present and readable." in html
     assert "All database files match their safe copy from the Vault." in html
     assert "File headers and formats are intact with zero damage." in html
