@@ -348,8 +348,26 @@ def run_demo(config: Config, out_dir: Path,
     )
     # F11: for the whole run the Vault asks the agent for liveness on its
     # own clock (design-doc S6: every 10 s), not only when the demo
-    # happens to call check_watcher_liveness().
-    vault.start_liveness_monitor()
+    # happens to call check_watcher_liveness(). The state hook is the
+    # documented SUSPICIOUS response made visible: the Vault records the
+    # verdict itself, enters Protect mode, and raises the loud alert --
+    # the demo prints it and keeps it in the report.
+    vault_alerts: list = []
+
+    def _on_vault_state(state) -> None:
+        vault_alerts.append(
+            {
+                "verdict": state.verdict,
+                "previous_verdict": state.previous_verdict,
+                "watcher_alive": state.watcher_alive,
+                "snapshot_health": state.snapshot_health,
+            }
+        )
+        say(f"*** VAULT ALERT: {state.verdict} -- watcher alive: "
+            f"{state.watcher_alive}, snapshot: {state.snapshot_health}, "
+            f"protect mode {'ON' if state.protect_mode else 'off'}")
+
+    vault.start_liveness_monitor(on_state_change=_on_vault_state)
     say("vault liveness monitor running (asks the watcher every "
         f"{watcher_cfg.liveness_check_interval_seconds:.0f} s)")
     # The first Vault pull happens after day 1's jobs, not before them:
@@ -508,6 +526,9 @@ def run_demo(config: Config, out_dir: Path,
                 watcher_cfg.liveness_check_interval_seconds,
             "agent_terminated": agent_terminated,
             "vault_liveness_checks": vault.liveness_check_count,
+            "vault_alerts": vault_alerts,
+            "vault_verdict": vault.vault_verdict,
+            "protect_mode": vault.protect_mode,
         }
 
         say("--- vault after the attack ---")
