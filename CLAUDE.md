@@ -94,7 +94,7 @@ Imports are absolute and package-qualified: `from nightkeep.habit import score`.
 a root-level `types.py` shadows the standard library's `types` module. See
 `docs/adr/0004-package-under-nightkeep.md`.
 
-`judge/entropy_signal.py` (Shannon entropy jump + header/structure check, 10 passing tests) is **pre-existing and must not be rewritten**. Wire S3 to it. It is not yet in the repo at the time of writing.
+`judge/entropy_signal.py` (Shannon entropy jump + header/structure check) holds S3. It was described here as pre-existing with 10 passing tests, but it was never committed, so it was built fresh on 20 Sept 2026 and now carries 25 tests of its own. Treat it the same way from here: **wire S3 to it, do not rewrite it.**
 
 ---
 
