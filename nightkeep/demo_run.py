@@ -36,6 +36,7 @@ import shutil
 import subprocess
 import sys
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -47,6 +48,7 @@ from nightkeep.judge import Judge
 from nightkeep.mock_pds import _day
 from nightkeep.types import (
     CLEAN,
+    HEARTBEAT_FILENAME,
     INCIDENT,
     NORMAL,
     SUSPECT,
@@ -128,6 +130,30 @@ def _stop_watcher_agent(proc: subprocess.Popen) -> None:
             proc.kill()
 
 
+def _recovery_killer_command_args(
+    recovery_commands: tuple[str, ...],
+) -> tuple[str, ...]:
+    """The simulator argv carrying the configured recovery commands.
+
+    One repeated ``--command`` per configured command, exactly what the
+    simulator's CLI expects. An empty configuration is refused outright:
+    with no commands the simulator would build a broken echo shell
+    (``sh -c "; sleep ..."`` is a syntax error), and the recovery-killer
+    variant would silently exercise no S5 evidence at all.
+    """
+    if not recovery_commands:
+        raise ValueError(
+            "the recovery-killer variant needs at least one configured "
+            "recovery command (judge.recovery_commands in the config); "
+            "got none"
+        )
+    return tuple(
+        arg
+        for command in recovery_commands
+        for arg in ("--command", command)
+    )
+
+
 def _events_between(
     event_log: EventLog,
     start: datetime,
@@ -147,6 +173,55 @@ def _events_between(
     ]
 
 
+def _is_judgeable(event: Event) -> bool:
+    """Events the Judge may see in a live window.
+
+    The watcher already filters its heartbeat (and the atomic temp sibling),
+    its own log, and the _truth folder at record time, so these never reach
+    the log. This is the demo's defensive second net: a window fed to the
+    Judge must never carry liveness or bookkeeping noise, even if the
+    watcher's filter ever changes.
+    """
+    name = event.path.rsplit("/", 1)[-1]
+    if name == "watcher.jsonl":
+        return False
+    if name == HEARTBEAT_FILENAME or name.startswith(HEARTBEAT_FILENAME + "."):
+        return False
+    if "_truth" in event.path.split("/"):
+        return False
+    return True
+
+
+class _EventCursor:
+    """Exactly-once consumption of the watcher's append-only event log.
+
+    The log is append-only and never rewritten, so a count of consumed
+    events is a stable cursor. Each drain returns only the events appended
+    since the previous drain, oldest first. Nothing is ever yielded twice,
+    which is what lets the live loop judge cumulative windows without
+    double-counting.
+    """
+
+    def __init__(self, event_log: EventLog) -> None:
+        self._event_log = event_log
+        self._consumed = 0
+
+    def rewind_to_end(self) -> None:
+        """Skip everything logged so far.
+
+        Called at attack start so pre-attack day-job events are never part
+        of a live window.
+        """
+        self._consumed = len(self._event_log.read_all())
+
+    def drain(self) -> list[Event]:
+        """Events appended since the last drain, oldest first."""
+        events = self._event_log.read_all()
+        new = list(events[self._consumed :])
+        self._consumed = len(events)
+        return new
+
+
 def _await_silence(vault: Vault, timeout_seconds: float) -> WatcherLiveness:
     """Wait until the Vault's own clock calls the watcher silent.
 
@@ -160,6 +235,268 @@ def _await_silence(vault: Vault, timeout_seconds: float) -> WatcherLiveness:
         time.sleep(0.5)
         liveness = vault.check_watcher_liveness()
     return liveness
+
+
+# --- live attack orchestration ---------------------------------------------
+
+# How often the live loop drains the event log while the simulator runs.
+_LIVE_POLL_SECONDS = 0.5
+# How long to watch for post-containment writes when proving the attack
+# stopped. Long enough to exceed the watcher's poll interval, short enough
+# to keep the demo moving.
+_CONTAINMENT_PROOF_WAIT_SECONDS = 3.0
+
+
+def _kill_process_tree(pid: int) -> list[int]:
+    """SIGKILL a process and all its descendants. Returns the PIDs signaled.
+
+    A suspended (SIGSTOP) process still dies to SIGKILL, which is what lets
+    cleanup end an attack the Judge paused mid-burst. Children are killed
+    too: the recovery-killer's lingering echo shell must not survive its
+    parent.
+    """
+    import psutil
+
+    try:
+        root = psutil.Process(pid)
+    except psutil.NoSuchProcess:
+        return []
+    targets = [root] + root.children(recursive=True)
+    signaled = []
+    for target in targets:
+        try:
+            target.kill()
+            signaled.append(target.pid)
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+    return signaled
+
+
+def _process_is_stopped(pid: int) -> bool | None:
+    """True if the process exists and is suspended, False if it is running,
+    None if it is gone."""
+    import psutil
+
+    try:
+        status = psutil.Process(pid).status()
+    except psutil.NoSuchProcess:
+        return None
+    return status == psutil.STATUS_STOPPED
+
+
+def _files_modified_after(share_dir: Path, since_ts: float) -> list[str]:
+    """Files under share/ written after since_ts.
+
+    mtime is write time, not the watcher's observation time, so a late-
+    delivered event for a pre-containment write cannot false-positive
+    here. The watcher's liveness heartbeat is excluded: the agent keeps
+    writing it by design, and it is not the attack.
+    """
+    modified = []
+    for path in share_dir.rglob("*"):
+        if not path.is_file():
+            continue
+        name = path.name
+        if name == HEARTBEAT_FILENAME or name.startswith(
+            HEARTBEAT_FILENAME + "."
+        ):
+            continue
+        try:
+            if path.stat().st_mtime > since_ts:
+                modified.append(str(path))
+        except OSError:
+            continue
+    return modified
+
+
+def _judge_attack_live(
+    *,
+    simulator_argv: list[str],
+    event_log: EventLog,
+    judge: Judge,
+    share_dir: Path,
+    variant: str,
+    day_no: int,
+    settle_seconds: float,
+    say: Callable[[str], None],
+) -> dict:
+    """Run the simulator live and judge cumulative windows until INCIDENT.
+
+    The simulator is launched with Popen, not run: the Judge sees each
+    window while the attack is still in progress. Windows are cumulative
+    from attack start, so a burst spread over several drains (S4) is still
+    caught. Judging stops at the first INCIDENT, so suspension, the
+    read-only lock and the pop-up happen exactly once. Every window is
+    judged with an explicit event slice, which never updates the baseline.
+
+    Settle is applied once: after the simulator exits, one wait lets the
+    watcher's tail arrive, then a final drain and a final verdict. A very
+    fast attack that finishes before its first events are judged is still
+    caught honestly by that final drain.
+
+    Returns behavioral evidence for the report: real PIDs, timestamps and
+    counts, nothing inferred.
+    """
+    import psutil
+
+    cursor = _EventCursor(event_log)
+    cursor.rewind_to_end()
+
+    attack_start = _utcnow()
+    proc = subprocess.Popen(simulator_argv)
+    sim_pid = proc.pid
+    say(f"simulator launched live: pid {sim_pid}")
+
+    attack_run = JobRun(
+        job="simulator",
+        identity=f"simulator|{variant}|external-process",
+        started_at=attack_start,
+        finished_at=attack_start,
+        events=(),
+        sim_started_at=None,
+        day_no=day_no,
+    )
+
+    prefix: list[Event] = []
+    verdicts_judged = 0
+    incident_verdict = None
+    incident_at: datetime | None = None
+    first_event_at: datetime | None = None
+    sim_alive_before_containment: bool | None = None
+
+    def drain_new() -> bool:
+        nonlocal first_event_at
+        added = False
+        for event in cursor.drain():
+            if event.at < attack_start or not _is_judgeable(event):
+                continue
+            prefix.append(event)
+            added = True
+        if added and first_event_at is None:
+            first_event_at = prefix[0].at
+        return added
+
+    def judge_prefix():
+        nonlocal verdicts_judged
+        verdicts_judged += 1
+        return judge.verdict(attack_run, events=list(prefix))
+
+    while True:
+        if drain_new():
+            # The simulator's state right now is the "immediately before
+            # containment" evidence, if this verdict is the INCIDENT one.
+            alive_now = proc.poll() is None
+            verdict = judge_prefix()
+            say(f"live window: {len(prefix)} events -> {verdict.level}")
+            if verdict.level == INCIDENT:
+                incident_verdict = verdict
+                incident_at = _utcnow()
+                sim_alive_before_containment = alive_now
+                say(
+                    f"INCIDENT with the simulator alive: {alive_now} "
+                    f"(pid {sim_pid})"
+                )
+                break
+        if proc.poll() is not None:
+            # The simulator finished. One settle wait for the watcher's
+            # tail, a final drain, and a final verdict on the whole
+            # prefix -- this is what catches a very fast attack honestly.
+            time.sleep(settle_seconds)
+            drain_new()
+            verdict = judge_prefix()
+            say(f"final window: {len(prefix)} events -> {verdict.level}")
+            if verdict.level == INCIDENT and incident_verdict is None:
+                incident_verdict = verdict
+                incident_at = _utcnow()
+                sim_alive_before_containment = False
+            break
+        time.sleep(_LIVE_POLL_SECONDS)
+
+    attack_end = _utcnow()
+    evidence: dict = {
+        "variant": variant,
+        "simulator_pid": sim_pid,
+        "attack_start": attack_start.isoformat(),
+        "attack_end": attack_end.isoformat(),
+        "verdicts_judged": verdicts_judged,
+        "events_observed": len(prefix),
+        "level": "NORMAL",
+        "signals": [],
+        "reasons": [],
+        "actions": [],
+    }
+
+    if incident_verdict is not None:
+        assert incident_at is not None and first_event_at is not None
+        latency = (incident_at - first_event_at).total_seconds()
+        sim_stopped = _process_is_stopped(sim_pid)
+        say(
+            f"containment: simulator pid {sim_pid} "
+            f"{'suspended' if sim_stopped else 'NOT suspended'}; "
+            f"latency {latency:.1f}s; "
+            f"{len({e.path for e in prefix})} files in the window"
+        )
+        # Prove the attack stopped: a SIGSTOP'd process cannot write, so
+        # after a wait no file may have a write newer than the INCIDENT.
+        time.sleep(_CONTAINMENT_PROOF_WAIT_SECONDS)
+        written_after = _files_modified_after(
+            share_dir, incident_at.timestamp()
+        )
+        further_stopped = not written_after
+        if not further_stopped:
+            say(f"attack continued after containment: {written_after}")
+
+        evidence.update(
+            {
+                "level": incident_verdict.level,
+                "signals": [s.code for s in incident_verdict.signals],
+                "reasons": list(incident_verdict.reasons),
+                "actions": list(incident_verdict.actions),
+                "first_event_at": first_event_at.isoformat(),
+                "incident_at": incident_at.isoformat(),
+                "detection_latency_seconds": latency,
+                "files_at_incident": len({e.path for e in prefix}),
+                "simulator_alive_before_containment": (
+                    sim_alive_before_containment
+                ),
+                "simulator_stopped_after_containment": sim_stopped,
+                "further_attack_stopped": further_stopped,
+            }
+        )
+    else:
+        # No INCIDENT: the watcher-killer (or an unexpected quiet attack).
+        # The last verdict stands as the post-mortem.
+        evidence["simulator_alive_before_containment"] = False
+
+    # --- cleanup: the simulator must not survive the demo ----------------
+    killed = _kill_process_tree(sim_pid)
+    # Reap the direct child so it never becomes a zombie.
+    try:
+        proc.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        pass
+    undone = judge.undo()
+    say(f"cleanup: signaled pids {killed}; judge undo: {undone}")
+    try:
+        still_there = psutil.pid_exists(sim_pid)
+    except Exception:
+        still_there = False
+    evidence["cleanup_killed_pids"] = killed
+    evidence["cleanup_undo"] = undone
+    evidence["simulator_process_gone"] = not still_there
+    # Writability is restored by judge.undo(); prove it on one file.
+    probe = share_dir / ".nightkeep-write-probe"
+    try:
+        probe.write_text("ok")
+        probe.unlink()
+        writable = True
+    except OSError:
+        writable = False
+    evidence["share_writable_after_cleanup"] = writable
+    say(f"cleanup: simulator gone: {not still_there}; "
+        f"share writable: {writable}")
+
+    return evidence
 
 
 # --- observing job runs without touching module logic ----------------------
@@ -443,18 +780,44 @@ def run_demo(config: Config, out_dir: Path,
         say(f"watcher liveness before attack: "
             f"{'alive' if liveness_before.alive else 'SILENT'} "
             f"({liveness_before.reason})")
-        attack_start = _utcnow()
-        subprocess.run(
-            [sys.executable, "-m", "nightkeep.simulator",
-             "--variant", variant,
-             "--root", str(district_dir),
-             "--key", sim_cfg.key,
-             "--locked-extension", sim_cfg.locked_extension,
-             "--ransom-note-name", sim_cfg.ransom_note_name,
-             "--delay", str(sim_cfg.delay_between_files_seconds),
-             *simulator_extra_args],
-            check=True,
+        if variant == "recovery-killer":
+            # The recovery commands live in config; the demo path must pass
+            # them through as repeated --command arguments, or the variant
+            # would run with an empty command list and produce no S5
+            # evidence. _recovery_killer_command_args refuses that
+            # silently-broken shape outright.
+            simulator_extra_args = (
+                *simulator_extra_args,
+                *_recovery_killer_command_args(
+                    tuple(judge_cfg.recovery_commands)),
+            )
+        # Live, not blocking: the simulator runs under Popen while the
+        # Judge judges cumulative windows, stopping at the first INCIDENT.
+        # Settle is applied once, inside _judge_attack_live.
+        attack_evidence = _judge_attack_live(
+            simulator_argv=[
+                sys.executable, "-m", "nightkeep.simulator",
+                "--variant", variant,
+                "--root", str(district_dir),
+                "--key", sim_cfg.key,
+                "--locked-extension", sim_cfg.locked_extension,
+                "--ransom-note-name", sim_cfg.ransom_note_name,
+                "--delay", str(sim_cfg.delay_between_files_seconds),
+                *simulator_extra_args,
+            ],
+            event_log=event_log,
+            judge=judge,
+            share_dir=district_dir / "share",
+            variant=variant,
+            day_no=first_guard_day + clock.guard_days,
+            settle_seconds=watcher_cfg.settle_seconds,
+            say=say,
         )
+        say(f"attack verdict: {attack_evidence['level']}")
+        for reason in attack_evidence["reasons"]:
+            say(f"  why: {reason}")
+        for action in attack_evidence["actions"]:
+            say(f"  did: {action}")
         agent_terminated: bool | None = None
         if variant == "watcher-killer":
             # The killer just terminated the watcher agent itself. Wait
@@ -472,43 +835,11 @@ def run_demo(config: Config, out_dir: Path,
         # its settle window before closing the attack's event window;
         # otherwise the attack's tail could arrive after the window closed
         # and go unjudged.
-        time.sleep(watcher_cfg.settle_seconds)
-        attack_end = _utcnow()
-        attack_events = tuple(
-            _events_between(
-                event_log,
-                attack_start,
-                attack_end,
-                watcher_cfg.settle_seconds,
-            )
-        )
-        attack_run = JobRun(
-            job="simulator",
-            identity=f"simulator|{variant}|external-process",
-            started_at=attack_start,
-            finished_at=attack_end,
-            events=attack_events,
-            sim_started_at=None,
-            day_no=first_guard_day + clock.guard_days,
-        )
-        attack_verdict = judge.verdict(attack_run)
-        say(f"attack verdict: {attack_verdict.level}")
-        for reason in attack_verdict.reasons:
-            say(f"  why: {reason}")
-        for action in attack_verdict.actions:
-            say(f"  did: {action}")
         liveness_after = vault.check_watcher_liveness()
         say(f"watcher liveness after attack: "
             f"{'alive' if liveness_after.alive else 'SILENT'} "
             f"({liveness_after.reason})")
-        report["attack"] = {
-            "variant": variant,
-            "level": attack_verdict.level,
-            "signals": [s.code for s in attack_verdict.signals],
-            "reasons": list(attack_verdict.reasons),
-            "actions": list(attack_verdict.actions),
-            "events_observed": len(attack_events),
-        }
+        report["attack"] = attack_evidence
         report["watcher_liveness"] = {
             "before_attack": {
                 "alive": liveness_before.alive,

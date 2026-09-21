@@ -295,6 +295,36 @@ def test_restore_detects_a_tampered_blob(tmp_path):
     assert any("hash" in reason for reason in result.reasons)
 
 
+def test_restore_counts_five_thousand_records_from_the_restored_db(tmp_path):
+    """The 5,000/5,000 is counted from the restored SQLite file itself,
+    not copied from the manifest's metadata."""
+    share = _share(tmp_path, cards=5000)
+    vault = _vault(tmp_path, share)
+    snapshot = _pull(vault)
+
+    # The manifest's expected count was computed at pull time by actually
+    # counting the cards in the backup, not hardcoded.
+    manifest = _manifest.read_manifest(vault._root, snapshot.snapshot_id)
+    assert manifest["record_count"] == 5000
+
+    result = vault.restore(snapshot.snapshot_id)
+    assert result.ok is True
+    assert result.records_verified == 5000
+    assert result.records_expected == 5000
+    assert result.all_records_verified
+
+    # Independent proof: open the restored database file ourselves and
+    # count. If the Vault had merely copied the manifest's number, this
+    # would not match a genuinely restored 5,000-row table.
+    target = Path(result.restored_to)
+    db_path = target / "backups" / "district-backup-2026-09-20.db"
+    with sqlite3.connect(db_path) as conn:
+        integrity = conn.execute("PRAGMA integrity_check").fetchone()[0]
+        count = conn.execute("SELECT COUNT(*) FROM cards").fetchone()[0]
+    assert integrity == "ok"
+    assert count == 5000
+
+
 # -- rule 3: the server never gets the Vault --------------------------------
 
 

@@ -107,8 +107,16 @@ class Judge:
     # --- the public interface ---------------------------------------------
 
     def verdict(self, run: JobRun, events: list[Event] | None = None) -> Verdict:
-        """Judge one run. The only place a level is decided."""
-        events = list(events if events is not None else run.events)
+        """Judge one run. The only place a level is decided.
+
+        Pass `events` to judge a window or slice of the run instead of the
+        whole run. Only a verdict on the run's own events updates the
+        baseline: a slice is never "a quiet night", so judging one teaches
+        Nightkeep nothing. Live attack windows are always judged this way,
+        which keeps partial attack observations out of the baseline.
+        """
+        whole_run = events is None
+        events = list(run.events if whole_run else events)
         habit_score = self._habit.score(run)
 
         signals, readings = self._fire_signals(events)
@@ -118,9 +126,10 @@ class Judge:
         level = self._level(codes, habit_score)
         verdict = self._act(run, events, level, signals, habit_score)
 
-        if level in (NORMAL, ODD):
+        if whole_run and level in (NORMAL, ODD):
             # Only a quiet night updates what "normal" looks like. Folding an
-            # incident back in would teach Nightkeep that scrambled is fine.
+            # incident back in would teach Nightkeep that scrambled is fine,
+            # and a slice of a run is not a night at all.
             self._baseline.remember_many(
                 [(reading.path, reading.entropy) for reading in readings],
                 run.started_at,
