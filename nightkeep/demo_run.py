@@ -110,15 +110,24 @@ def _start_watcher_agent(
     )
     # The agent stamps the heartbeat before its first sleep, but importing
     # nightkeep takes a moment: wait until the first beat actually lands.
-    deadline = time.monotonic() + 30
-    while not heartbeat_path(district_dir).exists():
-        if proc.poll() is not None:
-            raise RuntimeError(
-                "the watcher agent exited before its first beat")
-        if time.monotonic() > deadline:
-            raise RuntimeError(
-                "the watcher agent never wrote its first beat")
-        time.sleep(0.1)
+    # If the wait fails, the agent must be cleaned up before the error
+    # escapes: a leaked watcher would contaminate the next run's
+    # watcher-killer/S6 behavior. _stop_watcher_agent is a no-op when the
+    # process already exited, so this is safe on both failure paths, and
+    # the original RuntimeError still propagates unchanged.
+    try:
+        deadline = time.monotonic() + 30
+        while not heartbeat_path(district_dir).exists():
+            if proc.poll() is not None:
+                raise RuntimeError(
+                    "the watcher agent exited before its first beat")
+            if time.monotonic() > deadline:
+                raise RuntimeError(
+                    "the watcher agent never wrote its first beat")
+            time.sleep(0.1)
+    except Exception:
+        _stop_watcher_agent(proc)
+        raise
     return proc
 
 
@@ -263,6 +272,13 @@ def _kill_process_tree(pid: int) -> list[int]:
     cleanup end an attack the Judge paused mid-burst. Children are killed
     too: the recovery-killer's lingering echo shell must not survive its
     parent.
+
+    Process disappearance mid-cleanup is an expected race, not an error:
+    the PID is resolved first and its tree is enumerated after, so a
+    fast-exiting process can vanish in between and psutil raises
+    NoSuchProcess from children(). Only the expected process-lifecycle
+    exceptions (NoSuchProcess, AccessDenied) are tolerated here; anything
+    else still propagates.
     """
     import psutil
 
@@ -270,7 +286,15 @@ def _kill_process_tree(pid: int) -> list[int]:
         root = psutil.Process(pid)
     except psutil.NoSuchProcess:
         return []
-    targets = [root] + root.children(recursive=True)
+    try:
+        descendants = root.children(recursive=True)
+    except (psutil.NoSuchProcess, psutil.AccessDenied):
+        # The tree vanished (or became unlistable) between PID discovery
+        # and traversal. Fall back to the root handle alone: the kill
+        # below is itself an idempotent no-op if the process is gone, so
+        # cleanup still proceeds to proc.wait() and judge.undo().
+        descendants = []
+    targets = [root] + descendants
     signaled = []
     for target in targets:
         try:
