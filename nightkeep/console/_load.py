@@ -78,7 +78,9 @@ def _safety(run: dict) -> SafetyHomePresentation:
     snapshots = run.get("snapshots", [])
     clean_copies = sum(1 for s in snapshots if s["health"] == "CLEAN")
     return SafetyHomePresentation(
+        status_badge="STATUS: NORMAL",
         protection_status="Your records are safe",
+        protection_detail="Nightkeep is watching all six night tasks.",
         protected_cards_count=f"{run['district']['ration_cards']:,}",
         fps_count=str(run["district"]["fps_count"]),
         safe_copies_count=str(clean_copies),

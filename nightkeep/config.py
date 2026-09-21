@@ -275,16 +275,6 @@ class Judge:
     entropy_floor: float
     recovery_commands: tuple[str, ...]
     canary_files: tuple[str, ...] = ()
-    trap_files: tuple[str, ...] = ()
-
-    def __post_init__(self) -> None:
-        files = self.canary_files or self.trap_files
-        object.__setattr__(self, "canary_files", files)
-        object.__setattr__(self, "trap_files", files)
-
-    @property
-    def trap_files(self) -> tuple[str, ...]:
-        return self.canary_files
 
 
 @dataclass(frozen=True)

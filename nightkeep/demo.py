@@ -162,10 +162,11 @@ def run_demo(
     )
     judge.plant_canaries()
     vault = Vault(
-        share=pds / "share", root=vault_root,
-        suspect_randomness=config.vault.suspect_entropy,
+        root=vault_root, share=pds / "share",
+        suspect_entropy=config.vault.suspect_entropy,
+        suspect_changed_fraction=config.vault.suspect_changed_fraction,
+        suspect_record_drop_fraction=config.vault.suspect_record_drop_fraction,
         restore_folder_name=config.vault.restore_folder_name,
-        expected_records=config.district.ration_cards,
     )
 
     result = DemoResult(
