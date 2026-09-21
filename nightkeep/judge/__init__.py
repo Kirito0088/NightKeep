@@ -23,6 +23,7 @@ things, never fewer.
 """
 
 from collections import Counter
+from datetime import datetime, timezone
 from pathlib import Path
 
 from nightkeep.habit import Habit
@@ -124,7 +125,13 @@ class Judge:
         codes = {signal.code for signal in tripwires}
 
         level = self._level(codes, habit_score)
-        verdict = self._act(run, events, level, signals, habit_score)
+        # The decision instant, taken here and carried on the verdict:
+        # everything after this (containment, the blocking server pop-up)
+        # must not move it, or detection latency would include a human
+        # dismissing a dialog.
+        decided_at = datetime.now(timezone.utc)
+        verdict = self._act(run, events, level, signals, habit_score,
+                            decided_at)
 
         if whole_run and level in (NORMAL, ODD):
             # Only a quiet night updates what "normal" looks like. Folding an
@@ -236,6 +243,7 @@ class Judge:
         level: str,
         signals: tuple[Signal, ...] | list[Signal],
         habit_score: HabitScore,
+        decided_at: datetime,
     ) -> Verdict:
         signals = tuple(signals)
         reasons = tuple(signal.reason for signal in signals) + habit_score.reasons
@@ -261,11 +269,18 @@ class Judge:
         else:
             actions = ["logged it"]
 
+        # Containment is done at this point; the server pop-up below is
+        # informational and (on Windows) blocks on a human. Stamping here
+        # keeps containment time honest and separate from dismissal time.
+        contained_at = datetime.now(timezone.utc)
+
         verdict = Verdict(
             level=level,
             reasons=reasons,
             actions=tuple(actions),
             signals=signals,
+            decided_at=decided_at,
+            contained_at=contained_at,
         )
         if level == INCIDENT and self._server_alerts:
             # The office computer's own pop-up, raised here on the server

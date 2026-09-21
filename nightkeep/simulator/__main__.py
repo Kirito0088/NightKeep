@@ -68,6 +68,15 @@ def main(argv: list[str] | None = None) -> int:
         default=[],
         help="recovery command text to echo (repeatable, recovery-killer only)",
     )
+    parser.add_argument(
+        "--shell-first",
+        action="store_true",
+        help=(
+            "recovery-killer only: spawn the echo shell before the "
+            "encryption burst. A test seam so S5 is observable from the "
+            "first live verdict; the real drill keeps the default order."
+        ),
+    )
     parser.add_argument("--day", type=int, default=8)
     parser.add_argument("--sim-start", default=None)
     parser.add_argument("--sim-end", default=None)
@@ -113,6 +122,7 @@ def main(argv: list[str] | None = None) -> int:
                 ransom_note_name=args.ransom_note_name,
                 delay_between_files_seconds=args.delay,
                 commands=tuple(args.command),
+                shell_first=args.shell_first,
             )
     except simulator.SimulatorRefused as exc:
         print(f"refused: {exc}", file=sys.stderr)

@@ -51,6 +51,7 @@ from nightkeep.types import (
     HEARTBEAT_FILENAME,
     INCIDENT,
     NORMAL,
+    RENAMED,
     SUSPECT,
     SUSPICIOUS,
     Event,
@@ -284,22 +285,43 @@ def _process_is_stopped(pid: int) -> bool | None:
     return status == psutil.STATUS_STOPPED
 
 
-def _files_modified_after(share_dir: Path, since_ts: float) -> list[str]:
-    """Files under share/ written after since_ts.
+# The simulator's documented boundary (nightkeep/simulator/__init__.py):
+# it never enters these top-level folders, nor any _truth folder. The
+# containment proof must cover exactly the same surface the simulator
+# could have written -- share/ alone is not enough, because the blast
+# radius is the whole demo root. Mirrored here rather than imported so
+# the simulator's public surface does not grow; a regression test pins
+# the two together.
+_PROOF_OFF_LIMIT_TOP_LEVELS = frozenset({"logs", "data", ".nightkeep-sim"})
+_PROOF_TRUTH_FOLDER = "_truth"
 
-    mtime is write time, not the watcher's observation time, so a late-
-    delivered event for a pre-containment write cannot false-positive
-    here. The watcher's liveness heartbeat is excluded: the agent keeps
-    writing it by design, and it is not the attack.
+
+def _eligible_files_modified_after(root: Path, since_ts: float) -> list[str]:
+    """Simulator-eligible files under the demo root written after since_ts.
+
+    The actual attack surface, not just share/: the simulator's _targets()
+    walks the whole demo root minus its off-limits folders. mtime is write
+    time, not the watcher's observation time, so a late-delivered event for
+    a pre-containment write cannot false-positive here. The watcher's own
+    bookkeeping is excluded: the liveness heartbeat (and its atomic temp
+    sibling) and the append-only event log keep being written by design,
+    and they are not the attack.
     """
     modified = []
-    for path in share_dir.rglob("*"):
+    for path in root.rglob("*"):
         if not path.is_file():
+            continue
+        relative = path.relative_to(root)
+        if relative.parts[0] in _PROOF_OFF_LIMIT_TOP_LEVELS:
+            continue
+        if _PROOF_TRUTH_FOLDER in relative.parts:
             continue
         name = path.name
         if name == HEARTBEAT_FILENAME or name.startswith(
             HEARTBEAT_FILENAME + "."
         ):
+            continue
+        if name == "watcher.jsonl":
             continue
         try:
             if path.stat().st_mtime > since_ts:
@@ -309,12 +331,25 @@ def _files_modified_after(share_dir: Path, since_ts: float) -> list[str]:
     return modified
 
 
+def _canonical_affected_path(event: Event) -> str:
+    """One identity per physical file, for the affected-file count.
+
+    The simulator encrypts a file in place (MODIFIED on its original path)
+    and then renames it (RENAMED to the .locked name): two events, one
+    file. The rename's original/source path is the identity. Report-only;
+    the Judge's detection never sees this.
+    """
+    if event.kind == RENAMED and event.old_path:
+        return event.old_path
+    return event.path
+
+
 def _judge_attack_live(
     *,
     simulator_argv: list[str],
     event_log: EventLog,
     judge: Judge,
-    share_dir: Path,
+    district_dir: Path,
     variant: str,
     day_no: int,
     settle_seconds: float,
@@ -333,6 +368,13 @@ def _judge_attack_live(
     watcher's tail arrive, then a final drain and a final verdict. A very
     fast attack that finishes before its first events are judged is still
     caught honestly by that final drain.
+
+    Detection latency is measured to the INCIDENT verdict's own decision
+    timestamp, stamped inside the Judge before the (on Windows, blocking)
+    server pop-up: popup dismissal can never inflate it. The containment
+    proof watches the simulator's whole eligible attack surface -- the
+    demo root minus the simulator's off-limits folders -- for writes after
+    the verdict's containment-completed timestamp.
 
     Returns behavioral evidence for the report: real PIDs, timestamps and
     counts, nothing inferred.
@@ -360,7 +402,6 @@ def _judge_attack_live(
     prefix: list[Event] = []
     verdicts_judged = 0
     incident_verdict = None
-    incident_at: datetime | None = None
     first_event_at: datetime | None = None
     sim_alive_before_containment: bool | None = None
 
@@ -390,7 +431,6 @@ def _judge_attack_live(
             say(f"live window: {len(prefix)} events -> {verdict.level}")
             if verdict.level == INCIDENT:
                 incident_verdict = verdict
-                incident_at = _utcnow()
                 sim_alive_before_containment = alive_now
                 say(
                     f"INCIDENT with the simulator alive: {alive_now} "
@@ -407,7 +447,6 @@ def _judge_attack_live(
             say(f"final window: {len(prefix)} events -> {verdict.level}")
             if verdict.level == INCIDENT and incident_verdict is None:
                 incident_verdict = verdict
-                incident_at = _utcnow()
                 sim_alive_before_containment = False
             break
         time.sleep(_LIVE_POLL_SECONDS)
@@ -427,20 +466,34 @@ def _judge_attack_live(
     }
 
     if incident_verdict is not None:
-        assert incident_at is not None and first_event_at is not None
-        latency = (incident_at - first_event_at).total_seconds()
+        # The verdict carries its own decision and containment
+        # timestamps, stamped inside the Judge before the server pop-up.
+        # Using them -- not a clock read after the verdict returns --
+        # keeps popup dismissal out of the latency, and gives the
+        # containment proof a cutoff no post-verdict step can move.
+        incident_decision_at = incident_verdict.decided_at
+        containment_completed_at = incident_verdict.contained_at
+        assert incident_decision_at is not None
+        assert containment_completed_at is not None
+        assert first_event_at is not None
+        latency = (
+            incident_decision_at - first_event_at
+        ).total_seconds()
         sim_stopped = _process_is_stopped(sim_pid)
         say(
             f"containment: simulator pid {sim_pid} "
             f"{'suspended' if sim_stopped else 'NOT suspended'}; "
             f"latency {latency:.1f}s; "
-            f"{len({e.path for e in prefix})} files in the window"
+            f"{len({_canonical_affected_path(e) for e in prefix})} "
+            "files in the window"
         )
-        # Prove the attack stopped: a SIGSTOP'd process cannot write, so
-        # after a wait no file may have a write newer than the INCIDENT.
+        # Prove the attack stopped: after containment completed, no
+        # simulator-eligible file may be written anywhere under the demo
+        # root. mtime is write time, not watch time, so a late-delivered
+        # event for a pre-containment write cannot false-positive.
         time.sleep(_CONTAINMENT_PROOF_WAIT_SECONDS)
-        written_after = _files_modified_after(
-            share_dir, incident_at.timestamp()
+        written_after = _eligible_files_modified_after(
+            district_dir, containment_completed_at.timestamp()
         )
         further_stopped = not written_after
         if not further_stopped:
@@ -453,9 +506,14 @@ def _judge_attack_live(
                 "reasons": list(incident_verdict.reasons),
                 "actions": list(incident_verdict.actions),
                 "first_event_at": first_event_at.isoformat(),
-                "incident_at": incident_at.isoformat(),
+                "incident_decision_at": incident_decision_at.isoformat(),
+                "containment_completed_at": (
+                    containment_completed_at.isoformat()
+                ),
                 "detection_latency_seconds": latency,
-                "files_at_incident": len({e.path for e in prefix}),
+                "affected_files_at_incident": len(
+                    {_canonical_affected_path(e) for e in prefix}
+                ),
                 "simulator_alive_before_containment": (
                     sim_alive_before_containment
                 ),
@@ -484,8 +542,9 @@ def _judge_attack_live(
     evidence["cleanup_killed_pids"] = killed
     evidence["cleanup_undo"] = undone
     evidence["simulator_process_gone"] = not still_there
+    evidence["cleanup_at"] = _utcnow().isoformat()
     # Writability is restored by judge.undo(); prove it on one file.
-    probe = share_dir / ".nightkeep-write-probe"
+    probe = district_dir / "share" / ".nightkeep-write-probe"
     try:
         probe.write_text("ok")
         probe.unlink()
@@ -807,7 +866,7 @@ def run_demo(config: Config, out_dir: Path,
             ],
             event_log=event_log,
             judge=judge,
-            share_dir=district_dir / "share",
+            district_dir=district_dir,
             variant=variant,
             day_no=first_guard_day + clock.guard_days,
             settle_seconds=watcher_cfg.settle_seconds,

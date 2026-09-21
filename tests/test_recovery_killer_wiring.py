@@ -2,10 +2,12 @@
 
 The audit found run_demo never passed --command, so the variant silently
 exercised no S5 evidence. These tests pin the wiring at both levels: the
-argv builder, and a real simulator subprocess launched with the exact argv
-the demo builds, judged by a real Judge on events from a real watcher
-agent. Real subprocesses throughout -- S5's process scan only means
-something against a live shell.
+argv builder, and a real simulator subprocess launched with the demo's argv
+plus the test-only --shell-first seam (the echo shell starts before the
+encryption burst, so S5 is visible in the first verdict instead of depending
+on scheduling), judged by a real Judge on events from a real watcher agent.
+Real subprocesses throughout -- S5's process scan only means something
+against a live shell.
 """
 
 from __future__ import annotations
@@ -88,7 +90,10 @@ def _start_agent(root: Path) -> subprocess.Popen:
 
 
 def _demo_simulator_argv(root: Path) -> list[str]:
-    """The exact argv run_demo builds for the recovery-killer variant."""
+    """The argv the demo builds for the recovery-killer variant, plus the
+    test-only --shell-first seam: the echo shell starts before the burst so
+    S5 evidence is present in the first live verdict instead of depending on
+    the encryption finishing first."""
     return [
         sys.executable, "-m", "nightkeep.simulator",
         "--variant", "recovery-killer",
@@ -97,6 +102,7 @@ def _demo_simulator_argv(root: Path) -> list[str]:
         "--locked-extension", ".locked",
         "--ransom-note-name", NOTE_NAME,
         "--delay", "0",
+        "--shell-first",
         *_recovery_killer_command_args(COMMANDS),
     ]
 
@@ -148,8 +154,10 @@ def test_recovery_killer_produces_s5_through_the_demo_argv():
         server_alerts=False,
     )
     try:
-        # The burst encrypts first; the note proves it finished, and the
-        # echo shell is up by then (it lingers 600 s).
+        # The echo shell starts before the burst (--shell-first), so S5
+        # evidence is already live while the encryption runs. Waiting for
+        # the ransom note still proves the burst finished, and the shell
+        # lingers 600 s, so it is up by then either way.
         deadline = time.monotonic() + 60
         notes = list(root.rglob(NOTE_NAME))
         while not notes and time.monotonic() < deadline:

@@ -459,6 +459,7 @@ def recovery_killer(
     commands: tuple[str, ...],
     encrypt_limit: int = 12,
     linger_seconds: int = 600,
+    shell_first: bool = False,
 ) -> AttackReport:
     """A short burst of encryption, then the recovery-killing echo.
 
@@ -466,9 +467,17 @@ def recovery_killer(
     The burst trips S3/S4; the lingering echo shell trips S5; together the
     verdict table calls it INCIDENT. The shell only ever echoes the command
     text: ``vssadmin`` and friends appear in an argv, never in an exec.
+
+    ``shell_first`` is a test seam, off by default: it spawns the echo
+    shell before the burst so S5 is observable from the very first live
+    verdict instead of racing the encryption burst. The default order --
+    and therefore the real drill -- is unchanged.
     Blocks until the echo shell exits (or is suspended/killed from outside).
     """
     root = guard_root(root)
+    shell = None
+    if shell_first:
+        shell = subprocess.Popen(_echo_shell_argv(commands, linger_seconds))
     report = fast_encrypt(
         root,
         key=key,
@@ -480,7 +489,9 @@ def recovery_killer(
     )
     report.variant = "recovery-killer"
 
-    process = subprocess.Popen(_echo_shell_argv(commands, linger_seconds))
+    process = shell if shell is not None else subprocess.Popen(
+        _echo_shell_argv(commands, linger_seconds)
+    )
     try:
         process.wait()
     finally:
