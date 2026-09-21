@@ -33,8 +33,8 @@ claimed. The numbers below come from one seeded 5,000-card run
 
 | # | Proof | Result on the reference run |
 |---|---|---|
-| **P1** | Weird legacy jobs raise **no** false alarms | 6 erratic jobs over 7 learning + 3 guard nights → **0** INCIDENT verdicts |
-| **P2** | A file-locking threat **is** caught fast | INCIDENT after **1** file scrambled, in **0.05 s** (target: < 50 files, < 10 s) |
+| **P1** | Weird legacy jobs raise **no** false alarms, and the odd night is shrugged off | 6 erratic jobs over 7 learning + 3 guard nights → **0** INCIDENT verdicts, and one deliberately unusual night (a big catch-up upload) reads as a harmless **ODD** |
+| **P2** | A file-locking threat **is** caught fast, and stopped | INCIDENT after **13** files, in **2.1 s**, and the scramble is halted there (target: < 50 files, < 10 s) |
 | **P3** | The backup **survives** | The scrambled copy is quarantined **SUSPECT**; the last clean copy stays **pinned** |
 | **P4** | Recovery is **proven**, not assumed | **5,000 / 5,000** ration cards verified from the clean copy, all five checks passed |
 
