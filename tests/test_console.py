@@ -373,6 +373,20 @@ def test_locked_route_has_primary_message(client):
     assert "Ration card records cannot be opened" in html
 
 
+def test_locked_route_without_incident_is_a_drill(client):
+    """Unwired /locked must not claim a live attack locked the records."""
+    response = client.get("/locked")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    assert "DEMONSTRATION DRILL" in html
+    assert "No real incident is active." in html
+    assert (
+        "The system detected an abnormal program attempting to modify "
+        "database files" not in html
+    )
+
+
 def test_locked_route_has_empty_results_table(client):
     response = client.get("/locked")
     assert response.status_code == 200
@@ -590,77 +604,67 @@ def test_alert_exact_headline_present(client):
     response = client.get("/alert")
     assert response.status_code == 200
     html = response.get_data(as_text=True)
-    assert "Someone tried to lock your files. It was stopped." in html
-    assert "STATUS: ATTACK STOPPED" in html
+    # Unwired fallback: calm and honest, never a fabricated attack.
+    assert "No incidents. Nightkeep is watching." in html
+    assert "STATUS: ALL CLEAR" in html
+    assert "STATUS: ATTACK STOPPED" not in html
+    assert "Someone tried to lock your files. It was stopped." not in html
 
 
-def test_alert_four_summary_figures_present(client):
+def test_alert_fallback_shows_no_fabricated_figures(client):
     response = client.get("/alert")
     assert response.status_code == 200
     html = response.get_data(as_text=True)
 
-    # All four documented figures must be present, value beside its label
-    for value, label in (
-        ("37", "files damaged"),
-        ("6s", "Detected in 6 seconds"),
-        ("01:20", "Clean copy from 01:20 ready"),
-        ("19", "counter entries to re-check"),
+    # No fabricated incident metrics may appear without backend state.
+    for label in (
+        "files damaged",
+        "Detected in 6 seconds",
+        "Clean copy from 01:20 ready",
+        "counter entries to re-check",
     ):
-        assert re.search(
-            rf'alert-stat-value tabular-number">{re.escape(value)}</span>\s*'
-            rf'<span class="alert-stat-label">{re.escape(label)}</span>',
-            html,
-        )
-
-    # Tabular values and labels
-    assert "37" in html
-    assert "files damaged" in html
-    assert "6s" in html
-    assert "01:20" in html
-    assert "19" in html
-    assert "counter entries to re-check" in html
+        assert label not in html
+    assert 'class="alert-stat-card"' not in html
 
 
-def test_alert_five_step_timeline_present(client):
+def test_alert_fallback_shows_no_fabricated_timeline(client):
     response = client.get("/alert")
     assert response.status_code == 200
     html = response.get_data(as_text=True)
 
     assert "Incident Timeline" in html
-    assert "Suspicious activity began" in html
-    assert "Detected in 6 seconds" in html
-    assert "37 files damaged" in html
-    assert "Clean copy from 01:20 ready" in html
-    assert "Office follow-up required" in html
+    for title in (
+        "Suspicious activity began",
+        "Detected in 6 seconds",
+        "37 files damaged",
+        "Clean copy from 01:20 ready",
+        "Office follow-up required",
+    ):
+        assert title not in html
 
     timeline_content = html.split('<ol class="timeline-list">')[1].split("</ol>")[0]
-    assert timeline_content.count('class="timeline-item"') == 5
+    assert timeline_content.count('class="timeline-item"') == 0
 
 
-def test_alert_three_action_steps_present(client):
+def test_alert_fallback_calm_action_step_present(client):
     response = client.get("/alert")
     assert response.status_code == 200
     html = response.get_data(as_text=True)
 
     assert "What to do now" in html
-    # Step 1 highlighted
-    assert "Do not restart the office computer." in html
-    assert "Restarting can wipe the evidence and can let the locking program start again." in html
-    # Step 2
-    assert "Disconnect the network cable." in html
-    assert "Keep this computer separated until the district technician arrives." in html
-    # Step 3
-    assert "Restore records using the clean copy." in html
-    assert "Safe copies are preserved on the Vault." in html
+    assert "Nothing to do." in html
+    assert "No tripwire has fired." in html
+    # The fabricated incident action steps must be gone.
+    assert "Restarting can wipe the evidence" not in html
+    assert "Restore records using the clean copy." not in html
 
 
-def test_alert_get_my_records_back_action(client):
+def test_alert_fallback_has_no_restore_cta(client):
     response = client.get("/alert")
     assert response.status_code == 200
     html = response.get_data(as_text=True)
 
-    assert "Get my records back" in html
-    assert 'href="/restore"' in html
+    assert "Get my records back" not in html
     assert '<a href="#"' not in html, "Found dead anchor href='#' in alert template"
 
 
@@ -721,8 +725,9 @@ def test_restore_clean_point_info_present(client):
     response = client.get("/restore")
     assert response.status_code == 200
     html = response.get_data(as_text=True)
-    assert "Day 9, 01:20" in html
-    assert "5,000" in html
+    # Unwired fallback: no fabricated clean point.
+    assert "No clean copy yet" in html
+    assert "Day 9, 01:20" not in html
     assert "District Supply Office, Thane" in html
 
 
@@ -747,12 +752,16 @@ def test_restore_five_verification_checks_rendered(client):
     html = response.get_data(as_text=True)
 
     assert "Safety Verification (Five Checks)" in html
-    assert "5 of 5 Verified" in html
-    assert "Every one of the 5,000 ration cards is present and readable." in html
-    assert "All database files match their safe copy from the Vault." in html
-    assert "File headers and formats are intact with zero damage." in html
-    assert "All monthly allocation files and fair price shop records parse correctly." in html
-    assert "Database internal records passed complete integrity checks." in html
+    assert "0 of 5 Verified" in html
+    assert "5 of 5 Verified" not in html
+    assert html.count(">Pending<") == 5
+    # The apostrophe renders HTML-escaped; assert the unescaped remainder.
+    assert "Every restored file" in html
+    assert "hash matches the safe copy from the Vault." in html
+    assert "Every restored file still opens as its own type." in html
+    assert "Every restored export parses as a CSV." in html
+    assert "The database backup passes its integrity check." in html
+    assert "All ration cards are present and readable." in html
 
     checks_content = html.split('<ul class="verification-checks-list">')[1].split("</ul>")[0]
     assert checks_content.count("verification-check-item") == 5
@@ -764,8 +773,8 @@ def test_restore_loss_window_advisory_present(client):
     html = response.get_data(as_text=True)
 
     assert "Loss Window Advisory" in html
-    assert "19 counter entries" in html
-    assert "19 counter entries recorded between 01:20 and the incident at 03:41 must be re-checked after restoration." in html
+    assert "The loss window cannot be measured without a clean copy." in html
+    assert "19 counter entries recorded between 01:20 and the incident at 03:41" not in html
 
 
 def test_restore_pin_field_accessible(client):
@@ -842,7 +851,9 @@ def test_server_alert_exact_copy_and_instructions(client):
 
     # Exact title and headline from mockup-log.md / CLAUDE.md
     assert '<h1 id="server-alert-title" class="server-alert-header-title">Nightkeep Security Alert</h1>' in html
-    assert "A program tried to lock your files. It was paused." in html
+    # Honest fallback: no backend state, so no claim a program was paused.
+    assert "Unusual activity was detected on the office computer." in html
+    assert "It was paused." not in html
 
     # Exact three instructions in order
     assert "Do not restart the office computer." in html
@@ -1059,8 +1070,8 @@ def test_restore_done_label_no_brackets(client):
     resp = client.get("/restore")
     html = resp.get_data(as_text=True)
     assert "[DONE]" not in html, "Placeholder text '[DONE]' found in /restore"
-    # Completed steps should still show text
-    assert "Done" in html
+    # The honest fallback has no completed steps: nothing claims to be done.
+    assert "Done" not in html
 
 
 def test_card_detail_status_badge_not_duplicated(client):

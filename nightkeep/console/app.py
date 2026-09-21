@@ -105,7 +105,9 @@ class NightTaskPresentation:
 
 @dataclass(frozen=True)
 class SafetyHomePresentation:
+    status_badge: str  # "STATUS: NORMAL" | "STATUS: UNDER REVIEW" | "STATUS: PROTECTING" | ...
     protection_status: str
+    protection_detail: str
     protected_cards_count: str
     fps_count: str
     safe_copies_count: str
@@ -176,9 +178,59 @@ class ServerAlertPresentation:
     actions: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class LockedScreenPresentation:
+    """The lock screen banner: live incident wording or drill framing.
+
+    The route renders the same illustration either way; only the banner
+    tells the truth about whether a real incident locked the records.
+    """
+
+    badge: str
+    headline: str
+    description: str
+
+
+def calm_alert() -> AlertScreenPresentation:
+    """The alert screen with no incident: nothing to show, honestly.
+
+    This is also the fallback the unwired console uses, so an accidental
+    launch without backend state can never present a fabricated attack.
+    """
+    return AlertScreenPresentation(
+        headline="No incidents. Nightkeep is watching.",
+        status_badge="STATUS: ALL CLEAR",
+        figures=(),
+        timeline=(),
+        actions=(
+            AlertActionStepPresentation(
+                number=1,
+                title="Nothing to do.",
+                detail="No tripwire has fired. The Data Safety screen shows "
+                "what the night tasks did.",
+                is_highlighted=False,
+            ),
+        ),
+    )
+
+
+# The five checks Vault.restore() runs, in its own order. Stated here once
+# so the wizard can name them before the restore runs; after it runs, the
+# real Check objects from the RestoreResult take over.
+RESTORE_CHECK_STATEMENTS = (
+    "Every restored file's hash matches the safe copy from the Vault.",
+    "Every restored file still opens as its own type.",
+    "Every restored export parses as a CSV.",
+    "The database backup passes its integrity check.",
+    "All ration cards are present and readable.",
+)
+
+
 DEFAULT_SERVER_ALERT_DATA: ServerAlertPresentation = ServerAlertPresentation(
     title="Nightkeep Security Alert",
-    headline="A program tried to lock your files. It was paused.",
+    # Honest fallback: no backend state here, so no claim that a program
+    # was paused. Matches the no-incident branch of server_alert().
+    headline="Unusual activity was detected on the office computer.",
     actions=(
         "Do not restart the office computer.",
         "Disconnect the network cable.",
@@ -188,7 +240,12 @@ DEFAULT_SERVER_ALERT_DATA: ServerAlertPresentation = ServerAlertPresentation(
 
 
 DEFAULT_SAFETY_HOME_DATA: SafetyHomePresentation = SafetyHomePresentation(
+    status_badge="STATUS: NORMAL",
     protection_status="Your records are safe",
+    protection_detail=(
+        "All 5,000 ration cards are protected and continuous monitoring is "
+        "active. Safe copies are preserved on the isolated Vault."
+    ),
     protected_cards_count="5,000",
     fps_count="50",
     safe_copies_count="24",
@@ -234,83 +291,30 @@ DEFAULT_SAFETY_HOME_DATA: SafetyHomePresentation = SafetyHomePresentation(
 )
 
 
-DEFAULT_ALERT_DATA: AlertScreenPresentation = AlertScreenPresentation(
-    headline="Someone tried to lock your files. It was stopped.",
-    status_badge="STATUS: ATTACK STOPPED",
-    figures=(
-        IncidentFigurePresentation(value="37", label="files damaged"),
-        IncidentFigurePresentation(value="6s", label="Detected in 6 seconds"),
-        IncidentFigurePresentation(value="01:20", label="Clean copy from 01:20 ready"),
-        IncidentFigurePresentation(value="19", label="counter entries to re-check"),
-    ),
-    timeline=(
-        TimelineEventPresentation(
-            time="03:41:12",
-            title="Suspicious activity began",
-            detail="An abnormal program began modifying office files.",
-        ),
-        TimelineEventPresentation(
-            time="03:41:18",
-            title="Detected in 6 seconds",
-            detail="Nightkeep detected the abnormal activity and stopped the program.",
-        ),
-        TimelineEventPresentation(
-            time="03:41:19",
-            title="37 files damaged",
-            detail="File access was locked to prevent any further damage.",
-        ),
-        TimelineEventPresentation(
-            time="03:41:20",
-            title="Clean copy from 01:20 ready",
-            detail="Safe backup preserved on the Vault remains uncorrupted and ready.",
-        ),
-        TimelineEventPresentation(
-            time="03:41:21",
-            title="Office follow-up required",
-            detail="19 counter entries recorded after the clean copy need to be re-checked.",
-        ),
-    ),
-    actions=(
-        AlertActionStepPresentation(
-            number=1,
-            title="Do not restart the office computer.",
-            detail="Restarting can wipe the evidence and can let the locking program start again.",
-            is_highlighted=True,
-        ),
-        AlertActionStepPresentation(
-            number=2,
-            title="Disconnect the network cable.",
-            detail="Keep this computer separated until the district technician arrives.",
-            is_highlighted=False,
-        ),
-        AlertActionStepPresentation(
-            number=3,
-            title="Restore records using the clean copy.",
-            detail="Safe copies are preserved on the Vault. Use the clean copy from 01:20 to restore records.",
-            is_highlighted=False,
-        ),
-    ),
-)
+DEFAULT_ALERT_DATA: AlertScreenPresentation = calm_alert()
 
 
 DEFAULT_RESTORE_DATA: RestoreWizardPresentation = RestoreWizardPresentation(
+    # Honest fallback: with no backend state there is no clean copy, no
+    # loss window and no incident to restore from. Same shape as the
+    # no-target branch of providers.restore_wizard().
     headline="Get my records back",
-    clean_point="Day 9, 01:20",
-    records_count="5,000",
-    loss_window_entries="19",
-    loss_window_detail="19 counter entries recorded between 01:20 and the incident at 03:41 must be re-checked after restoration.",
+    clean_point="No clean copy yet",
+    records_count="?",
+    loss_window_entries="?",
+    loss_window_detail="The loss window cannot be measured without a clean copy.",
     steps=(
         RestoreStepPresentation(
             step_number=1,
             title="Select clean copy",
-            description="Clean backup from Day 9, 01:20 on Vault selected.",
-            status="completed",
+            description="No clean backup is available to select.",
+            status="active",
         ),
         RestoreStepPresentation(
             step_number=2,
             title="Verify records",
-            description="All five automated integrity and safety checks passed.",
-            status="completed",
+            description="Waiting for a clean backup.",
+            status="active",
         ),
         RestoreStepPresentation(
             step_number=3,
@@ -319,32 +323,38 @@ DEFAULT_RESTORE_DATA: RestoreWizardPresentation = RestoreWizardPresentation(
             status="active",
         ),
     ),
-    checks=(
+    checks=tuple(
         VerificationCheckPresentation(
-            check_number=1,
-            statement="Every one of the 5,000 ration cards is present and readable.",
-            status="Passed",
-        ),
-        VerificationCheckPresentation(
-            check_number=2,
-            statement="All database files match their safe copy from the Vault.",
-            status="Passed",
-        ),
-        VerificationCheckPresentation(
-            check_number=3,
-            statement="File headers and formats are intact with zero damage.",
-            status="Passed",
-        ),
-        VerificationCheckPresentation(
-            check_number=4,
-            statement="All monthly allocation files and fair price shop records parse correctly.",
-            status="Passed",
-        ),
-        VerificationCheckPresentation(
-            check_number=5,
-            statement="Database internal records passed complete integrity checks.",
-            status="Passed",
-        ),
+            check_number=index,
+            statement=statement,
+            status="Pending",
+        )
+        for index, statement in enumerate(RESTORE_CHECK_STATEMENTS, start=1)
+    ),
+)
+
+
+DRILL_LOCKED_DATA: LockedScreenPresentation = LockedScreenPresentation(
+    # The drill illustration: /locked with no real incident behind it.
+    badge="DEMONSTRATION DRILL",
+    headline="How the lock screen looks during an attack (drill)",
+    description=(
+        "No real incident is active. This screen illustrates what the "
+        "office sees when Nightkeep locks the records after stopping an "
+        "attack."
+    ),
+)
+
+
+REAL_LOCKED_DATA: LockedScreenPresentation = LockedScreenPresentation(
+    # A real INCIDENT locked the records: the previous static copy, now
+    # gated on backend state instead of asserted unconditionally.
+    badge="SYSTEM NOTICE",
+    headline="Ration card records cannot be opened",
+    description=(
+        "The system detected an abnormal program attempting to modify "
+        "database files. Records have been locked in place to protect "
+        "beneficiary data."
     ),
 )
 
@@ -573,6 +583,7 @@ def create_app(
     pds: PdsProvider | None = None,
     restore_wizard_data: RestoreWizardPresentation | None = None,
     restore_service: RestoreService | None = None,
+    locked_data: LockedScreenPresentation | None = None,
 ) -> Flask:
     """Create and configure the Nightkeep console Flask application.
 
@@ -580,8 +591,10 @@ def create_app(
     no real backend state is wired in. `pds` answers search/detail from the
     real district database; `restore_wizard_data` is the pre-restore wizard
     built from the real vault state; `restore_service` unlocks the POST
-    /restore route behind the supervisor PIN. All three are read-only from
-    the routes' point of view: they call the provider, they never decide.
+    /restore route behind the supervisor PIN; `locked_data` decides whether
+    /locked shows a live lock or a drill illustration. All are read-only
+    from the routes' point of view: they call the provider, they never
+    decide.
     """
     app = Flask(__name__)
     records_pool = sample_records if sample_records is not None else DEFAULT_SAMPLE_RECORDS
@@ -593,6 +606,7 @@ def create_app(
     server_alert_pool = (
         server_alert_data if server_alert_data is not None else DEFAULT_SERVER_ALERT_DATA
     )
+    locked_pool = locked_data if locked_data is not None else DRILL_LOCKED_DATA
 
     @app.route("/", methods=["GET"])
     @app.route("/search", methods=["GET"])
@@ -679,6 +693,7 @@ def create_app(
     def pds_locked() -> str:
         return render_template(
             "locked.html",
+            locked=locked_pool,
             district_figures=figures,
             talukas=c.TALUKAS,
             schemes=c.SCHEMES,

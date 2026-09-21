@@ -12,15 +12,19 @@ once and hands it over. Standalone, `python -m nightkeep.console
 With a config, the console reads the real runtime state: the district
 database for search and detail, the habit cards for the night tasks, the
 vault for safe copies and the restore, and the orchestrator's report for
-what the judge decided. Without one it keeps its hardcoded demo values so
-it still starts and can be looked at.
+what the judge decided. Without one it shows sample records for browsing
+and calm, honest screens: no fabricated incident, ever.
 """
 
 import argparse
 from pathlib import Path
 
 from nightkeep.config import Config, load_config
-from nightkeep.console.app import create_app
+from nightkeep.console.app import (
+    DRILL_LOCKED_DATA,
+    REAL_LOCKED_DATA,
+    create_app,
+)
 from nightkeep.console.providers import (
     alert_presentation,
     build_runtime,
@@ -58,9 +62,12 @@ def create_console_app(
         )
 
     incident = runtime.incident
-    if incident is not None and runtime.vault is not None:
+    # The alert screens react to INCIDENT or SUSPICIOUS; only a real
+    # INCIDENT picks the restore target and gates the lock screen.
+    alert_record = runtime.alert_record
+    if alert_record is not None and runtime.vault is not None:
         kwargs["alert_data"] = alert_presentation(
-            incident, runtime.vault, runtime.pds
+            alert_record, runtime.vault, runtime.pds
         )
     else:
         kwargs["alert_data"] = calm_alert()
@@ -70,7 +77,10 @@ def create_console_app(
             runtime.vault, incident, runtime.pds
         )
 
-    kwargs["server_alert_data"] = server_alert(incident)
+    kwargs["server_alert_data"] = server_alert(alert_record)
+    kwargs["locked_data"] = (
+        REAL_LOCKED_DATA if incident is not None else DRILL_LOCKED_DATA
+    )
     kwargs["district_figures"] = district_figures
     kwargs["restore_service"] = restore_service_for(runtime)
 

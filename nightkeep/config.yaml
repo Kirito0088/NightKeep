@@ -145,9 +145,12 @@ judge:
     - "bcdedit /set recoveryenabled no"
   # S2: decoy files that look like real exports. No legitimate job touches
   # them. Reading one is fine; changing, renaming or deleting one is not.
+  # Both live inside share/, the one folder the PDS server shares with the
+  # Vault (ADR-0007): a trap outside it would not be covered by the Vault
+  # pull, the Judge's read-only containment, or the restore proof.
   trap_files:
     - "share/exports/epos_day_end_20240101.csv"
-    - "allocations/fps_quota_2024_01.csv"
+    - "share/allocations/fps_quota_2024_01.csv"
 
 vault:
   # The Vault opens every connection, on its own clock. One pull an hour of

@@ -23,6 +23,7 @@ things, never fewer.
 """
 
 from collections import Counter
+from datetime import datetime, timezone
 from pathlib import Path
 
 from nightkeep.habit import Habit
@@ -107,8 +108,16 @@ class Judge:
     # --- the public interface ---------------------------------------------
 
     def verdict(self, run: JobRun, events: list[Event] | None = None) -> Verdict:
-        """Judge one run. The only place a level is decided."""
-        events = list(events if events is not None else run.events)
+        """Judge one run. The only place a level is decided.
+
+        Pass `events` to judge a window or slice of the run instead of the
+        whole run. Only a verdict on the run's own events updates the
+        baseline: a slice is never "a quiet night", so judging one teaches
+        Nightkeep nothing. Live attack windows are always judged this way,
+        which keeps partial attack observations out of the baseline.
+        """
+        whole_run = events is None
+        events = list(run.events if whole_run else events)
         habit_score = self._habit.score(run)
 
         signals, readings = self._fire_signals(events)
@@ -116,11 +125,18 @@ class Judge:
         codes = {signal.code for signal in tripwires}
 
         level = self._level(codes, habit_score)
-        verdict = self._act(run, events, level, signals, habit_score)
+        # The decision instant, taken here and carried on the verdict:
+        # everything after this (containment, the blocking server pop-up)
+        # must not move it, or detection latency would include a human
+        # dismissing a dialog.
+        decided_at = datetime.now(timezone.utc)
+        verdict = self._act(run, events, level, signals, habit_score,
+                            decided_at)
 
-        if level in (NORMAL, ODD):
+        if whole_run and level in (NORMAL, ODD):
             # Only a quiet night updates what "normal" looks like. Folding an
-            # incident back in would teach Nightkeep that scrambled is fine.
+            # incident back in would teach Nightkeep that scrambled is fine,
+            # and a slice of a run is not a night at all.
             self._baseline.remember_many(
                 [(reading.path, reading.entropy) for reading in readings],
                 run.started_at,
@@ -227,6 +243,7 @@ class Judge:
         level: str,
         signals: tuple[Signal, ...] | list[Signal],
         habit_score: HabitScore,
+        decided_at: datetime,
     ) -> Verdict:
         signals = tuple(signals)
         reasons = tuple(signal.reason for signal in signals) + habit_score.reasons
@@ -252,11 +269,18 @@ class Judge:
         else:
             actions = ["logged it"]
 
+        # Containment is done at this point; the server pop-up below is
+        # informational and (on Windows) blocks on a human. Stamping here
+        # keeps containment time honest and separate from dismissal time.
+        contained_at = datetime.now(timezone.utc)
+
         verdict = Verdict(
             level=level,
             reasons=reasons,
             actions=tuple(actions),
             signals=signals,
+            decided_at=decided_at,
+            contained_at=contained_at,
         )
         if level == INCIDENT and self._server_alerts:
             # The office computer's own pop-up, raised here on the server

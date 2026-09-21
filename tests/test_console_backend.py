@@ -6,21 +6,32 @@ mock copy: every value rendered comes from a module's own public API.
 """
 
 import csv
+import json
 import os
 import sqlite3
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
 
 from nightkeep.config import District, Span
-from nightkeep.console.app import create_app
+from nightkeep.console.app import (
+    DEFAULT_ALERT_DATA,
+    DEFAULT_RESTORE_DATA,
+    DEFAULT_SERVER_ALERT_DATA,
+    DRILL_LOCKED_DATA,
+    REAL_LOCKED_DATA,
+    create_app,
+)
 from nightkeep.console.providers import (
     PdsProvider,
     PinRejected,
     RestoreService,
+    VerdictRecord,
     alert_presentation,
     calm_alert,
+    first_attention,
     first_incident,
     habit_tasks,
     newest_clean_before,
@@ -35,7 +46,15 @@ from nightkeep.console.providers import (
 from nightkeep.habit import Habit
 from nightkeep.judge import Judge
 from nightkeep.mock_pds import build_district
-from nightkeep.types import INCIDENT, MODIFIED, Event, JobRun
+from nightkeep.types import (
+    CLEAN,
+    HEARTBEAT_FILENAME,
+    INCIDENT,
+    MODIFIED,
+    SUSPICIOUS,
+    Event,
+    JobRun,
+)
 from nightkeep.vault import Vault
 
 SMALL = District(
@@ -612,3 +631,267 @@ def test_create_console_app_without_a_district_keeps_demo_values():
 
     assert client.get("/search").status_code == 200
     assert client.get("/restore").status_code == 200
+
+
+# --- Phase 2B: SUSPICIOUS + Protect-mode presentation ----------------------------
+
+
+def _wait_for(condition, what, timeout=30.0):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if condition():
+            return
+        time.sleep(0.2)
+    raise AssertionError(f"timed out waiting for {what}")
+
+
+def _suspicious_record() -> VerdictRecord:
+    at = DAY + timedelta(days=8)
+    return VerdictRecord(
+        job="simulator",
+        day_no=None,
+        level=SUSPICIOUS,
+        signals=("S5",),
+        signal_titles=("Recovery-killing command",),
+        reasons=("recovery command text seen in a shell command line",),
+        actions=("flagged for review",),
+        started_at=at,
+        finished_at=at + timedelta(seconds=30),
+    )
+
+
+def test_first_attention_finds_suspicious_without_an_incident():
+    record = _suspicious_record()
+
+    assert first_attention((record,)) is record
+    # The restore path still hangs off the first real INCIDENT only.
+    assert first_incident((record,)) is None
+
+
+def test_first_attention_prefers_the_first_incident(tmp_path):
+    incident = _incident_record(tmp_path)
+    suspicious = _suspicious_record()
+
+    assert first_attention((suspicious, incident)) is suspicious
+    assert first_attention((incident, suspicious)) is incident
+    assert first_attention(()) is None
+
+
+def test_suspicious_alert_presentation_is_under_review(tmp_path):
+    district_dir = _district(tmp_path)
+    share = _share_with_backup(district_dir)
+    vault = _vault(tmp_path, share)
+    vault.pull(taken_at=DAY)
+    record = _suspicious_record()
+
+    alert = alert_presentation(
+        record, vault, PdsProvider(district_dir / "data" / "district.db")
+    )
+
+    assert alert.status_badge == "STATUS: UNDER REVIEW"
+    assert alert.headline == "Something unusual is happening to your files."
+    assert "ATTACK STOPPED" not in alert.status_badge
+    # SUSPICIOUS was flagged, never stopped: the timeline must not claim it.
+    assert not any(event.title == "Attack stopped" for event in alert.timeline)
+    assert any(event.title == "Flagged for review" for event in alert.timeline)
+
+
+def test_suspicious_verdict_reaches_the_alert_route(tmp_path):
+    district_dir = _district(tmp_path)
+    share = _share_with_backup(district_dir)
+    vault = _vault(tmp_path, share)
+    vault.pull(taken_at=DAY)
+    pds = PdsProvider(district_dir / "data" / "district.db")
+    record = _suspicious_record()
+
+    app = create_app(
+        district_figures=pds.district_figures(),
+        pds=pds,
+        alert_data=alert_presentation(record, vault, pds),
+        server_alert_data=server_alert(record),
+    )
+    html = app.test_client().get("/alert").get_data(as_text=True)
+
+    assert "STATUS: UNDER REVIEW" in html
+    assert "ATTACK STOPPED" not in html
+
+
+def test_suspicious_only_report_stays_under_review_end_to_end(tmp_path):
+    from nightkeep.config import load_config
+    from nightkeep.console.__main__ import create_console_app
+
+    district_dir = _district(tmp_path)
+    share = _share_with_backup(district_dir)
+    vault = _vault(tmp_path, share)
+    vault.pull(taken_at=DAY)
+    _teach(_habit_in_district(district_dir))
+
+    reports = district_dir / "reports"
+    (reports / "demo_run.json").write_text(
+        json.dumps(
+            {
+                "verdicts": [
+                    {
+                        "job": "simulator",
+                        "day": None,
+                        "level": "SUSPICIOUS",
+                        "signals": ["S5"],
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    config = load_config(Path("nightkeep/config.yaml"))
+    app = create_console_app(
+        config, district_dir=district_dir, vault_dir=tmp_path / "vault"
+    )
+    client = app.test_client()
+
+    alert = client.get("/alert").get_data(as_text=True)
+    assert "STATUS: UNDER REVIEW" in alert
+    assert "STATUS: ALL CLEAR" not in alert
+    assert "ATTACK STOPPED" not in alert
+
+    popup = client.get("/server-alert").get_data(as_text=True)
+    assert "It was paused." not in popup
+
+
+def test_safety_home_surfaces_suspicious_verdict(tmp_path):
+    district_dir = _district(tmp_path)
+    share = _share_with_backup(district_dir)
+    vault = _vault(tmp_path, share)
+    vault.pull(taken_at=DAY)
+    habit = _habit(tmp_path)
+    _teach(habit)
+    pds = PdsProvider(district_dir / "data" / "district.db")
+
+    safety = safety_home(
+        habit, vault, pds.district_figures(), (_suspicious_record(),)
+    )
+
+    assert safety.status_badge == "STATUS: UNDER REVIEW"
+    assert "under review" in safety.protection_status
+    assert "Your records are safe" not in safety.protection_status
+
+
+def test_safety_home_normal_stays_normal(tmp_path):
+    district_dir = _district(tmp_path)
+    share = _share_with_backup(district_dir)
+    vault = _vault(tmp_path, share)
+    vault.pull(taken_at=DAY)
+    habit = _habit(tmp_path)
+    _teach(habit)
+    pds = PdsProvider(district_dir / "data" / "district.db")
+
+    safety = safety_home(habit, vault, pds.district_figures(), ())
+
+    assert safety.status_badge == "STATUS: NORMAL"
+    assert safety.protection_status == "Your records are safe"
+
+
+def test_safety_home_shows_protect_mode_without_touching_snapshot_health(
+    tmp_path,
+):
+    district_dir = _district(tmp_path)
+    share = _share_with_backup(district_dir)
+    vault = _vault(tmp_path, share)
+    baseline = vault.pull(taken_at=DAY)
+    assert baseline.health == CLEAN
+    habit = _habit(tmp_path)
+    _teach(habit)
+    pds = PdsProvider(district_dir / "data" / "district.db")
+
+    health_before = [(s.snapshot_id, s.health) for s in vault.snapshots()]
+
+    # S6 without a subprocess: a stale heartbeat the monitor reads as silence.
+    stale = (datetime.now(timezone.utc) - timedelta(seconds=10)).isoformat()
+    (share / HEARTBEAT_FILENAME).write_text(
+        json.dumps({"written_at": stale, "pid": 99999}), encoding="utf-8"
+    )
+    vault.start_liveness_monitor()
+    try:
+        _wait_for(
+            lambda: vault.protect_mode,
+            what="the vault to enter Protect mode",
+        )
+
+        safety = safety_home(habit, vault, pds.district_figures(), ())
+
+        assert safety.status_badge == "STATUS: PROTECTING"
+        assert "protecting your records" in safety.protection_status
+
+        # Presenting Protect mode must not rewrite data health: the
+        # snapshots stay exactly as the Vault assessed them.
+        health_after = [(s.snapshot_id, s.health) for s in vault.snapshots()]
+        assert health_after == health_before
+        assert all(health == CLEAN for _, health in health_after)
+    finally:
+        vault.stop_liveness_monitor()
+
+
+def test_safety_route_renders_protect_mode(tmp_path):
+    district_dir = _district(tmp_path)
+    share = _share_with_backup(district_dir)
+    vault = _vault(tmp_path, share)
+    vault.pull(taken_at=DAY)
+    habit = _habit(tmp_path)
+    _teach(habit)
+    pds = PdsProvider(district_dir / "data" / "district.db")
+
+    stale = (datetime.now(timezone.utc) - timedelta(seconds=10)).isoformat()
+    (share / HEARTBEAT_FILENAME).write_text(
+        json.dumps({"written_at": stale, "pid": 99999}), encoding="utf-8"
+    )
+    vault.start_liveness_monitor()
+    try:
+        _wait_for(
+            lambda: vault.protect_mode,
+            what="the vault to enter Protect mode",
+        )
+        app = create_app(
+            safety_home_data=safety_home(
+                habit, vault, pds.district_figures(), ()
+            )
+        )
+        html = app.test_client().get("/safety").get_data(as_text=True)
+
+        assert "STATUS: PROTECTING" in html
+        assert "protecting your records" in html
+        assert "STATUS: NORMAL" not in html
+    finally:
+        vault.stop_liveness_monitor()
+
+
+# --- Phase 2B: honest fallback defaults -------------------------------------------
+
+
+def test_fallback_defaults_claim_no_attack():
+    assert DEFAULT_ALERT_DATA.status_badge == "STATUS: ALL CLEAR"
+    assert "stopped" not in DEFAULT_ALERT_DATA.headline.lower()
+    assert "paused" not in DEFAULT_SERVER_ALERT_DATA.headline.lower()
+    assert "ATTACK STOPPED" not in DEFAULT_ALERT_DATA.status_badge
+    assert DEFAULT_RESTORE_DATA.clean_point == "No clean copy yet"
+    assert "incident at" not in DEFAULT_RESTORE_DATA.loss_window_detail
+
+
+def test_locked_route_is_a_drill_by_default():
+    html = create_app().test_client().get("/locked").get_data(as_text=True)
+
+    assert "DEMONSTRATION DRILL" in html
+    assert "No real incident is active." in html
+
+
+def test_locked_route_shows_live_copy_with_a_real_incident():
+    html = (
+        create_app(locked_data=REAL_LOCKED_DATA)
+        .test_client()
+        .get("/locked")
+        .get_data(as_text=True)
+    )
+
+    assert "SYSTEM NOTICE" in html
+    assert "Ration card records cannot be opened" in html
+    assert "detected an abnormal program" in html
+    assert "DEMONSTRATION DRILL" not in html

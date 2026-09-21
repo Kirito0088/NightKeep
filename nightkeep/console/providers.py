@@ -29,6 +29,7 @@ from pathlib import Path
 from typing import Mapping
 
 from nightkeep.console.app import (
+    RESTORE_CHECK_STATEMENTS,
     AlertActionStepPresentation,
     AlertScreenPresentation,
     CardDetailPresentation,
@@ -44,6 +45,7 @@ from nightkeep.console.app import (
     TimelineEventPresentation,
     TransactionPresentation,
     VerificationCheckPresentation,
+    calm_alert,
 )
 from nightkeep.habit import Habit, open_habit
 from nightkeep.mock_pds import conventions as c
@@ -75,17 +77,6 @@ JOB_LABELS = {
     "fix_dat": "Data format maintenance",
     "operator_activity": "Counter clerk entries",
 }
-
-# The five checks Vault.restore() runs, in its own order. Stated here once
-# so the wizard can name them before the restore runs; after it runs, the
-# real Check objects from the RestoreResult take over.
-RESTORE_CHECK_STATEMENTS = (
-    "Every restored file's hash matches the safe copy from the Vault.",
-    "Every restored file still opens as its own type.",
-    "Every restored export parses as a CSV.",
-    "The database backup passes its integrity check.",
-    "All ration cards are present and readable.",
-)
 
 
 # --- verdict records -------------------------------------------------------
@@ -182,6 +173,21 @@ def first_incident(
     """The first INCIDENT, if any. The alert and restore screens hang off it."""
     for record in records:
         if record.level == INCIDENT:
+            return record
+    return None
+
+
+def first_attention(
+    records: tuple[VerdictRecord, ...],
+) -> VerdictRecord | None:
+    """The first record that deserves an alert screen: INCIDENT or SUSPICIOUS.
+
+    The restore path still hangs off first_incident(): only a real
+    INCIDENT picks the restore target. The alert and server-alert screens
+    use this, so a SUSPICIOUS verdict is not silently shown as all-clear.
+    """
+    for record in records:
+        if record.level in (INCIDENT, SUSPICIOUS):
             return record
     return None
 
@@ -544,26 +550,69 @@ def safety_home(
     district_figures: dict[str, str],
     verdicts: tuple[VerdictRecord, ...] = (),
 ) -> SafetyHomePresentation:
-    """The Data Safety screen from the real habit cards and vault state."""
+    """The Data Safety screen from the real habit cards and vault state.
+
+    Read-only: `vault.protect_mode` is the Vault's own verdict state, and
+    Snapshot.health is left untouched -- a SUSPICIOUS Vault verdict says
+    nothing about the data, only about the protection posture.
+    """
     snapshots = vault.snapshots()
     clean = [s for s in snapshots if s.is_clean_point]
     suspect = [s for s in snapshots if s.health == "SUSPECT"]
     latest_clean = clean[-1] if clean else None
 
-    if suspect and (not latest_clean or suspect[-1].taken_at > latest_clean.taken_at):
+    protect_mode = bool(getattr(vault, "protect_mode", False))
+    has_suspicious = any(record.level == SUSPICIOUS for record in verdicts)
+
+    if protect_mode:
+        status_badge = "STATUS: PROTECTING"
+        protection_status = (
+            "Attention needed: Nightkeep is protecting your records"
+        )
+        protection_detail = (
+            "The Vault is holding the last clean recovery point while the "
+            "unusual activity is checked. Restore remains available from "
+            "the clean copy."
+        )
+    elif suspect and (
+        not latest_clean or suspect[-1].taken_at > latest_clean.taken_at
+    ):
+        status_badge = "STATUS: ATTENTION"
         protection_status = (
             "Attention needed: the latest safe copy looks suspicious"
         )
+        protection_detail = (
+            "The newest backup failed the Vault's health check. The last "
+            "clean copy is still preserved and ready."
+        )
+    elif has_suspicious:
+        status_badge = "STATUS: UNDER REVIEW"
+        protection_status = (
+            "Attention needed: unusual activity is under review"
+        )
+        protection_detail = (
+            "Nightkeep flagged unusual activity for review. Nothing is "
+            "blocked; the Incident Alert screen shows what was flagged."
+        )
     elif latest_clean:
+        status_badge = "STATUS: NORMAL"
         protection_status = "Your records are safe"
+        protection_detail = (
+            "All 5,000 ration cards are protected and continuous monitoring "
+            "is active. Safe copies are preserved on the isolated Vault."
+        )
     else:
+        status_badge = "STATUS: NORMAL"
         protection_status = "No safe copies yet"
+        protection_detail = "The Vault has not taken a clean backup yet."
 
     clean_point = (
         _snapshot_label(latest_clean) if latest_clean else "No clean copy yet"
     )
     return SafetyHomePresentation(
+        status_badge=status_badge,
         protection_status=protection_status,
+        protection_detail=protection_detail,
         protected_cards_count=district_figures.get("ration_cards", "?"),
         fps_count=district_figures.get("fps_count", "?"),
         safe_copies_count=str(len(snapshots)),
@@ -789,13 +838,27 @@ def alert_presentation(
             )
         )
     if incident.finished_at is not None:
+        # INCIDENT means the attack was stopped; SUSPICIOUS only means it
+        # was flagged, so the timeline must not claim a stop happened.
+        decision_title = (
+            "Attack stopped"
+            if incident.level == INCIDENT
+            else "Flagged for review"
+        )
+        decision_detail = (
+            "; ".join(incident.actions)
+            if incident.actions
+            else (
+                "Nightkeep stopped the program."
+                if incident.level == INCIDENT
+                else "Nightkeep flagged this activity for review."
+            )
+        )
         timeline.append(
             TimelineEventPresentation(
                 time=incident.finished_at.strftime("%H:%M:%S"),
-                title="Attack stopped",
-                detail="; ".join(incident.actions)
-                if incident.actions
-                else "Nightkeep stopped the program.",
+                title=decision_title,
+                detail=decision_detail,
             )
         )
     if suspect is not None:
@@ -858,27 +921,13 @@ def alert_presentation(
     )
 
 
-def calm_alert() -> AlertScreenPresentation:
-    """The alert screen with no incident: nothing to show, honestly."""
-    return AlertScreenPresentation(
-        headline="No incidents. Nightkeep is watching.",
-        status_badge="STATUS: ALL CLEAR",
-        figures=(),
-        timeline=(),
-        actions=(
-            AlertActionStepPresentation(
-                number=1,
-                title="Nothing to do.",
-                detail="No tripwire has fired. The Data Safety screen shows "
-                "what the night tasks did.",
-                is_highlighted=False,
-            ),
-        ),
-    )
-
-
 def server_alert(incident: VerdictRecord | None) -> ServerAlertPresentation:
-    """The office computer's pop-up, shown when a real incident fired."""
+    """The office computer's pop-up.
+
+    Says "paused" only when a real INCIDENT verdict is behind it -- the
+    same honesty rule as the demo orchestrator's alert_for(): no incident
+    state, no pause claim.
+    """
     return ServerAlertPresentation(
         title="Nightkeep Security Alert",
         headline=(
@@ -950,6 +999,11 @@ class ConsoleRuntime:
     @property
     def incident(self) -> VerdictRecord | None:
         return first_incident(self.verdicts)
+
+    @property
+    def alert_record(self) -> VerdictRecord | None:
+        """The first INCIDENT or SUSPICIOUS record, for the alert screens."""
+        return first_attention(self.verdicts)
 
 
 def build_runtime(

@@ -111,6 +111,10 @@ def undo(taken: Taken) -> list[str]:
     if restored:
         undone.append(f"unlocked the records folder ({restored:,} files)")
 
+    # The taken is now empty: the next incident starts with a clean slate
+    # instead of re-reporting these actions.
+    taken.descriptions.clear()
+
     return undone
 
 
