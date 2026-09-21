@@ -129,6 +129,30 @@ class Judge:
         self._history.append((run, verdict))
         return verdict
 
+    def would_incident(
+        self, run: JobRun, events: list[Event] | None = None
+    ) -> tuple[bool, tuple[str, ...]]:
+        """Read-only: is this run an INCIDENT yet, and on which tripwires?
+
+        Acts on nothing, learns nothing, records nothing, and leaves the
+        habit database untouched (it scores against the run's existing card,
+        which is a read). A polling loop watching a scramble unfold calls
+        this after each file, so it can say how many files were touched
+        before the line was crossed without committing to the irreversible
+        verdict on every poll. The real `verdict()` is called once, when it
+        is time to actually pause.
+
+        The live process scan is skipped here on purpose: it costs half a
+        second, S5 also reads its text out of files, and a loop that paid
+        that cost per file would measure its own slowness. `verdict()` still
+        runs the full scan when it commits.
+        """
+        events = list(events if events is not None else run.events)
+        signals, _ = self._fire_signals(events, scan_processes=False)
+        codes = {signal.code for signal in signals if signal.is_tripwire}
+        level = self._level(codes, self._habit.score(run))
+        return level == INCIDENT, tuple(sorted(codes))
+
     def undo(self) -> list[str]:
         """Resume what was paused and unlock what was locked."""
         return _actions.undo(self._taken)
@@ -166,7 +190,7 @@ class Judge:
     # --- firing the signals -------------------------------------------------
 
     def _fire_signals(
-        self, events: list[Event]
+        self, events: list[Event], scan_processes: bool = True
     ) -> tuple[list[Signal], list[_signals.Reading]]:
         signals: list[Signal] = []
 
@@ -187,8 +211,12 @@ class Judge:
         if renames:
             signals.append(renames)
 
+        # The live process scan is the one part that costs real time. A
+        # read-only poll skips it (S5's file-borne text is still checked);
+        # a committing verdict pays for it.
+        command_lines = self._running_command_lines() if scan_processes else ()
         killer = _signals.recovery_killer(
-            events, self.root, self._recovery_commands, self._running_command_lines()
+            events, self.root, self._recovery_commands, command_lines
         )
         if killer:
             signals.append(killer)

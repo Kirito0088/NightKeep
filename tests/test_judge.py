@@ -440,3 +440,55 @@ def test_judge_never_opens_the_truth_log(judge, habit, root):
     # Nothing was read, so nothing can have been judged from it.
     assert not judge._baseline.knows("logs/_truth/nightly_export.jsonl")
     assert verdict.level in (NORMAL, ODD)
+
+
+# --- would_incident: read-only detection for the live poll -----------------
+
+
+def test_would_incident_agrees_with_verdict_on_a_rename_burst(judge, habit):
+    """The poll and the real verdict must reach the same INCIDENT."""
+    teach_quiet_nights(habit)
+    events = [
+        Event(path=f"data/card_{n}.csv.locked", kind=RENAMED, at=AT,
+              old_path=f"data/card_{n}.csv", size=900, pid=4242)
+        for n in range(4000)
+    ]
+    run = job_run(events)
+
+    incident, codes = judge.would_incident(run, events)
+
+    assert incident is True
+    assert "S4" in codes
+
+
+def test_would_incident_is_false_before_the_burst_threshold(judge, habit):
+    """Nine renames is not yet a burst, so the poll must not call it early."""
+    teach_quiet_nights(habit)
+    events = [
+        Event(path=f"data/card_{n}.csv.locked", kind=RENAMED, at=AT,
+              old_path=f"data/card_{n}.csv", size=900, pid=4242)
+        for n in range(9)
+    ]
+    incident, _ = judge.would_incident(job_run(events), events)
+
+    assert incident is False
+
+
+def test_would_incident_changes_nothing(judge, habit, root):
+    """Read-only means read-only: no history, no baseline, no habit rows."""
+    teach_quiet_nights(habit)
+    events = [
+        Event(path=f"data/card_{n}.csv.locked", kind=RENAMED, at=AT,
+              old_path=f"data/card_{n}.csv", size=900, pid=4242)
+        for n in range(4000)
+    ]
+    run = job_run(events)
+    before_runs = habit.run_count("nightly_export")
+    before_history = len(judge.history())
+
+    judge.would_incident(run, events)
+    judge.would_incident(run, events)
+
+    assert judge.history() == [] or len(judge.history()) == before_history
+    assert habit.run_count("nightly_export") == before_runs
+    assert not judge._baseline.knows("data/card_0.csv.locked")
