@@ -137,6 +137,21 @@ def test_card_detail_reads_the_real_district(demo_district):
     assert "aadhaar" not in detail.__dict__  # no Aadhaar number anywhere
 
 
+def test_load_works_from_a_relative_district_path(tmp_path, monkeypatch):
+    """The console may be started with a relative demo path; loading must cope.
+
+    The read-only SQLite URI needs an absolute path, so the loader resolves
+    before building it. This is the regression test for that.
+    """
+    build_district(20260922, DISTRICT, tmp_path / "pds")
+    monkeypatch.chdir(tmp_path)
+
+    kwargs = load(Path("pds"))
+
+    assert len(kwargs["sample_records"]) == 25
+    assert kwargs["card_details"].get(kwargs["sample_records"][0].card_no) is not None
+
+
 def test_no_console_screen_carries_an_em_dash_on_a_real_run(demo_district):
     app = create_app(**load(demo_district))
     client = app.test_client()

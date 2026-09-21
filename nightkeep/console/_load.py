@@ -221,7 +221,7 @@ def _clean_point_when(run: dict) -> str:
 
 
 def _from_district(db_path: Path) -> tuple:
-    connection = sqlite3.connect(f"{Path(db_path).as_uri()}?mode=ro", uri=True)
+    connection = sqlite3.connect(f"{Path(db_path).resolve().as_uri()}?mode=ro", uri=True)
     connection.row_factory = sqlite3.Row
     try:
         records = _records(connection)
@@ -273,7 +273,7 @@ class _CardDetails:
         self._db_path = Path(db_path)
 
     def get(self, card_no: str) -> CardDetailPresentation | None:
-        connection = sqlite3.connect(f"{self._db_path.as_uri()}?mode=ro", uri=True)
+        connection = sqlite3.connect(f"{self._db_path.resolve().as_uri()}?mode=ro", uri=True)
         connection.row_factory = sqlite3.Row
         try:
             card = connection.execute(
