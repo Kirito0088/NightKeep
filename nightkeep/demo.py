@@ -251,6 +251,11 @@ def _learn_and_guard(
     result.proofs["p1_false_incidents"] = false_incidents
     result.proofs["p1_odd_cards"] = odd_cards
     result.habit_cards = _habit_cards(habit)
+    # The counter entries made on the last night: the ones a clerk should
+    # re-check against the register after a restore, because they are the
+    # newest and the most likely to sit after the last safe copy.
+    last_operator = last_runs.get("operator_activity")
+    result.proofs["entries_to_recheck"] = len(last_operator.events) if last_operator else 0
     return last_runs
 
 
