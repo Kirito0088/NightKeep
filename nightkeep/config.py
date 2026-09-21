@@ -274,7 +274,13 @@ class Judge:
     entropy_jump: float
     entropy_floor: float
     recovery_commands: tuple[str, ...]
-    canary_files: tuple[str, ...]
+    canary_files: tuple[str, ...] = ()
+    trap_files: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        files = self.canary_files or self.trap_files
+        object.__setattr__(self, "canary_files", files)
+        object.__setattr__(self, "trap_files", files)
 
     @property
     def trap_files(self) -> tuple[str, ...]:
@@ -478,13 +484,17 @@ def _read_habit(reader: _Reader) -> Habit:
 
 
 def _read_judge(reader: _Reader) -> Judge:
+    if "canary_files" in reader._mapping:
+        files = reader.texts("canary_files")
+    else:
+        files = reader.texts("trap_files")
     judge = Judge(
         odd_score=reader.number("odd_score"),
         rename_burst=reader.integer("rename_burst"),
         entropy_jump=reader.number("entropy_jump"),
         entropy_floor=reader.number("entropy_floor"),
         recovery_commands=reader.texts("recovery_commands"),
-        canary_files=reader.texts("canary_files"),
+        canary_files=files,
     )
     reader.done()
     if not judge.canary_files:

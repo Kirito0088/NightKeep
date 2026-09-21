@@ -251,7 +251,7 @@ def test_impersonator_uses_scheduler_argv_shape(demo_root, monkeypatch):
 
     def fake_run(command, **kwargs):
         seen.append(command)
-        return real_run(["true"], **kwargs)
+        return real_run([sys.executable, "-c", "pass"], **kwargs)
 
     monkeypatch.setattr(subprocess, "run", fake_run)
     sim_start = datetime(2026, 9, 22, 2, 14, 0)
@@ -348,7 +348,7 @@ def test_recovery_killer_only_echoes(demo_root):
                     "vssadmin.exe", "wbadmin.exe", "bcdedit.exe",
                     "vssadmin", "wbadmin", "bcdedit",
                 ), f"the real binary ran: {cmdline}"
-                if name == "sh" and "echo vssadmin delete shadows" in cmdline:
+                if name in ("sh", "cmd.exe", "cmd") and "vssadmin delete shadows" in cmdline:
                     found = cmdline
             time.sleep(0.05)
 

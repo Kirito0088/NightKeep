@@ -113,7 +113,28 @@ class Signal:
     code: str
     title: str
     reason: str
-    is_canary: bool
+    is_canary: bool = False
+    is_tripwire: bool = False
+
+    def __init__(
+        self,
+        code: str,
+        title: str,
+        reason: str,
+        is_canary: bool | None = None,
+        is_tripwire: bool | None = None,
+    ) -> None:
+        if is_canary is None and is_tripwire is None:
+            flag = False
+        elif is_canary is not None:
+            flag = bool(is_canary)
+        else:
+            flag = bool(is_tripwire)
+        object.__setattr__(self, "code", code)
+        object.__setattr__(self, "title", title)
+        object.__setattr__(self, "reason", reason)
+        object.__setattr__(self, "is_canary", flag)
+        object.__setattr__(self, "is_tripwire", flag)
 
     @property
     def is_tripwire(self) -> bool:
@@ -148,7 +169,10 @@ class Verdict:
             raise ValueError(
                 f"verdict level must be one of {VERDICT_LEVELS}, got {self.level!r}"
             )
-        if self.level == INCIDENT and not any(s.is_canary for s in self.signals):
+        if self.level == INCIDENT and not any(
+            getattr(s, "is_canary", False) or getattr(s, "is_tripwire", False)
+            for s in self.signals
+        ):
             raise ValueError(
                 "an INCIDENT needs at least one canary signal: the learned "
                 "habit score never pauses anything on its own"

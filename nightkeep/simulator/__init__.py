@@ -44,12 +44,19 @@ import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import Callable
 
 import psutil
 
 # The one folder the simulator may touch. Hard-coded, not a tunable: a
 # boundary someone can configure away is not a boundary.
 DEMO_DIR = Path(__file__).resolve().parent.parent.parent / "demo"
+
+# Variant names used by demo.py's simulate() dispatcher.
+FAST = "fast"
+IMPERSONATOR = "impersonator"
+RECOVERY_KILLER = "recovery-killer"
+CLEANUP_BLOCKER = "cleanup-blocker"
 
 # Where the impersonator stages its disposable malicious job script.
 _STAGING_DIR_NAME = ".nightkeep-sim"
@@ -82,6 +89,12 @@ class AttackReport:
     notes_written: int = 0
     staging_dir: Path | None = None
     killed_pids: tuple[int, ...] = ()
+    command_text_written_to: str | None = None
+
+    @property
+    def files_scrambled(self) -> int:
+        """Alias used by demo.py — same count, friendlier name."""
+        return self.files_encrypted
 
 
 @dataclass
@@ -223,6 +236,8 @@ def fast_encrypt(
     delay_between_files_seconds: float,
     limit: int | None = None,
     note_extra: tuple[str, ...] = (),
+    on_file: Callable[[Path], None] | None = None,
+    stop_when: Callable[[], bool] | None = None,
 ) -> AttackReport:
     """Scramble files in place, rename them to the locked extension.
 
@@ -230,6 +245,10 @@ def fast_encrypt(
     S3 on the scrambled content, S4 on the rename burst, S2 if a planted
     trap file is caught in the blast radius. ``limit`` caps the run for the
     recovery-killer's short burst and for tests.
+
+    ``on_file`` is called after each file is encrypted, so the demo runner
+    can poll the judge at the watcher's cadence. ``stop_when`` is checked
+    after each file; when it returns True the scramble halts mid-run.
     """
     root = guard_root(root)
     targets = _targets(root, locked_extension, ransom_note_name)
@@ -240,6 +259,8 @@ def fast_encrypt(
     report = AttackReport(variant="fast", root=root)
     locked_paths: list[Path] = []
     for path in targets:
+        if stop_when is not None and stop_when():
+            break
         tag = path.relative_to(root).as_posix()
         data = path.read_bytes()
         path.write_bytes(magic + _crypt(data, key, tag))
@@ -248,6 +269,8 @@ def fast_encrypt(
         locked_paths.append(locked)
         report.files_encrypted += 1
         report.files_renamed += 1
+        if on_file is not None:
+            on_file(locked)
         if delay_between_files_seconds:
             time.sleep(delay_between_files_seconds)
 
@@ -623,8 +646,49 @@ def decrypt_tree(
     return report
 
 
+def simulate(
+    root: str | Path,
+    *,
+    variant: str = FAST,
+    config,
+    recovery_commands: tuple[str, ...] = (),
+    on_file: Callable[[Path], None] | None = None,
+    stop_when: Callable[[], bool] | None = None,
+) -> AttackReport:
+    """Unified dispatcher used by the demo runner.
+
+    Picks the right variant function and passes the config's simulator
+    tunables through. ``on_file`` and ``stop_when`` are forwarded so the
+    demo can poll the judge at the watcher's cadence and halt the scramble
+    the moment INCIDENT is called.
+    """
+    common = dict(
+        key=config.key,
+        locked_extension=config.locked_extension,
+        ransom_note_name=config.ransom_note_name,
+        delay_between_files_seconds=config.delay_between_files_seconds,
+    )
+    if variant == FAST:
+        return fast_encrypt(
+            root, **common, on_file=on_file, stop_when=stop_when,
+        )
+    if variant == IMPERSONATOR:
+        return impersonate(
+            root, **common,
+        )
+    if variant in (RECOVERY_KILLER, CLEANUP_BLOCKER):
+        return recovery_killer(
+            root, **common, commands=recovery_commands,
+        )
+    raise SimulatorRefused(f"unknown simulator variant: {variant!r}")
+
+
 __all__ = [
     "DEMO_DIR",
+    "FAST",
+    "IMPERSONATOR",
+    "RECOVERY_KILLER",
+    "CLEANUP_BLOCKER",
     "AttackReport",
     "DecryptReport",
     "DecryptRefused",
@@ -635,5 +699,6 @@ __all__ = [
     "guard_root",
     "impersonate",
     "recovery_killer",
+    "simulate",
     "watcher_killer",
 ]

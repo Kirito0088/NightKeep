@@ -256,3 +256,8 @@ def restore_deletion(
                     is_canary=True,
                 )
     return None
+
+
+# Backward-compatible aliases for pre-rename callers (e.g. tests or teammate modules)
+trap_touched = canary_touched
+recovery_killer = restore_deletion
