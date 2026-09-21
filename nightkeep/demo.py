@@ -211,6 +211,7 @@ def _learn_and_guard(
     odd_cards = 0
     last_runs: dict[str, JobRun] = {}
 
+    surprise_day = total  # the last guard night, so it reads as "last night"
     for day_no in range(1, total + 1):
         learning = day_no <= config.clock.learning_days
         phase = "learning" if learning else "guard"
@@ -244,6 +245,17 @@ def _learn_and_guard(
                     "reasons": list(verdict.reasons), "actions": list(verdict.actions),
                 })
 
+        # On the last guard night, a legitimate surprise: the day-end upload
+        # runs a big catch-up batch after an outage. Erratic, but harmless,
+        # and exactly the twist Nightkeep must not alarm on. It reads as ODD.
+        if day_no == surprise_day:
+            odd = _legit_surprise(watcher, judge, config, pds, sim_day, day_no, say)
+            if odd is not None:
+                last_runs["nightly_export"] = odd["run"]
+                if odd["level"] == ODD:
+                    odd_cards += 1
+                result.guard_verdicts.append(odd["record"])
+
         snapshot = vault.pull(at=sim_day)
         say(f"  safe copy pulled: {snapshot.snapshot_id} ({snapshot.health})")
         sim_day += timedelta(days=1)
@@ -251,6 +263,7 @@ def _learn_and_guard(
     result.proofs["p1_false_incidents"] = false_incidents
     result.proofs["p1_odd_cards"] = odd_cards
     result.habit_cards = _habit_cards(habit)
+    result.proofs["p1_odd_beat"] = odd_cards >= 1
     # The counter entries made on the last night: the ones a clerk should
     # re-check against the register after a restore, because they are the
     # newest and the most likely to sit after the last safe copy.
@@ -259,34 +272,120 @@ def _learn_and_guard(
     return last_runs
 
 
+# --- the legit surprise: weird but fine -------------------------------------
+
+# How many CSVs the catch-up export writes at once. Far above the day-end
+# upload's usual one file a night, so it reads as unusual, while every file is
+# a valid export that trips no threat signal.
+CATCHUP_EXPORT_FILES = 8
+
+_EXPORT_HEADER = (
+    "transaction_id,card_no,fps_id,occurred_at,allotment_month,"
+    "commodity,quantity_kg,auth_mode,status\n"
+)
+
+
+def _legit_surprise(watcher, judge, config, pds, sim_day, day_no, say):
+    """One catch-up day-end export: several valid CSVs at once, harmlessly.
+
+    This is the "weird but fine" beat. After an outage a district uploads
+    several days of backlog in one go, so the day-end upload writes far more
+    files than usual. Nothing is scrambled, renamed to an unseen type, or
+    written over: they are new, valid CSVs. So no threat signal fires, but
+    the file count is well outside the job's learned habit, and the verdict
+    is ODD. That is the whole point: erratic is not the same as dangerous.
+    """
+    say("Legit surprise: a catch-up day-end upload (weird but fine)")
+    exports = pds / "share" / "exports"
+    exports.mkdir(parents=True, exist_ok=True)
+
+    start = datetime.now(timezone.utc)
+    for n in range(CATCHUP_EXPORT_FILES):
+        # A real day-end export is a day of transactions, kilobytes not bytes.
+        # Sizing these realistically matters: a byte-sized file scrambled
+        # stays below the Vault's noise floor, so a true-to-life export is
+        # also what lets the Vault recognise it as damaged if it is hit.
+        rows = "".join(
+            f"{n}{r:04d},110300512{r % 1000:03d},27030300145,"
+            f"2026-09-{1 + r % 28:02d} 11:{r % 60:02d},2026-09,Rice,"
+            f"{5 + r % 20}.000,Biometric,Collected\n"
+            for r in range(60)
+        )
+        (exports / f"epos_catchup_{n:02d}.csv").write_text(
+            _EXPORT_HEADER + rows, encoding="utf-8"
+        )
+    time.sleep(config.watcher.settle_seconds + 0.3)
+    end = datetime.now(timezone.utc)
+
+    events = [e for e in watcher.events_between(start, end)
+              if _classify(e) == "nightly_export"]
+    if not events:
+        return None
+    run = JobRun(
+        job="nightly_export", identity=_identity("nightly_export"),
+        started_at=min(e.at for e in events), finished_at=max(e.at for e in events),
+        events=tuple(events), sim_started_at=sim_day, day_no=day_no,
+    )
+    verdict = judge.verdict(run, list(run.events))
+    say(f"  verdict: {verdict.level} (nothing blocked)")
+    return {
+        "run": run,
+        "level": verdict.level,
+        "record": {
+            "day": day_no, "job": "nightly_export", "level": verdict.level,
+            "reasons": list(verdict.reasons), "actions": list(verdict.actions),
+            "surprise": "catch-up day-end upload",
+        },
+    }
+
+
 # --- the attack -------------------------------------------------------------
 
 
 def _attack(watcher, judge, vault, config, pds, variant, result, say):
-    """Run the simulator, catch it live, then pull and pin around it."""
+    """Run the simulator, catch it live, stop it, then pull and pin around it.
+
+    The Judge is polled on the Watcher's own cadence, not once per file, so
+    "how many files before it was caught" is what the deployed product would
+    really see rather than an artefact of a tight loop. The moment the poll
+    crosses into INCIDENT, the scramble is stopped where it stands: in an
+    office the Judge suspends the process; here the in-process simulator
+    honours the same stop, so the demo shows the damage halting rather than
+    running to the end.
+    """
     say(f"Threat test: {variant}")
     sim = config.simulator
     identity = _identity("nightly_export")  # it strikes the export folder
     touched = 0
     caught_at: dict[str, float | int | None] = {"files": None, "seconds": None}
     began = time.monotonic()
+    last_poll = 0.0
     attack_start = datetime.now(timezone.utc)
 
     def watch_each(_path: Path) -> None:
-        nonlocal touched
+        nonlocal touched, last_poll
         touched += 1
         if caught_at["files"] is not None:
             return
+        # Poll at the Watcher's cadence, the same rhythm the real Judge runs
+        # on, so the file count at detection is honest.
+        now = time.monotonic()
+        if now - last_poll < config.watcher.poll_seconds:
+            return
+        last_poll = now
         events = watcher.events_since(attack_start)
-        run = _threat_run(events, identity)
-        incident, _codes = judge.would_incident(run, events)
+        incident, _codes = judge.would_incident(_threat_run(events, identity), events)
         if incident:
             caught_at["files"] = touched
-            caught_at["seconds"] = round(time.monotonic() - began, 2)
+            caught_at["seconds"] = round(now - began, 2)
+
+    def caught() -> bool:
+        return caught_at["files"] is not None
 
     report = simulate(
         pds, variant=variant, config=sim,
-        recovery_commands=config.judge.recovery_commands, on_file=watch_each,
+        recovery_commands=config.judge.recovery_commands,
+        on_file=watch_each, stop_when=caught,
     )
 
     time.sleep(config.watcher.settle_seconds + 0.3)
@@ -295,6 +394,12 @@ def _attack(watcher, judge, vault, config, pds, variant, result, say):
     verdict = judge.verdict(run, events)
     actions = list(verdict.actions)
     judge.undo()  # a demo can be run again; leave nothing paused or locked
+
+    # A share small enough to finish before the first poll is still caught by
+    # the committing verdict; record the whole burst as the loss window then.
+    if caught_at["files"] is None and verdict.level == INCIDENT:
+        caught_at["files"] = report.files_scrambled
+        caught_at["seconds"] = round(time.monotonic() - began, 2)
 
     attack_snapshot = vault.pull(at=datetime.now(timezone.utc))
 
@@ -456,7 +561,7 @@ def _last_night(run: JobRun | None) -> str:
 def _status(verdict: dict | None) -> str:
     if verdict is None:
         return "Normal"
-    return {"NORMAL": "Normal", "ODD": "Later than usual",
+    return {"NORMAL": "Normal", "ODD": "Unusual, not blocked",
             "SUSPICIOUS": "Needs review", "INCIDENT": "Stopped"}.get(
         verdict["level"], "Normal")
 

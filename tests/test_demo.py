@@ -42,12 +42,32 @@ def test_p1_no_false_incidents_over_the_guard_nights(result):
 
 
 @pytest.mark.slow
+def test_p1_the_weird_but_fine_beat_reads_as_odd(result):
+    """The catch-up upload is unusual but harmless: exactly one ODD, no block."""
+    assert result.proofs["p1_odd_beat"] is True
+    assert result.proofs["p1_odd_cards"] >= 1
+    odd = [v for v in result.guard_verdicts if v["level"] == "ODD"]
+    assert any(v.get("surprise") for v in odd), "the legit surprise should be an ODD"
+
+
+@pytest.mark.slow
 def test_p2_the_threat_test_is_caught_fast_and_early(result):
     """INCIDENT, well under the MVP's 50 files and 10 seconds."""
     assert result.proofs["p2_verdict"] == "INCIDENT"
     assert 1 <= result.proofs["p2_files_before_incident"] < 50
     assert result.proofs["p2_detection_seconds"] < 10
     assert {"S3", "S4"} & {s["code"] for s in result.attack["signals"]}
+
+
+@pytest.mark.slow
+def test_detection_stops_the_scramble_where_it_stood(result):
+    """The reversible pause halts the damage rather than watching it finish.
+
+    Because the demo stops the simulator the moment it is caught, the number
+    of files scrambled equals the number touched before the incident: there
+    is no further damage after detection.
+    """
+    assert result.attack["files_scrambled"] == result.proofs["p2_files_before_incident"]
 
 
 @pytest.mark.slow
