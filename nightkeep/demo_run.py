@@ -226,13 +226,21 @@ class _EventCursor:
 def _await_silence(vault: Vault, timeout_seconds: float) -> WatcherLiveness:
     """Wait until the Vault's own clock calls the watcher silent.
 
-    Real timing, not a claim: this returns only when a fresh
-    check_watcher_liveness() actually reports silence, or when the
-    timeout expires (in which case the returned liveness says so).
+    Real timing, not a claim: this returns only after the Vault's
+    background liveness monitor has recorded the silence and flipped
+    the Vault into Protect mode (protect_mode is True). The fresh
+    direct check_watcher_liveness() reads are kept as early
+    information, but they are a pure read -- they never update the
+    Vault's recorded verdict -- so the loop does not finish on them
+    alone. If the timeout expires first, the returned liveness says
+    so and the caller proceeds without the S6 state recorded.
     """
     deadline = time.monotonic() + timeout_seconds
     liveness = vault.check_watcher_liveness()
-    while liveness.alive and time.monotonic() < deadline:
+    while (
+        time.monotonic() < deadline
+        and (liveness.alive or not vault.protect_mode)
+    ):
         time.sleep(0.5)
         liveness = vault.check_watcher_liveness()
     return liveness
