@@ -37,7 +37,8 @@ def _stub_run_day(day_no, *, seed, clock, jobs, harvest_surge, district_dir,
     backups.mkdir(parents=True, exist_ok=True)
     db = backups / "district-backup-2026-09-20.db"
     if not db.exists():
-        with sqlite3.connect(db) as conn:
+        conn = sqlite3.connect(db)
+        try:
             conn.execute(
                 "CREATE TABLE cards (id INTEGER PRIMARY KEY, name TEXT)"
             )
@@ -45,6 +46,9 @@ def _stub_run_day(day_no, *, seed, clock, jobs, harvest_surge, district_dir,
                 "INSERT INTO cards (name) VALUES (?)",
                 [(f"card {n}",) for n in range(5000)],
             )
+            conn.commit()
+        finally:
+            conn.close()
 
 
 def test_demo_runner_detects_the_killed_watcher_as_s6(

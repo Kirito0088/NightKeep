@@ -224,9 +224,12 @@ class PdsProvider:
         return conn
 
     def district_figures(self) -> dict[str, str]:
-        with self._connect() as conn:
+        conn = self._connect()
+        try:
             cards = conn.execute("SELECT COUNT(*) FROM cards").fetchone()[0]
             shops = conn.execute("SELECT COUNT(*) FROM shops").fetchone()[0]
+        finally:
+            conn.close()
         return {
             "ration_cards": f"{cards:,}",
             "fps_count": f"{shops:,}",
@@ -277,8 +280,11 @@ class PdsProvider:
             f"WHERE {' AND '.join(clauses)} "
             "ORDER BY c.card_no"
         )
-        with self._connect() as conn:
+        conn = self._connect()
+        try:
             rows = conn.execute(query, params).fetchall()
+        finally:
+            conn.close()
         return [
             RationCardPresentation(
                 card_no=row["card_no"],
@@ -295,7 +301,8 @@ class PdsProvider:
         ]
 
     def card_detail(self, card_no: str) -> CardDetailPresentation | None:
-        with self._connect() as conn:
+        conn = self._connect()
+        try:
             card = conn.execute(
                 "SELECT c.*, s.name AS fps_name FROM cards c "
                 "JOIN shops s ON s.fps_id = c.fps_id "
@@ -316,6 +323,8 @@ class PdsProvider:
                 "WHERE card_no = ? ORDER BY occurred_at DESC",
                 (card_no,),
             ).fetchall()
+        finally:
+            conn.close()
 
         members = tuple(
             MemberPresentation(
@@ -373,12 +382,15 @@ class PdsProvider:
         The office re-checks these after a restore: they landed after the
         last clean copy and may not be in it.
         """
-        with self._connect() as conn:
+        conn = self._connect()
+        try:
             row = conn.execute(
                 "SELECT COUNT(*) FROM transactions "
                 "WHERE occurred_at >= ? AND occurred_at <= ?",
                 (start.isoformat(), end.isoformat()),
             ).fetchone()
+        finally:
+            conn.close()
         return int(row[0])
 
 

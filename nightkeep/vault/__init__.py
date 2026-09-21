@@ -549,7 +549,13 @@ class Vault:
         for snapshot_id in _manifest.manifest_ids(self._root):
             path = _manifest.manifest_path(self._root, snapshot_id)
             manifest = _manifest.read_manifest(self._root, snapshot_id)
-            total_bytes = sum(info["size"] for info in manifest["files"].values())
+            if isinstance(manifest["files"], dict):
+                total_bytes = sum(info["size"] for info in manifest["files"].values())
+            else:
+                total_bytes = sum(
+                    info.get("size", info.get("bytes", 0))
+                    for info in manifest["files"]
+                )
             found.append(
                 Snapshot(
                     snapshot_id=snapshot_id,

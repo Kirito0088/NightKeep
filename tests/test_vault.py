@@ -26,11 +26,15 @@ DAY = datetime(2026, 9, 20, 1, 0, tzinfo=timezone.utc)
 
 
 def _cards_db(path: Path, count: int) -> None:
-    with sqlite3.connect(path) as conn:
+    conn = sqlite3.connect(path)
+    try:
         conn.execute("CREATE TABLE cards (id INTEGER PRIMARY KEY, name TEXT)")
         conn.executemany(
             "INSERT INTO cards (name) VALUES (?)", [(f"card {n}",) for n in range(count)]
         )
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def _share(tmp_path: Path, cards: int = 120) -> Path:
@@ -318,9 +322,12 @@ def test_restore_counts_five_thousand_records_from_the_restored_db(tmp_path):
     # would not match a genuinely restored 5,000-row table.
     target = Path(result.restored_to)
     db_path = target / "backups" / "district-backup-2026-09-20.db"
-    with sqlite3.connect(db_path) as conn:
+    conn = sqlite3.connect(db_path)
+    try:
         integrity = conn.execute("PRAGMA integrity_check").fetchone()[0]
         count = conn.execute("SELECT COUNT(*) FROM cards").fetchone()[0]
+    finally:
+        conn.close()
     assert integrity == "ok"
     assert count == 5000
 

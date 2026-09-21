@@ -113,8 +113,9 @@ def test_incident_with_a_paused_process_says_paused(judge):
     """A real process behind the events gets suspended, and only then does
     the pop-up say it was paused."""
     import subprocess
+    import sys
 
-    sleeper = subprocess.Popen(["sleep", "60"])
+    sleeper = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
     try:
         incident = judge.verdict(
             job_run([

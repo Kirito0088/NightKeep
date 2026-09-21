@@ -95,8 +95,11 @@ def count_cards(data: bytes) -> int | None:
     try:
         handle.write(data)
         handle.close()
-        with sqlite3.connect(handle.name) as conn:
+        conn = sqlite3.connect(handle.name)
+        try:
             return conn.execute("SELECT COUNT(*) FROM cards").fetchone()[0]
+        finally:
+            conn.close()
     except Exception:
         return None
     finally:

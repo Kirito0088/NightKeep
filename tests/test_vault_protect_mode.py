@@ -73,12 +73,16 @@ def _share_with_csv(root: Path) -> Path:
         writer.writerow(["110300512847", "2026-09-20", "5.000"])
     # The S7 health check expects a database backup with a cards table;
     # without one every non-baseline pull is SUSPECT for data reasons.
-    with sqlite3.connect(backups / "district-backup-2026-09-20.db") as conn:
+    conn = sqlite3.connect(backups / "district-backup-2026-09-20.db")
+    try:
         conn.execute("CREATE TABLE cards (id INTEGER PRIMARY KEY, name TEXT)")
         conn.executemany(
             "INSERT INTO cards (name) VALUES (?)",
             [(f"card {n}",) for n in range(120)],
         )
+        conn.commit()
+    finally:
+        conn.close()
     return share
 
 

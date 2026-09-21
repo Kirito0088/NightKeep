@@ -466,9 +466,10 @@ def _echo_shell_argv(commands: tuple[str, ...], linger_seconds: int) -> list[str
     The text is echoed, never executed. It lingers so the judge's process
     scan (S5) can see it, and so there is something to suspend on INCIDENT.
     """
-    echoed = "; ".join(f"echo {command}" for command in commands)
     if os.name == "nt":
-        return ["cmd.exe", "/c", f"{echoed} & timeout /t {linger_seconds} >nul"]
+        echoed = " & ".join(f"echo {command}" for command in commands)
+        return ["cmd.exe", "/c", f"{echoed} & ping -n {linger_seconds + 1} 127.0.0.1 >nul"]
+    echoed = "; ".join(f"echo {command}" for command in commands)
     return ["sh", "-c", f"{echoed}; sleep {linger_seconds}"]
 
 

@@ -32,12 +32,16 @@ def _real_db_bytes(cards: int) -> bytes:
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
         path = tmp.name
     try:
-        with sqlite3.connect(path) as conn:
+        conn = sqlite3.connect(path)
+        try:
             conn.execute("CREATE TABLE cards (id INTEGER PRIMARY KEY, name TEXT)")
             conn.executemany(
                 "INSERT INTO cards (name) VALUES (?)",
                 [(f"card {n}",) for n in range(cards)],
             )
+            conn.commit()
+        finally:
+            conn.close()
         return Path(path).read_bytes()
     finally:
         os.unlink(path)
@@ -66,8 +70,12 @@ def test_count_cards_returns_none_for_db_without_cards_table():
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
         path = tmp.name
     try:
-        with sqlite3.connect(path) as conn:
+        conn = sqlite3.connect(path)
+        try:
             conn.execute("CREATE TABLE other (id INTEGER PRIMARY KEY)")
+            conn.commit()
+        finally:
+            conn.close()
         assert count_cards(Path(path).read_bytes()) is None
     finally:
         os.unlink(path)
@@ -93,12 +101,16 @@ def _share_with_real_db(tmp_path: Path) -> Path:
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
         path = tmp.name
     try:
-        with sqlite3.connect(path) as conn:
+        conn = sqlite3.connect(path)
+        try:
             conn.execute("CREATE TABLE cards (id INTEGER PRIMARY KEY, name TEXT)")
             conn.executemany(
                 "INSERT INTO cards (name) VALUES (?)",
                 [(f"card {n}",) for n in range(CARD_COUNT)],
             )
+            conn.commit()
+        finally:
+            conn.close()
         (backups / "district-backup-2026-09-20.db").write_bytes(Path(path).read_bytes())
     finally:
         os.unlink(path)

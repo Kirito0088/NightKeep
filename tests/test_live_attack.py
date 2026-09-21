@@ -67,7 +67,8 @@ def _scratch_district(file_count: int = 20) -> Path:
     # reasons, which would muddy the watcher-killer's Vault story.
     backups = root / "share" / "backups"
     backups.mkdir(parents=True)
-    with sqlite3.connect(backups / "district_backup.db") as conn:
+    conn = sqlite3.connect(backups / "district_backup.db")
+    try:
         conn.execute(
             "CREATE TABLE cards (id INTEGER PRIMARY KEY, name TEXT)"
         )
@@ -75,6 +76,9 @@ def _scratch_district(file_count: int = 20) -> Path:
             "INSERT INTO cards (name) VALUES (?)",
             [(f"card {n}",) for n in range(120)],
         )
+        conn.commit()
+    finally:
+        conn.close()
     return root
 
 
