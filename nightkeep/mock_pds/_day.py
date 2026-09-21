@@ -86,13 +86,23 @@ def land_transactions(
 
 _JOBS_DIR = Path(__file__).resolve().parent / "jobs"
 
+def _bat_command(path: Path, arguments: list) -> list:
+    # cmd.exe re-parses everything after /c with its own tokenizer, which
+    # splits an unquoted batch path at the first space. The whole command
+    # line therefore travels as one /c argument, wrapped in one outer pair
+    # of quotes: cmd strips that pair, and the individually quoted pieces
+    # inside (from list2cmdline) then survive paths that contain spaces.
+    inner = subprocess.list2cmdline([str(path), *map(str, arguments)])
+    return ["cmd.exe", "/c", f'"{inner}"']
+
+
 # Job identity is executable + script path + hash (SOLUTION_DESIGN.md), so
 # the two script-language jobs run through their real interpreters rather
 # than being reduced to Python for convenience.
 _INTERPRETERS = {
-    ".py": lambda path: [sys.executable, "-I", str(path)],
-    ".bat": lambda path: ["cmd.exe", "/c", str(path)],
-    ".vbs": lambda path: ["cscript.exe", "//nologo", str(path)],
+    ".py": lambda path, arguments: [sys.executable, "-I", str(path), *arguments],
+    ".bat": lambda path, arguments: _bat_command(path, arguments),
+    ".vbs": lambda path, arguments: ["cscript.exe", "//nologo", str(path), *arguments],
 }
 
 
@@ -124,11 +134,12 @@ def launch(job: str, district_dir: Path, day_no: int, sim_start: datetime,
     never reaches the ground truth.
     """
     path = _job_path(job)
-    command = _INTERPRETERS[path.suffix](path) + [
+    script_arguments = [
         "--root", str(district_dir),
         "--day", str(day_no),
         "--sim-start", sim_start.isoformat(),
         "--sim-end", sim_end.isoformat(),
         *arguments,
     ]
+    command = _INTERPRETERS[path.suffix](path, script_arguments)
     subprocess.run(command, check=True)
