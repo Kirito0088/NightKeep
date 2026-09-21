@@ -108,19 +108,19 @@ VERDICT_LEVELS = (NORMAL, ODD, SUSPICIOUS, INCIDENT)
 
 @dataclass(frozen=True)
 class Signal:
-    """One named check that fired. S1 is learned; S2 to S7 are tripwires."""
+    """One named check that fired. S1 is learned; S2 to S7 are canary signals."""
 
     code: str
     title: str
     reason: str
-    is_tripwire: bool
+    is_canary: bool
 
 
 @dataclass(frozen=True)
 class Verdict:
     """NORMAL, ODD, SUSPICIOUS or INCIDENT, with why and what was done.
 
-    An INCIDENT always carries at least one tripwire signal. Actions are
+    An INCIDENT always carries at least one canary signal. Actions are
     reversible by construction: suspend, not kill; read-only, not delete.
     """
 
@@ -134,9 +134,9 @@ class Verdict:
             raise ValueError(
                 f"verdict level must be one of {VERDICT_LEVELS}, got {self.level!r}"
             )
-        if self.level == INCIDENT and not any(s.is_tripwire for s in self.signals):
+        if self.level == INCIDENT and not any(s.is_canary for s in self.signals):
             raise ValueError(
-                "an INCIDENT needs at least one tripwire signal: the learned "
+                "an INCIDENT needs at least one canary signal: the learned "
                 "habit score never pauses anything on its own"
             )
 

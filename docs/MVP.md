@@ -1,5 +1,5 @@
 # Nightkeep MVP Plan
-### Team CodeRed · MUSA CodeX 2026 · Cyber Security · CX0204 "Ransom at the Ration Shop"
+### Team CodeRed · MUSA CodeX 2026 · Data Resilience · CX0204 "Threat at the Ration Shop"
 
 Version 5, 16 Sept 2026. Team decision: **protect the district PDS server** (the problem statement says "a district's PDS software"). The shop-device idea is kept as future work. Builds on `research/CX0204_Research_Dossier_Phase1.md` and `design/CX0204_Solution_Design_QuirkGuard.md`.
 
@@ -11,16 +11,16 @@ Version 5, 16 Sept 2026. Team decision: **protect the district PDS server** (the
 
 ## 1. The MVP in one line
 
-A demo where a fake district PDS server runs its messy nightly jobs, Nightkeep learns them, ignores the weirdness, catches a safe ransomware simulator within seconds, pauses it, and restores all 5,000 beneficiary records from a backup the infected machine could never reach.
+A demo where a fake district PDS server runs its messy nightly jobs, Nightkeep learns them, ignores the weirdness, catches a safe threat simulator within seconds, pauses it, and restores all 5,000 beneficiary records from a backup the infected machine could never reach.
 
 ## 2. What the MVP must prove
 
-Judges will ask one question: *does this actually tell ransomware apart from normal legacy weirdness, and can it get the data back?* The MVP proves exactly four things and nothing more.
+Judges will ask one question: *does this actually tell a file-locking threat apart from normal legacy weirdness, and can it get the data back?* The MVP proves exactly four things and nothing more.
 
 | # | Proof | How we show it |
 |---|---|---|
 | P1 | Weird legacy jobs do **not** cause alarms | 6 erratic jobs run for 7 simulated days of learning, then 3 guard days. Zero INCIDENT verdicts. One late run shows as a yellow ODD card only |
-| P2 | Ransomware **is** caught fast | Simulator starts. INCIDENT verdict with plain-language reasons before 50 files are touched (target, to be measured) |
+| P2 | File-locking threat **is** caught fast | Simulator starts. INCIDENT verdict with plain-language reasons before 50 files are touched (target, to be measured) |
 | P3 | The backup **survives** | The infected server has no path or password to the Vault. Vault marks the new snapshot SUSPECT and keeps the last clean point pinned |
 | P4 | Recovery is **proven**, not assumed | Restore Wizard ticks: hashes match, headers valid, SQLite integrity OK, record count 5,000 / 5,000 |
 
@@ -33,7 +33,7 @@ If a feature does not help prove P1 to P4, it is not in the MVP.
 | Lightweight | Python + SQLite on ordinary machines. No cloud, no GPU, no deep learning | In MVP |
 | Offline-capable | Everything runs on the office LAN with the internet switched off | In MVP |
 | Backup layer | Pull Vault: snapshots, content-addressed store, health check, pinned clean points | In MVP |
-| Anomaly-detection layer | Habit Cards (learned) + fixed ransomware signals | In MVP |
+| Anomaly-detection layer | Habit Cards (learned) + fixed threat signals | In MVP |
 | Bolt-on to legacy software | Watches folders and processes from outside. Mock PDS app code is never changed | In MVP |
 | No full rewrite | Same as above | In MVP |
 | Learn the system's own quirks | Per-job Habit Cards built from 7 simulated days | In MVP |
@@ -48,21 +48,21 @@ If a feature does not help prove P1 to P4, it is not in the MVP.
 | F2 | **6 erratic jobs + simulated clock** | Real scripts started by a scheduler, each with built-in randomness (see section 6). 1 day = about 30 s. Seeded, so a run can be replayed exactly |
 | F3 | **Watcher** | `watchdog` file events + `psutil` process poll every 2 s. Prints "job X changed N files in folders Y" |
 | F4 | **Habit Cards** | Per job: start window, median + MAD of files modified / created / deleted, folders, bytes, extensions, script SHA-256. Stored in SQLite. Shows reasons in plain numbers |
-| F5 | **Fixed ransomware signals** | S2 trap file changed · S3 in-place rewrite + entropy jump + broken header (**already built, 10 tests passing**) · S4 10+ renames to unseen extension · S5 recovery-killing command text (`vssadmin delete shadows`, `wbadmin delete catalog`) |
+| F5 | **Fixed threat signals** | S2 canary file changed · S3 in-place rewrite + randomness spike + broken header (**already built, 10 tests passing**) · S4 10+ renames to unseen extension · S5 system-restore-deletion command text (echoed only, never executed) |
 | F6 | **Judge + reversible response** | Verdict table: NORMAL / ODD / SUSPICIOUS / INCIDENT. Learned score alone never pauses anything. On INCIDENT: `psutil` suspend (with Resume button) + data folder set read-only |
-| F7 | **Pull Vault** | Vault pulls every simulated hour over a read-only share (SMBv1 off, share open only to the Vault's address, read-only account). The live database is **never copied directly**: the Vault pulls the nightly database backup file made by `db_backup.py` (SQLite backup API in the demo, the database's own backup tool in real life), plus exports and allocation files. Files stored by SHA-256 and marked read-only. One JSON manifest per snapshot. Health check marks CLEAN / SUSPECT. Clean points pinned. Firewall on the Vault rejects every incoming connection |
+| F7 | **Pull Vault** | Vault pulls every simulated hour over a read-only share (legacy file-sharing protocol off, share open only to the Vault's address, read-only account). The live database is **never copied directly**: the Vault pulls the nightly database backup file made by `db_backup.py` (SQLite backup API in the demo, the database's own backup tool in real life), plus exports and allocation files. Files stored by SHA-256 and marked read-only. One JSON manifest per snapshot. Health check marks CLEAN / SUSPECT. Clean points pinned. Firewall on the Vault rejects every incoming connection |
 | F8 | **Restore Wizard** | Picks newest CLEAN snapshot before first alert. Restores to a new folder, and rebuilds the database from its backup file. Verifies hash, header, CSV parse, `PRAGMA integrity_check`, record count |
 | F9 | **Console** (**Flask + Jinja, superseded by ADR-0002**) + **server alerts** | Console runs **only on the Vault's own screen** (bound to the Vault itself, not reachable over the network): three lights (Habit / Ransom / Recovery), verdict feed with reasons, habit cards, snapshot timeline, Restore. Restore, delete and settings need a PIN. The server shows its own **pop-up alert** from the Watcher, so staff see warnings without opening anything on the Vault |
-| F10 | **Safe ransomware simulator (3 variants for Round 2)** | Fast encryptor, impersonator (replaces `nightly_export.py`), recovery-killer. The slow encryptor and watcher-killer come in P1 with the features that catch them (F13, F11). Touches the demo folder only (hard-coded path check). Known key + decrypt script. Recovery commands are only echoed text, never run |
+| F10 | **Safe threat simulator (3 variants for Round 2)** | Fast scrambler, impersonator (replaces `nightly_export.py`), cleanup-blocker. The slow scrambler and agent-stopper come in P1 with the features that catch them (F13, F11). Touches the demo folder only (hard-coded path check). Known key + decrypt script. Recovery-blocking commands are only echoed text, never run |
 | F10b | **Ground-truth check** | Every job secretly writes what it really did to a log Nightkeep never reads. Console shows learned Habit Card next to the real behaviour |
 
 ### P1: Should have (build 23 to 26 Sept, ready for the Finale on 27 Sept)
 
 | ID | Feature | Why it matters on stage |
 |---|---|---|
-| F11 | S6 Watcher liveness check (Vault asks every 10 s) + **watcher-killer simulator variant** | "Kill the agent" live on stage and the Vault still raises the alarm |
+| F11 | S6 Watcher liveness check (Vault asks every 10 s) + **agent-stopper simulator variant** | "Stop the agent" live on stage and the Vault still raises the alarm |
 | F12 | Hash-chained manifests | Shows backup history can't be silently edited |
-| F13 | 24-hour slow counter + **slow-encryptor simulator variant** | Answers the "slow ransomware" question |
+| F13 | 24-hour slow counter + **slow-scrambler simulator variant** | Answers the "slow file-locking" question |
 | F14 | Loss window report | "Re-check these 37 files" instead of "trust us" |
 | F15 | Evidence bundle + CERT-In style report draft | Ties to CERT-In's 6-hour reporting rule |
 | F16 | Outbox + offline scene | Wi-Fi off, attack still caught, 3 reports queued, sent on reconnect |
@@ -103,7 +103,7 @@ Our scenario follows the problem statement instead: **a district that runs its o
 
 ### What "nightly jobs" means here
 
-Tasks the PDS software runs by itself, with nobody clicking anything, usually at night or when the network comes back: day-end upload to the state server, stock matching, next month's allocation files, zipping and deleting old logs, and syncing transactions stored during an outage. "Undocumented" means nobody wrote down what they do. "Erratic" means their timing and size change from day to day. They matter because they **look like ransomware**: thousands of files touched in seconds, at 2 am, zipped (random-looking), renamed and deleted.
+Tasks the PDS software runs by itself, with nobody clicking anything, usually at night or when the network comes back: day-end upload to the state server, stock matching, next month's allocation files, zipping and deleting old logs, and syncing transactions stored during an outage. "Undocumented" means nobody wrote down what they do. "Erratic" means their timing and size change from day to day. They matter because they **look like a file-locking threat**: thousands of files touched in seconds, at 2 am, zipped (random-looking), renamed and deleted.
 
 ### Why we don't need to know the real habits
 
@@ -147,8 +147,8 @@ Each job also writes its true behaviour to a hidden log that Nightkeep never rea
 On stage a judge picks from a menu:
 
 - **Legit surprises:** move a job to 04:00, switch on harvest surge, or add a brand-new harmless job. Expected: ODD card, nothing blocked.
-- **Attacks (Round 2):** fast encryptor, impersonator or recovery-killer. Expected: INCIDENT, process paused, backup safe, verified restore.
-- **Extra attacks (Finale only):** slow encryptor and watcher-killer, once F13 and F11 are built.
+- **Threat tests (Round 2):** fast scrambler, impersonator or cleanup-blocker. Expected: INCIDENT, process paused, backup safe, verified restore.
+- **Extra threat tests (Finale only):** slow scrambler and agent-stopper, once F13 and F11 are built.
 
 In a real office this becomes a 1 to 2 week "observe only" period before Nightkeep is allowed to act.
 
@@ -161,9 +161,9 @@ In a real office this becomes a 1 to 2 week "observe only" period before Nightke
 | District Supply Officer | "I want proof that restored records are complete, so ration distribution restarts safely." | F7, F8 |
 | State PDS / NIC team | "I want a short incident summary without beneficiary data, so we can report to CERT-In in time." | F15, F16 |
 
-## 8. Why ransomware can't reach the Vault (and when it still could)
+## 8. Why a file-locking threat can't reach the Vault (and when it still could)
 
-### How ransomware normally destroys backups
+### How file-locking threats normally destroy backups
 
 In most offices the backup server is just another machine the main server or office PCs can reach:
 
@@ -171,7 +171,7 @@ In most offices the backup server is just another machine the main server or off
 - a **saved password** or admin account that also works on the server,
 - the server **pushes** copies to it every night.
 
-Ransomware on the server uses that same drive and password to encrypt or delete the backups. MITRE ATT&CK lists this as a standard step (T1490, Inhibit System Recovery).
+A file-locking threat on the server uses that same drive and password to scramble or delete the backups. This is a documented adversary technique for inhibiting system recovery.
 
 ### The Vault is a backup server with strict rules
 
@@ -179,8 +179,8 @@ Yes, in a real office the Vault **is** a server. What protects it is not the har
 
 | # | Rule | What it blocks |
 |---|---|---|
-| 1 | **Vault pulls, the server never pushes.** The PDS server holds no drive, address or password for the Vault | Ransomware on the server has nothing to follow |
-| 2 | **Server shares one folder read-only, safely.** Old file sharing (SMBv1) is switched off, the share is open only to the Vault's address, and the Vault uses a read-only account with its own password | The Vault never needs write access. WannaCry (2017) spread through SMBv1 on unpatched Windows, so that door stays shut |
+| 1 | **Vault pulls, the server never pushes.** The PDS server holds no drive, address or password for the Vault | A threat on the server has nothing to follow |
+| 2 | **Server shares one folder read-only, safely.** Old file sharing (legacy protocol) is switched off, the share is open only to the Vault's address, and the Vault uses a read-only account with its own password | The Vault never needs write access. The 2017 file-sharing worm incident spread through unpatched legacy file-sharing on Windows, so that door stays shut |
 | 3 | **No open doors on the Vault.** No file sharing, no remote desktop, no web page reachable from the network. Firewall rejects all incoming connections | Nothing on the network to break into |
 | 4 | **Stored copies are locked.** Read-only blobs, pinned clean points, deletion only with a PIN at the Vault itself | Old backups can't be edited or wiped |
 | 5 | **Every new copy is health-checked.** Scrambled copies are marked SUSPECT and never replace the last clean one | A backup taken mid-attack can't poison recovery |
@@ -239,17 +239,17 @@ The earlier plan let office PCs open the Console on the Vault as a web page. Tha
 | NORMAL | Habit score < 0.5, no fixed signal | Log |
 | ODD | Habit score ≥ 0.5, no fixed signal | Yellow review card, "This is normal" button |
 | SUSPICIOUS | One fixed signal without unusual habit | Alert + Vault Protect mode (pin clean point, new snapshots = SUSPECT) |
-| INCIDENT | Trap changed, **or** S3/S4 + habit ≥ 0.5, **or** S5 + any ransom signal | Pause process, folder read-only, start Restore Wizard |
+| INCIDENT | Canary changed, **or** S3/S4 + habit ≥ 0.5, **or** S5 + any threat signal | Pause process, folder read-only, start Restore Wizard |
 
-Entropy rule (built and tested): a file is only suspicious when an **existing** file is rewritten **and** entropy jumps **and** its header breaks. A new valid ZIP or JPEG at entropy 8.0 stays NORMAL.
+Randomness rule (built and tested): a file is only suspicious when an **existing** file is rewritten **and** randomness spikes **and** its header breaks. A new valid ZIP or JPEG at high randomness stays NORMAL.
 
 ## 11. Success metrics (targets we will measure, not claims)
 
 | Metric | MVP target |
 |---|---|
 | False INCIDENTs across 7 learning + 3 guard days of weird jobs | 0 |
-| Files encrypted before INCIDENT | < 50 of 5,000 |
-| Time from first encrypted file to INCIDENT | < 10 s real time |
+| Files scrambled before INCIDENT | < 50 of 5,000 |
+| Time from first scrambled file to INCIDENT | < 10 s real time |
 | Records verified after restore | 5,000 / 5,000 |
 | Watcher CPU / RAM on demo laptop | < 5% / < 100 MB |
 | Full demo runs back to back without touching code | 2 times |
@@ -279,14 +279,14 @@ All numbers shown on slides after 22 Sept must come from real runs.
 **Plan B (online round):** one screen-share showing both machines side by side (for example with OBS), the judge picks from the menu by chat or voice, and a recorded video of a clean run is ready as backup.
 
 1. **Normal life (0:00):** jobs fire at odd hours on the simulated clock.
-2. **Learning (0:30):** habit cards appear one by one. Tripwires already on.
+2. **Learning (0:30):** habit cards appear one by one. Canary signals already on.
 3. **Weird but fine (1:10):** export runs at 03:40. Yellow ODD card. Nothing blocked.
-4. **Attack (1:30):** simulator renames files to `.locked`.
+4. **Threat test (1:30):** simulator renames files to `.locked`.
 5. **Detection (1:50):** three lights turn red. INCIDENT with reasons.
 6. **Protect (2:20):** process paused, folder read-only, "37 affected, 4,963 untouched" (real numbers from the run).
 7. **Backup safe (2:40):** simulator scans for shares and tries the Vault: nothing found, connection refused. Vault snapshot SUSPECT, clean point pinned.
 8. **Recovery (3:00):** Restore Wizard ticks green, 5,000 / 5,000.
-9. **Judge's choice (3:30):** a judge picks one legit surprise and one Round 2 attack (fast, impersonator or recovery-killer). Both behave as expected, live. Slow and watcher-killer attacks are added for the finale.
+9. **Judge's choice (3:30):** a judge picks one legit surprise and one Round 2 threat test (fast, impersonator or cleanup-blocker). Both behave as expected, live. Slow and agent-stopper tests are added for the finale.
 
 ## 14. Risks to the MVP and our fallback
 
@@ -295,13 +295,13 @@ All numbers shown on slides after 22 Sept must come from real runs.
 | Process-to-file linking is messy on Windows | Demo jobs never overlap. Fall back to "active writer in window" |
 | Only one working laptop on the day | Vault runs in a VM or a second user account with no access to the data folder |
 | Round 2 turns out to be online or video-only | Plan B in section 13: side-by-side screen-share plus a recorded backup run |
-| File sharing on the old server becomes a way in | SMBv1 off, share open only to the Vault's address, read-only account |
+| File sharing on the old server becomes a way in | Legacy file-sharing protocol off, share open only to the Vault's address, read-only account |
 | ~~Streamlit refresh lag looks slow on stage~~ (**retired by ADR-0002**, the console is Flask) | Pre-recorded video of a clean run kept ready anyway |
 | Thresholds cause a false alarm live | All thresholds in `config.yaml`, tuned over 3 dry runs |
 | Judge asks "you wrote the jobs, so of course it learns them" | The jobs never talk to Nightkeep, use random seeds the judge can pick, and the judge can add a new job live |
-| Judge asks "won't ransomware hit the backup server too?" | Show section 8: pull-only, no open doors, locked copies, weekly offline drive. Demo the refused connection live |
+| Judge asks "won't the threat hit the backup server too?" | Show section 8: pull-only, no open doors, locked copies, weekly offline drive. Demo the refused connection live |
 | Real district job behaviour is unknown | Say it openly. The design learns whatever is there; production starts with an observe-only period |
-| Antivirus flags our simulator | Run demo folder under an exclusion, sign nothing, explain openly |
+| Antivirus flags our simulator | Run demo folder under an AV exclusion, sign nothing, explain openly |
 
 ## 15. What we will say, and not say
 

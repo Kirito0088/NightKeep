@@ -13,7 +13,7 @@ that scrambled is the new baseline.
 One connection is held open for the life of the object. An attack produces
 thousands of events in a few seconds, and opening a database connection per
 file turns a two-second judgement into a thirty-second one, which is the
-difference between catching ransomware and watching it finish.
+difference between catching a threat and watching it finish.
 """
 
 import sqlite3

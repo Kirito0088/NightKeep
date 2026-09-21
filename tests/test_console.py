@@ -383,12 +383,12 @@ def test_locked_route_has_empty_results_table(client):
     assert "Database access is suspended to prevent file damage." in html
 
 
-def test_locked_route_has_ransom_note(client):
+def test_locked_route_has_threat_note(client):
     response = client.get("/locked")
     assert response.status_code == 200
     html = response.get_data(as_text=True)
 
-    assert "Simulated Ransom Note (Demonstration Artifact)" in html
+    assert "Simulated Threat Note (Demonstration Artifact)" in html
     assert "PROTOTYPE DEMONSTRATION ARTIFACT" in html
     assert "README_LOCKED.txt" in html
     assert "NIGHTKEEP-SIM-2026" in html

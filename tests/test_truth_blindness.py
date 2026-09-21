@@ -175,9 +175,9 @@ def test_no_truth_blind_module_reads_the_truth_folder_at_runtime(
         entropy_jump=1.5,
         entropy_floor=7.0,
         recovery_commands=("vssadmin delete shadows",),
-        trap_files=("share/exports/epos_day_end_20240101.csv",),
+        canary_files=("share/exports/epos_day_end_20240101.csv",),
     )
-    judge.plant_traps()
+    judge.plant_canaries()
 
     # A week of learning, then a verdict, with events naming the truth logs
     # among ordinary ones. Judge reads file contents for S3 and S5, so this

@@ -32,7 +32,7 @@ set "SKIPPED="
 set "CREATED=" & set "MODIFIED=" & set "RENAMED=" & set "DELETED=" & set "BYTES=0" & set "EXT="
 
 REM archive_old owns exactly this pattern and never wildcards the whole
-REM folder: a clean-up job that eats a future trap file (attack 10 in
+REM folder: a clean-up job that eats a future canary file (case 10 in
 REM SOLUTION_DESIGN.md) is a false INCIDENT.
 set "PATTERN=epos_day_end_*.csv"
 

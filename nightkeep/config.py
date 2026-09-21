@@ -267,14 +267,14 @@ class Habit:
 
 @dataclass(frozen=True)
 class Judge:
-    """The tripwires. Fixed, live from minute one, and never widened."""
+    """The canary signals. Fixed, live from minute one, and never widened."""
 
     odd_score: float
     rename_burst: int
     entropy_jump: float
     entropy_floor: float
     recovery_commands: tuple[str, ...]
-    trap_files: tuple[str, ...]
+    canary_files: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -480,11 +480,11 @@ def _read_judge(reader: _Reader) -> Judge:
         entropy_jump=reader.number("entropy_jump"),
         entropy_floor=reader.number("entropy_floor"),
         recovery_commands=reader.texts("recovery_commands"),
-        trap_files=reader.texts("trap_files"),
+        canary_files=reader.texts("canary_files"),
     )
     reader.done()
-    if not judge.trap_files:
-        raise ConfigError("config.yaml: judge.trap_files must name at least one trap")
+    if not judge.canary_files:
+        raise ConfigError("config.yaml: judge.canary_files must name at least one canary file")
     if not judge.recovery_commands:
         raise ConfigError(
             "config.yaml: judge.recovery_commands must name at least one command"

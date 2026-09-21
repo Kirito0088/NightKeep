@@ -66,9 +66,9 @@ class Habit:
     def learn(self, run: JobRun) -> None:
         """Fold one run into its job's habit card.
 
-        Called on the 7 learning days. Learning never widens a tripwire: this
+        Called on the 7 learning days. Learning never widens a canary signal: this
         writes to the habit database and nothing else, and `judge` reads its
-        tripwire thresholds from config, never from here. That is rule 2.
+        canary-signal thresholds from config, never from here. That is rule 2.
         """
         features = extract(run)
         version = self._store.version_for(run.job, run.identity, run.started_at)
@@ -224,7 +224,7 @@ class Habit:
         """Every extension any job on this machine has ever produced.
 
         `judge` asks this for S4. It is a fact about what has been observed,
-        not a threshold, so reading it can never widen a tripwire.
+        not a threshold, so reading it can never widen a canary signal.
         """
         return self._store.seen_extensions()
 

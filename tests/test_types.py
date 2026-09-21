@@ -31,13 +31,13 @@ LEARNED = Signal(
     code="S1",
     title="Unusual job",
     reason="wrote 4,812 files, usually 240 give or take 60",
-    is_tripwire=False,
+    is_canary=False,
 )
 TRIPWIRE = Signal(
     code="S2",
-    title="Trap file changed",
+    title="Canary file changed",
     reason="a decoy export no job ever touches was renamed",
-    is_tripwire=True,
+    is_canary=True,
 )
 
 
@@ -68,7 +68,7 @@ def test_an_incident_without_a_tripwire_cannot_be_constructed():
     own. A caller who tried to raise an INCIDENT on S1 alone gets a
     TypeError-shaped refusal here, before judge is even reached.
     """
-    with pytest.raises(ValueError, match="tripwire"):
+    with pytest.raises(ValueError, match="canary"):
         Verdict(level=INCIDENT, signals=(LEARNED,))
 
 

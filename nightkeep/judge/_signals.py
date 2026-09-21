@@ -1,4 +1,4 @@
-"""The tripwires: S2, S3, S4 and S5.
+"""The canary signals: S2, S3, S4 and S5.
 
 Every one of these is a fixed rule whose numbers arrive as arguments from
 the entrypoint. None of them consults a habit card, and no learning path
@@ -7,7 +7,7 @@ That is rule 2, and `tests/test_judge.py` holds it by reading this module's
 syntax tree rather than trusting the comment you are reading now.
 
 They are live from minute one. On the very first learning night, before any
-card exists, a trap file being renamed is still an INCIDENT.
+card exists, a canary file being renamed is still an INCIDENT.
 """
 
 from dataclasses import dataclass
@@ -19,7 +19,7 @@ from nightkeep.types import DELETED, MODIFIED, RENAMED, Event, Signal
 # Nothing under here may ever be opened, by anything, for any reason.
 _TRUTH_FOLDER = "_truth"
 
-# S5 looks inside files this size and under. A ransom note or a batch script
+# S5 looks inside files this size and under. A short note or a batch script
 # is a few hundred bytes; a database is not, and reading one in to grep it
 # would be both slow and pointless.
 TEXT_SAMPLE_BYTES = 32 * 1024
@@ -61,16 +61,16 @@ def _read_sample(path: Path, limit: int = entropy_signal.SAMPLE_BYTES) -> bytes:
         return b""
 
 
-# --- S2: a trap file was touched -------------------------------------------
+# --- S2: a canary file was touched -------------------------------------------
 
 
-def trap_touched(events: list[Event], traps: tuple[str, ...]) -> Signal | None:
+def canary_touched(events: list[Event], canaries: tuple[str, ...]) -> Signal | None:
     """S2. A decoy that looks like a real export, that no job ever touches.
 
     Changing, renaming or deleting one fires. Reading one does not, which is
     why the watcher reporting only writes is the right input here.
     """
-    watched = {trap.strip().lower() for trap in traps}
+    watched = {name.strip().lower() for name in canaries}
     for event in events:
         if event.kind not in (MODIFIED, RENAMED, DELETED):
             continue
@@ -80,12 +80,12 @@ def trap_touched(events: list[Event], traps: tuple[str, ...]) -> Signal | None:
                        DELETED: "deleted"}[event.kind]
                 return Signal(
                     code="S2",
-                    title="Trap file changed",
+                    title="Canary file changed",
                     reason=(
                         f"a decoy file that no night task ever touches was "
                         f"{did} ({candidate})"
                     ),
-                    is_tripwire=True,
+                    is_canary=True,
                 )
     return None
 
@@ -156,7 +156,7 @@ def scrambled_in_place(
                 f"{len(fired):,} existing file{'' if len(fired) == 1 else 's'} "
                 f"were overwritten and can no longer be read ({first}{more})"
             ),
-            is_tripwire=True,
+            is_canary=True,
         ),
         readings,
     )
@@ -168,11 +168,11 @@ def scrambled_in_place(
 def mass_rename(
     events: list[Event], seen_extensions: frozenset[str], burst: int
 ) -> Signal | None:
-    """S4. Renaming is how ransomware announces itself.
+    """S4. Renaming in bulk is how a file-locking threat announces itself.
 
     "Unseen" means no job on this machine has ever produced that extension.
     That is a fact about what has been observed, not a learned threshold, so
-    consulting it does not make this tripwire learned: `burst` comes from
+    consulting it does not make this canary signal learned: `burst` comes from
     config and nothing can move it.
     """
     unseen: dict[str, int] = {}
@@ -193,15 +193,15 @@ def mass_rename(
                     f"{count:,} files were renamed to {extension}, a file "
                     f"type no night task has ever produced"
                 ),
-                is_tripwire=True,
+                is_canary=True,
             )
     return None
 
 
-# --- S5: recovery-killing command text -------------------------------------
+# --- S5: system-restore-deletion command text -------------------------------------
 
 
-def recovery_killer(
+def restore_deletion(
     events: list[Event],
     root: Path,
     commands: tuple[str, ...],
@@ -227,7 +227,7 @@ def recovery_killer(
                         f'a running program\'s instructions contain "{needle}", '
                         f"which deletes the computer's own ability to recover"
                     ),
-                    is_tripwire=True,
+                    is_canary=True,
                 )
 
     for event in events:
@@ -250,6 +250,6 @@ def recovery_killer(
                         f"deletes the computer's own ability to recover "
                         f"({event.path})"
                     ),
-                    is_tripwire=True,
+                    is_canary=True,
                 )
     return None

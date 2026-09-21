@@ -31,7 +31,7 @@ from nightkeep.types import (
 
 AT = datetime(2026, 9, 22, 3, 41, 12)
 IDENTITY = "python|jobs/nightly_export.py|abc123"
-TRAPS = ("share/exports/epos_day_end_20240101.csv",)
+CANARIES = ("share/exports/epos_day_end_20240101.csv",)
 CSV = b"card_no,fps_id,quantity_kg\n110300512847,27030300145,20.000\n" * 40
 
 
@@ -58,9 +58,9 @@ def judge(root, habit):
         entropy_jump=1.5,
         entropy_floor=7.0,
         recovery_commands=("vssadmin delete shadows", "wbadmin delete catalog"),
-        trap_files=TRAPS,
+        canary_files=CANARIES,
     )
-    made.plant_traps()
+    made.plant_canaries()
     yield made
     made.undo()
 
@@ -110,7 +110,7 @@ def test_a_wild_habit_score_alone_never_reaches_incident(judge, habit, root):
     verdict = judge.verdict(job_run(events))
 
     assert verdict.level == ODD
-    assert not any(signal.is_tripwire for signal in verdict.signals)
+    assert not any(signal.is_canary for signal in verdict.signals)
     assert verdict.actions == ("noted it for review. Nothing was blocked",)
 
 
@@ -149,11 +149,11 @@ def test_no_signal_reads_a_habit_card():
 
 
 def test_a_tripwire_fires_on_the_very_first_night_with_no_card_at_all(judge, root):
-    """Live from minute one. No learning has happened; the trap still fires."""
-    trap = root / TRAPS[0]
-    trap.write_bytes(b"tampered")
+    """Live from minute one. No learning has happened; the canary still fires."""
+    canary = root / CANARIES[0]
+    canary.write_bytes(b"tampered")
     verdict = judge.verdict(
-        job_run([Event(path=TRAPS[0], kind=MODIFIED, at=AT, size=8)])
+        job_run([Event(path=CANARIES[0], kind=MODIFIED, at=AT, size=8)])
     )
     assert verdict.level == INCIDENT
     assert verdict.signals[0].code == "S2"
@@ -172,9 +172,9 @@ def test_a_quiet_night_is_normal(judge, habit):
 
 
 def test_a_trap_file_touched_is_an_incident_on_its_own(judge, root):
-    (root / TRAPS[0]).write_bytes(b"x")
+    (root / CANARIES[0]).write_bytes(b"x")
     verdict = judge.verdict(
-        job_run([Event(path=TRAPS[0], kind=MODIFIED, at=AT, size=1)])
+        job_run([Event(path=CANARIES[0], kind=MODIFIED, at=AT, size=1)])
     )
     assert verdict.level == INCIDENT
 
@@ -183,7 +183,7 @@ def test_a_trap_file_renamed_is_an_incident(judge, root):
     verdict = judge.verdict(
         job_run([
             Event(path="share/exports/epos_day_end_20240101.csv.locked",
-                  kind=RENAMED, at=AT, old_path=TRAPS[0], size=1)
+                  kind=RENAMED, at=AT, old_path=CANARIES[0], size=1)
         ])
     )
     assert verdict.level == INCIDENT
@@ -192,7 +192,7 @@ def test_a_trap_file_renamed_is_an_incident(judge, root):
 
 def test_a_trap_file_deleted_is_an_incident(judge):
     verdict = judge.verdict(
-        job_run([Event(path=TRAPS[0], kind=DELETED, at=AT)])
+        job_run([Event(path=CANARIES[0], kind=DELETED, at=AT)])
     )
     assert verdict.level == INCIDENT
 
@@ -360,9 +360,9 @@ def test_an_incident_locks_the_records_folder_and_can_unlock_it(judge, root):
     records = root / "data" / "district.db"
     records.write_bytes(b"SQLite format 3\x00" + b"\x00" * 100)
 
-    (root / TRAPS[0]).write_bytes(b"x")
+    (root / CANARIES[0]).write_bytes(b"x")
     verdict = judge.verdict(
-        job_run([Event(path=TRAPS[0], kind=MODIFIED, at=AT, size=1)])
+        job_run([Event(path=CANARIES[0], kind=MODIFIED, at=AT, size=1)])
     )
 
     assert verdict.level == INCIDENT
@@ -376,8 +376,8 @@ def test_an_incident_locks_the_records_folder_and_can_unlock_it(judge, root):
 
 def test_undo_is_safe_to_call_twice(judge, root):
     (root / "data" / "district.db").write_bytes(b"x")
-    (root / TRAPS[0]).write_bytes(b"x")
-    judge.verdict(job_run([Event(path=TRAPS[0], kind=MODIFIED, at=AT, size=1)]))
+    (root / CANARIES[0]).write_bytes(b"x")
+    judge.verdict(job_run([Event(path=CANARIES[0], kind=MODIFIED, at=AT, size=1)]))
     judge.undo()
     assert judge.undo() == []
 
@@ -400,12 +400,12 @@ def test_an_incident_never_updates_what_normal_looks_like(judge, habit, root):
     teach_quiet_nights(habit)
     path = root / "share" / "exports" / "e.csv"
     path.write_bytes(os.urandom(6000))
-    (root / TRAPS[0]).write_bytes(b"x")
+    (root / CANARIES[0]).write_bytes(b"x")
 
     before = judge._baseline.count()
     judge.verdict(
         job_run([
-            Event(path=TRAPS[0], kind=MODIFIED, at=AT, size=1),
+            Event(path=CANARIES[0], kind=MODIFIED, at=AT, size=1),
             Event(path="share/exports/e.csv", kind=MODIFIED, at=AT, size=6000),
         ])
     )

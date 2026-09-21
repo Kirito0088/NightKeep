@@ -136,16 +136,16 @@ judge:
   # header stops matching its extension. All three, never one alone.
   entropy_jump: 1.5
   entropy_floor: 7.0
-  # S5: recovery-killing command text. Matched as text in a file or a
+  # S5: system-restore-deletion command text. Matched as text in a file or a
   # process command line. Nightkeep never runs these, and neither does the
   # simulator: it only echoes them.
   recovery_commands:
     - "vssadmin delete shadows"
     - "wbadmin delete catalog"
     - "bcdedit /set recoveryenabled no"
-  # S2: decoy files that look like real exports. No legitimate job touches
+  # S2: canary files that look like real exports. No legitimate job touches
   # them. Reading one is fine; changing, renaming or deleting one is not.
-  trap_files:
+  canary_files:
     - "share/exports/epos_day_end_20240101.csv"
     - "allocations/fps_quota_2024_01.csv"
 

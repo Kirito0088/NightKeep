@@ -895,19 +895,19 @@ html, body {
   color: var(--color-incident-red);
 }
 
-.ransom-note-box {
+.threat-note-box {
   background-color: #f8fafc;
   border: 1px solid var(--color-border);
   padding: 12px;
 }
 
-.ransom-note-pre {
+.threat-note-pre {
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
 }
 
-.ransom-note-pre code {
+.threat-note-pre code {
   font-family: Consolas, Monaco, "Courier New", monospace;
   font-size: var(--font-size-caption);
   color: var(--color-body-text);

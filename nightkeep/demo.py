@@ -158,9 +158,9 @@ def run_demo(
         rename_burst=config.judge.rename_burst, entropy_jump=config.judge.entropy_jump,
         entropy_floor=config.judge.entropy_floor,
         recovery_commands=config.judge.recovery_commands,
-        trap_files=config.judge.trap_files,
+        canary_files=config.judge.canary_files,
     )
-    judge.plant_traps()
+    judge.plant_canaries()
     vault = Vault(
         share=pds / "share", root=vault_root,
         suspect_randomness=config.vault.suspect_entropy,

@@ -46,10 +46,10 @@ A third register, **counter-clerk language**, is what appears on the main path o
 | **Job identity** | What makes two runs the same job: **executable + script path + SHA-256 of the script**. Not the filename alone. A vendor silently changing a script produces a new hash and therefore a flagged identity. |
 | **Job run** | One execution of one job, from start to finish. The unit `habit` scores and `judge` judges. |
 | **Erratic** | Timing and volume that change from day to day and are still legitimate. The thing Nightkeep must learn to ignore. Not a synonym for "suspicious". |
-| **Undocumented script** | `fix_dat.vbs`. Nobody remembers what it does. It renames `.tmp` to `.dat` and rewrites allocation files in place, some nights only. It is the hardest legitimate job to tell from ransomware, which is why it exists. |
+| **Undocumented script** | `fix_dat.vbs`. Nobody remembers what it does. It renames `.tmp` to `.dat` and rewrites allocation files in place, some nights only. It is the hardest legitimate job to tell from a file-locking threat, which is why it exists. |
 | **Harvest surge** | A switch that doubles volumes on chosen days. Peak season. Legitimate, and must not alarm. |
 | **Simulated clock** | One simulated day takes about 30 s of real time. Seeded, so a judge can pick a seed and the run replays exactly. |
-| **Learning days** | The first 7 simulated days. `habit` builds one habit card per job. Tripwires are already live. |
+| **Learning days** | The first 7 simulated days. `habit` builds one habit card per job. Canary signals are already live. |
 | **Guard days** | The 3 simulated days after learning. Proves Nightkeep stays quiet on erratic-but-normal behaviour. Zero INCIDENT verdicts is the pass condition. |
 | **Ground truth** | What a job really did, written by the job itself to `logs/_truth/<job>.jsonl`. **Nothing under `watcher/`, `habit/`, `judge/` or `vault/` may read it.** It exists to prove, after the fact, that learning was correct. |
 
@@ -62,13 +62,13 @@ A third register, **counter-clerk language**, is what appears on the main path o
 | **Watcher** | On the PDS server. Notices file changes and which process caused them. |
 | **Habit card** | What one job normally does: start window, median and MAD of files modified / created / deleted, folders, bytes, extensions, script SHA-256. **Learned.** Versioned, because legitimate jobs change. |
 | **Habit score** | 0 to 1. How far this run sits from its own habit card. **Learned, and never sufficient on its own to pause anything.** Carries its reasons in plain numbers. |
-| **Tripwire** | A fixed, hard-coded rule. Signals S2 to S7. **Never learned, and no learning path may widen one.** |
-| **Signal** | One named check. S1 unusual job (learned). S2 trap file changed. S3 in-place scramble, entropy jump plus broken header. S4 mass rename to an unseen extension. S5 recovery-killing command text. S6 Watcher went silent. S7 Vault snapshot unhealthy. S2 to S7 are tripwires. |
-| **Trap file** | A decoy that looks like a real export and that no legitimate job ever touches. Modifying, renaming or deleting one trips S2. Reading one does not. |
+| **Canary signal** | A fixed, hard-coded rule. Signals S2 to S7. **Never learned, and no learning path may widen one.** Say **canary signal**, not "tripwire". |
+| **Signal** | One named check. S1 unusual job (learned). S2 canary file changed. S3 in-place scramble, entropy jump plus broken header. S4 mass rename to an unseen extension. S5 system-restore-deletion command text. S6 Watcher went silent. S7 Vault snapshot unhealthy. S2 to S7 are canary signals. |
+| **Canary file** | A decoy that looks like a real export and that no legitimate job ever touches. Modifying, renaming or deleting one trips S2. Reading one does not. Say **canary file**, not "trap file". |
 | **Judge** | On the PDS server. Combines habit score and signals into a verdict, then takes only reversible actions. |
 | **Verdict** | One of NORMAL, ODD, SUSPICIOUS, INCIDENT. Carries its reasons in plain language and the actions taken. |
 | **ODD** | Unusual, not dangerous. A yellow review card. Nothing is blocked. The verdict that proves the twist was handled. |
-| **INCIDENT** | High confidence. Needs at least one tripwire, never habit score alone. Pauses the process and sets the data folder read-only. |
+| **INCIDENT** | High confidence. Needs at least one canary signal, never habit score alone. Pauses the process and sets the data folder read-only. |
 | **Reversible action** | Suspend, not kill. Read-only, not delete. A wrong call costs minutes, not data. |
 | **Vault** | The separate machine that holds the backups. In this prototype, Laptop B or a VM. |
 | **Share** | The one folder on the PDS server, `share/`, that the Vault pulls from: day-end exports, allotment files and the nightly safe copy of the database. Read-only, open only to the Vault's address. The live database is never in it. See ADR-0007. |
