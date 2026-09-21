@@ -31,7 +31,7 @@ COMMANDS = (
     "wbadmin delete catalog",
     "bcdedit /set recoveryenabled no",
 )
-# The trap path from config.yaml's judge.trap_files. The simulator does not
+# The trap path from config.yaml's judge.canary_files. The simulator does not
 # know it: the fast encryptor just encrypts everything it finds, and the
 # trap is caught in the blast radius like a real attack would catch it.
 TRAP = "share/exports/epos_day_end_20240101.csv"

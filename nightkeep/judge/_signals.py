@@ -90,6 +90,9 @@ def canary_touched(events: list[Event], canaries: tuple[str, ...]) -> Signal | N
     return None
 
 
+trap_touched = canary_touched
+
+
 # --- S3: an existing file was scrambled in place ---------------------------
 
 

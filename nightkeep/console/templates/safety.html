@@ -14,10 +14,10 @@
   <!-- Calm Status Banner (Parity with Screen 3 incident banner) -->
   <div class="safety-alert-banner" role="status" aria-live="polite">
     <div class="safety-alert-content">
-      <div class="safety-alert-badge">STATUS: NORMAL</div>
+      <div class="safety-alert-badge">{{ safety.status_badge }}</div>
       <h2 class="safety-alert-title">{{ safety.protection_status }}</h2>
       <p class="safety-alert-description">
-        All 5,000 ration cards are protected and continuous monitoring is active. Safe copies are preserved on the isolated Vault.
+        {{ safety.protection_detail }}
       </p>
     </div>
   </div>

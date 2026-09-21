@@ -99,11 +99,29 @@ python -m nightkeep --prove-erratic
 |---|---|
 | `/` or `/search` | Ration card search (the PDS system) |
 | `/card/<card_no>` | Card detail: members, entitlements, ePoS history |
-| `/locked` | The search screen during the incident |
+| `/locked` | The search screen during the incident (labelled "DEMONSTRATION DRILL" until a real INCIDENT) |
 | `/safety` | Data Safety home: "am I okay?", the six night tasks |
-| `/alert` | The incident report, in ration-office units |
+| `/alert` | The incident report, in ration-office units ("STATUS: ALL CLEAR" when unwired) |
 | `/restore` | The three-step restore wizard with its five checks |
 | `/server-alert` | The pop-up shown on the office computer |
+
+> **Console `--out-dir` matters.** `--demo` writes to `demo/pds/reports/`;
+> `--demo-run` writes to `demo/demo_run/`. If you launch
+> `python -m nightkeep.console` bare (no config), it starts with sample
+> records and calm, honest screens — it never fabricates an incident.
+
+### Operator notes
+
+**S5 (recovery-command text) is machine-wide by design.** The judge scans
+command lines of all shell / script-host / recovery-tool processes for
+configured needles (`vssadmin delete shadows`, `wbadmin delete catalog`,
+`bcdedit /set recoveryenabled no`). During a demo, keep unrelated terminals
+closed and avoid typing these strings in active command lines.
+
+**F14 naming collision.** F14 in the authoritative `docs/MVP.md` is the Loss
+Window Report. An older branch reused F14 for heartbeat containment
+(PR #16's branch `fix/f14-heartbeat-survives-containment`); that is a naming
+collision in history, not the feature ID.
 
 ---
 
@@ -174,11 +192,13 @@ nightkeep/
   console/      Flask app: 7 screens + pop-up, hand-written CSS
   simulator/    the safe threat simulator and its recovery function
   demo.py       one seeded end-to-end run, writes reports/run.json
+  demo_run.py   multi-process integration harness (--demo-run)
   types.py      plain dataclasses shared across the two-machine boundary
   config.py     the one loader; config.yaml holds every tunable number
   __main__.py   the entrypoint: reads config once, passes values in
 docs/
   MVP.md, SOLUTION_DESIGN.md, adr/   the settled decisions
+  demo-runbook.md                    Windows demo operator procedure
 CLAUDE.md       the rules the codebase obeys
 CONTEXT.md      the vocabulary. Use these words
 ```
@@ -186,6 +206,7 @@ CONTEXT.md      the vocabulary. Use these words
 ## Documentation
 
 - [`docs/MVP.md`](docs/MVP.md) — the plan, the four proofs, the success metrics.
+- [`docs/demo-runbook.md`](docs/demo-runbook.md) — the Windows demo operator procedure.
 - [`docs/adr/`](docs/adr) — every settled decision, with its reasoning.
 - [`CLAUDE.md`](CLAUDE.md) — the architecture, the three rules, the stack.
 - [`CONTEXT.md`](CONTEXT.md) — the domain and system vocabulary.

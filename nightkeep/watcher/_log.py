@@ -41,11 +41,29 @@ class EventLog:
     def read_all(self) -> tuple[Event, ...]:
         if not self.path.exists():
             return ()
+        text = self.path.read_text(encoding="utf-8")
+        # The log is append-only and the writer is a separate process, so
+        # the final line may be an in-flight write: present but not yet
+        # newline-terminated, possibly torn mid-record. Only that trailing
+        # unterminated line is treated as possibly-incomplete: it is
+        # skipped for now (the next poll reads it once the write lands)
+        # and never fabricated into an event. Every newline-terminated
+        # line is a complete record -- malformed ones still fail loudly
+        # rather than being silently hidden.
+        lines = text.splitlines()
+        terminated = text.endswith("\n")
+        last_index = len(lines) - 1
         events = []
-        for line in self.path.read_text(encoding="utf-8").splitlines():
+        for index, line in enumerate(lines):
             if not line.strip():
                 continue
-            raw = json.loads(line)
+            if index == last_index and not terminated:
+                try:
+                    raw = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+            else:
+                raw = json.loads(line)
             events.append(
                 Event(
                     path=raw["path"],

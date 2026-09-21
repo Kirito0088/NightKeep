@@ -16,6 +16,8 @@ from pathlib import Path
 
 import psutil
 
+from nightkeep.types import HEARTBEAT_FILENAME
+
 
 @dataclass
 class Taken:
@@ -49,6 +51,11 @@ def make_read_only(folder: Path, taken: Taken) -> int:
     On Windows a read-only *folder* does not stop its contents being
     rewritten, so this walks the files. That is slower and it is the only
     version that actually holds.
+
+    The Watcher's liveness heartbeat (and its atomic-write temp sibling)
+    is never locked: on Windows the agent replaces that file with
+    os.replace(), which fails against a read-only destination and would
+    kill the agent right after containment, manufacturing a false S6.
     """
     folder = Path(folder)
     if not folder.is_dir():
@@ -56,6 +63,13 @@ def make_read_only(folder: Path, taken: Taken) -> int:
     changed = 0
     for path in sorted(folder.rglob("*")):
         if not path.is_file():
+            continue
+        if path.name == HEARTBEAT_FILENAME or path.name.startswith(
+            HEARTBEAT_FILENAME + "."
+        ):
+            # The liveness heartbeat belongs to the Vault's S6 witness, not
+            # to the data being protected. Locking it would silence the
+            # agent that is still supposed to be watching.
             continue
         try:
             mode = path.stat().st_mode
@@ -96,6 +110,10 @@ def undo(taken: Taken) -> list[str]:
         taken.made_read_only.remove(path)
     if restored:
         undone.append(f"unlocked the records folder ({restored:,} files)")
+
+    # The taken is now empty: the next incident starts with a clean slate
+    # instead of re-reporting these actions.
+    taken.descriptions.clear()
 
     return undone
 

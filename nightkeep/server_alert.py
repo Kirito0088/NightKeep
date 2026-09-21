@@ -36,13 +36,23 @@ def alert_for(verdict: Verdict) -> ServerAlert | None:
     """Build the pop-up for an INCIDENT verdict; None for anything else.
 
     Reads the verdict only. The level, reasons and actions were all decided
-    by the Judge; nothing is recomputed here.
+    by the Judge; nothing is recomputed here. The headline claims "paused"
+    only when the Judge actually paused something: Verdict.actions carries
+    a "paused ..." entry exactly when suspend_process succeeded. When no
+    PID was known, or the program was already gone, the headline says so
+    instead of lying.
     """
     if verdict.level != INCIDENT:
         return None
+    paused = any(action.startswith("paused") for action in verdict.actions)
+    headline = (
+        "A program tried to lock your files. It was paused."
+        if paused
+        else "A program tried to lock your files. It was not paused."
+    )
     return ServerAlert(
         title="Nightkeep Security Alert",
-        headline="A program tried to lock your files. It was paused.",
+        headline=headline,
         details=tuple(verdict.actions)
         + (
             "Do not restart this computer.",

@@ -115,6 +115,10 @@ class Signal:
     reason: str
     is_canary: bool
 
+    @property
+    def is_tripwire(self) -> bool:
+        return self.is_canary
+
 
 @dataclass(frozen=True)
 class Verdict:
@@ -122,12 +126,22 @@ class Verdict:
 
     An INCIDENT always carries at least one canary signal. Actions are
     reversible by construction: suspend, not kill; read-only, not delete.
+
+    `decided_at` is the moment the Judge reached this level, before the
+    containment actions ran and before the (on Windows, blocking) server
+    pop-up was raised. `contained_at` is the moment the containment
+    actions finished, still before the pop-up. Detection latency is
+    measured to `decided_at`, never to the verdict's return, so a human
+    dismissing the pop-up cannot inflate it. For quieter levels the two
+    are effectively the same instant.
     """
 
     level: str
     reasons: tuple[str, ...] = ()
     actions: tuple[str, ...] = ()
     signals: tuple[Signal, ...] = ()
+    decided_at: datetime | None = None
+    contained_at: datetime | None = None
 
     def __post_init__(self) -> None:
         if self.level not in VERDICT_LEVELS:

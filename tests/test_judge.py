@@ -423,6 +423,31 @@ def test_a_quiet_night_does_update_what_normal_looks_like(judge, habit, root):
     assert judge._baseline.knows("share/exports/e.csv")
 
 
+def test_a_window_verdict_never_updates_what_normal_looks_like(judge, habit, root):
+    """Live attack windows are judged with an explicit event slice. Even when
+    the slice looks NORMAL, it must not teach the baseline: a slice is never
+    "a quiet night". Without this, early attack windows would fold scrambled
+    entropy into "normal" and blunt S3 for the rest of the attack."""
+    teach_quiet_nights(habit)
+    path = root / "share" / "exports" / "e.csv"
+    path.write_bytes(CSV)
+    judge.verdict(
+        job_run([Event(path="share/exports/e.csv", kind=MODIFIED, at=AT,
+                       size=len(CSV))])
+    )
+    clean_entropy = judge._baseline.entropy_of("share/exports/e.csv")
+    assert clean_entropy is not None
+
+    # New content, slightly different entropy but far from the S3 tripwire:
+    # exactly what an early live attack window looks like.
+    path.write_bytes(CSV + b"extra,row,1.5\n")
+    window = [Event(path="share/exports/e.csv", kind=MODIFIED, at=AT,
+                    size=path.stat().st_size)]
+    verdict = judge.verdict(job_run(), events=window)
+    assert verdict.level in (NORMAL, ODD)
+    assert judge._baseline.entropy_of("share/exports/e.csv") == clean_entropy
+
+
 # --- the truth logs --------------------------------------------------------
 
 

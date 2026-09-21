@@ -2,16 +2,16 @@
 
 Public interface:
     Judge(root, habit, odd_score, rename_burst, entropy_jump, entropy_floor,
-          recovery_commands, trap_files, server_alerts=False)
+          recovery_commands, canary_files, server_alerts=False)
     verdict(run, events) -> Verdict
     undo()
 
 Hides all the signals, the verdict table, suspend/read-only actions and
-their undo. Signals S2 to S5 are tripwires: hard-coded, live from minute
+their undo. Signals S2 to S5 are canaries: hard-coded, live from minute
 one, never learned.
 
 **Rule 1 is enforced here**, in one place and one place only: the level
-INCIDENT is unreachable unless a tripwire fired. `Verdict` refuses to be
+INCIDENT is unreachable unless a canary fired. `Verdict` refuses to be
 built otherwise, so even a future bug in this table cannot pause a process
 on a habit score alone.
 
@@ -23,6 +23,7 @@ things, never fewer.
 """
 
 from collections import Counter
+from datetime import datetime, timezone
 from pathlib import Path
 
 from nightkeep.habit import Habit
@@ -50,10 +51,11 @@ _SHELLS_AND_RECOVERY_TOOLS = frozenset({
     "sh", "bash", "zsh",
 })
 
-TRAP_CONTENTS = (
+CANARY_CONTENTS = (
     b"transaction_id,card_no,fps_id,occurred_at,allotment_month,"
     b"commodity,quantity_kg,auth_mode,status\n"
 )
+TRAP_CONTENTS = CANARY_CONTENTS
 
 
 class Judge:
@@ -68,7 +70,7 @@ class Judge:
         entropy_jump: float,
         entropy_floor: float,
         recovery_commands: tuple[str, ...],
-        trap_files: tuple[str, ...],
+        canary_files: tuple[str, ...],
         server_alerts: bool = False,
     ) -> None:
         self.root = Path(root).resolve()
@@ -78,7 +80,7 @@ class Judge:
         self._entropy_jump = entropy_jump
         self._entropy_floor = entropy_floor
         self._recovery_commands = recovery_commands
-        self._trap_files = trap_files
+        self._canary_files = canary_files
         self._server_alerts = server_alerts
         self._baseline = Baseline(self.root / "data" / DATABASE_NAME)
         self._taken = _actions.Taken()
@@ -86,41 +88,58 @@ class Judge:
 
     # --- setup -------------------------------------------------------------
 
-    def plant_traps(self) -> list[Path]:
+    def plant_canaries(self) -> list[Path]:
         """Put the decoys in place. Part of setting the Judge up, not of judging.
 
-        A trap has to look like a real export or nothing would bother
+        A canary has to look like a real export or nothing would bother
         encrypting it, and it has to be a file no job will ever open, or it
         would fire on its own. The names in config sit in the export and
         allocation folders alongside the real ones, dated far enough in the
         past that no job's date arithmetic reaches them.
         """
         planted = []
-        for relative in self._trap_files:
+        for relative in self._canary_files:
             path = self.root / relative
             path.parent.mkdir(parents=True, exist_ok=True)
             if not path.exists():
-                path.write_bytes(TRAP_CONTENTS)
+                path.write_bytes(CANARY_CONTENTS)
             planted.append(path)
         return planted
+
+    plant_traps = plant_canaries
 
     # --- the public interface ---------------------------------------------
 
     def verdict(self, run: JobRun, events: list[Event] | None = None) -> Verdict:
-        """Judge one run. The only place a level is decided."""
-        events = list(events if events is not None else run.events)
+        """Judge one run. The only place a level is decided.
+
+        Pass `events` to judge a window or slice of the run instead of the
+        whole run. Only a verdict on the run's own events updates the
+        baseline: a slice is never "a quiet night", so judging one teaches
+        Nightkeep nothing. Live attack windows are always judged this way,
+        which keeps partial attack observations out of the baseline.
+        """
+        whole_run = events is None
+        events = list(run.events if whole_run else events)
         habit_score = self._habit.score(run)
 
         signals, readings = self._fire_signals(events)
-        tripwires = tuple(signal for signal in signals if signal.is_tripwire)
-        codes = {signal.code for signal in tripwires}
+        canaries = tuple(signal for signal in signals if signal.is_canary)
+        codes = {signal.code for signal in canaries}
 
         level = self._level(codes, habit_score)
-        verdict = self._act(run, events, level, signals, habit_score)
+        # The decision instant, taken here and carried on the verdict:
+        # everything after this (containment, the blocking server pop-up)
+        # must not move it, or detection latency would include a human
+        # dismissing a dialog.
+        decided_at = datetime.now(timezone.utc)
+        verdict = self._act(run, events, level, signals, habit_score,
+                            decided_at)
 
-        if level in (NORMAL, ODD):
+        if whole_run and level in (NORMAL, ODD):
             # Only a quiet night updates what "normal" looks like. Folding an
-            # incident back in would teach Nightkeep that scrambled is fine.
+            # incident back in would teach Nightkeep that scrambled is fine,
+            # and a slice of a run is not a night at all.
             self._baseline.remember_many(
                 [(reading.path, reading.entropy) for reading in readings],
                 run.started_at,
@@ -132,7 +151,7 @@ class Judge:
     def would_incident(
         self, run: JobRun, events: list[Event] | None = None
     ) -> tuple[bool, tuple[str, ...]]:
-        """Read-only: is this run an INCIDENT yet, and on which tripwires?
+        """Read-only: is this run an INCIDENT yet, and on which canaries?
 
         Acts on nothing, learns nothing, records nothing, and leaves the
         habit database untouched (it scores against the run's existing card,
@@ -149,7 +168,7 @@ class Judge:
         """
         events = list(events if events is not None else run.events)
         signals, _ = self._fire_signals(events, scan_processes=False)
-        codes = {signal.code for signal in signals if signal.is_tripwire}
+        codes = {signal.code for signal in signals if signal.is_canary}
         level = self._level(codes, self._habit.score(run))
         return level == INCIDENT, tuple(sorted(codes))
 
@@ -169,7 +188,7 @@ class Judge:
         if not codes:
             return ODD if unusual else NORMAL
 
-        # A trap file is unambiguous. Nothing legitimate touches it, so this
+        # A canary file is unambiguous. Nothing legitimate touches it, so this
         # needs no corroboration from a habit card.
         if "S2" in codes:
             return INCIDENT
@@ -194,9 +213,9 @@ class Judge:
     ) -> tuple[list[Signal], list[_signals.Reading]]:
         signals: list[Signal] = []
 
-        trap = _signals.trap_touched(events, self._trap_files)
-        if trap:
-            signals.append(trap)
+        canary = _signals.canary_touched(events, self._canary_files)
+        if canary:
+            signals.append(canary)
 
         scramble, readings = _signals.scrambled_in_place(
             events, self.root, self._baseline,
@@ -255,6 +274,7 @@ class Judge:
         level: str,
         signals: tuple[Signal, ...] | list[Signal],
         habit_score: HabitScore,
+        decided_at: datetime,
     ) -> Verdict:
         signals = tuple(signals)
         reasons = tuple(signal.reason for signal in signals) + habit_score.reasons
@@ -280,11 +300,18 @@ class Judge:
         else:
             actions = ["logged it"]
 
+        # Containment is done at this point; the server pop-up below is
+        # informational and (on Windows) blocks on a human. Stamping here
+        # keeps containment time honest and separate from dismissal time.
+        contained_at = datetime.now(timezone.utc)
+
         verdict = Verdict(
             level=level,
             reasons=reasons,
             actions=tuple(actions),
             signals=signals,
+            decided_at=decided_at,
+            contained_at=contained_at,
         )
         if level == INCIDENT and self._server_alerts:
             # The office computer's own pop-up, raised here on the server

@@ -276,6 +276,10 @@ class Judge:
     recovery_commands: tuple[str, ...]
     canary_files: tuple[str, ...]
 
+    @property
+    def trap_files(self) -> tuple[str, ...]:
+        return self.canary_files
+
 
 @dataclass(frozen=True)
 class Vault:

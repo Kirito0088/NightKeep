@@ -16,10 +16,10 @@
   <!-- Primary Incident Banner -->
   <div class="locked-alert-banner" role="alert" aria-live="assertive">
     <div class="locked-alert-content">
-      <div class="locked-alert-badge">SYSTEM NOTICE</div>
-      <h2 class="locked-alert-title">Ration card records cannot be opened</h2>
+      <div class="locked-alert-badge">{{ locked.badge }}</div>
+      <h2 class="locked-alert-title">{{ locked.headline }}</h2>
       <p class="locked-alert-description">
-        The system detected an abnormal program attempting to modify database files. Records have been locked in place to protect beneficiary data.
+        {{ locked.description }}
       </p>
     </div>
   </div>

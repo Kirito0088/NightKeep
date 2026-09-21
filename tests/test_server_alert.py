@@ -51,7 +51,7 @@ def make_judge(root, habit, **kwargs):
         entropy_jump=1.5,
         entropy_floor=7.0,
         recovery_commands=("vssadmin delete shadows", "wbadmin delete catalog"),
-        trap_files=TRAPS,
+        canary_files=TRAPS,
         **kwargs,
     )
     made.plant_traps()
@@ -92,8 +92,49 @@ def test_only_an_incident_verdict_builds_a_server_alert(judge):
     alert = server_alert.alert_for(incident)
     assert isinstance(alert, ServerAlert)
     assert alert.title == "Nightkeep Security Alert"
-    assert "paused" in alert.headline
+    # trap_touch() carries no PID, so nothing was paused: the headline must
+    # not claim otherwise.
+    assert alert.headline == "A program tried to lock your files. It was not paused."
     assert any("Do not restart this computer." == line for line in alert.details)
+
+
+def test_incident_with_no_pid_says_not_paused(judge):
+    """No PID in the events means the Judge never attempted a pause. The
+    pop-up must be truthful about that."""
+    incident = judge.verdict(trap_touch())
+    assert incident.level == INCIDENT
+    assert not any(action.startswith("paused") for action in incident.actions)
+
+    alert = server_alert.alert_for(incident)
+    assert "not paused" in alert.headline
+
+
+def test_incident_with_a_paused_process_says_paused(judge):
+    """A real process behind the events gets suspended, and only then does
+    the pop-up say it was paused."""
+    import subprocess
+
+    sleeper = subprocess.Popen(["sleep", "60"])
+    try:
+        incident = judge.verdict(
+            job_run([
+                Event(path=TRAPS[0], kind=MODIFIED, at=AT, size=1,
+                      pid=sleeper.pid),
+            ])
+        )
+        assert incident.level == INCIDENT
+        assert any(
+            action.startswith("paused") for action in incident.actions
+        ), incident.actions
+
+        alert = server_alert.alert_for(incident)
+        assert alert.headline == (
+            "A program tried to lock your files. It was paused."
+        )
+    finally:
+        judge.undo()
+        sleeper.terminate()
+        sleeper.wait()
 
 
 def test_quiet_verdicts_build_no_server_alert():
