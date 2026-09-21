@@ -359,7 +359,7 @@ def _attack(watcher, judge, vault, config, pds, variant, result, say):
     touched = 0
     caught_at: dict[str, float | int | None] = {"files": None, "seconds": None}
     began = time.monotonic()
-    last_poll = 0.0
+    last_poll = began  # first poll lands one cadence in, not on the first file
     attack_start = datetime.now(timezone.utc)
 
     def watch_each(_path: Path) -> None:
@@ -368,7 +368,8 @@ def _attack(watcher, judge, vault, config, pds, variant, result, say):
         if caught_at["files"] is not None:
             return
         # Poll at the Watcher's cadence, the same rhythm the real Judge runs
-        # on, so the file count at detection is honest.
+        # on, so the file count at detection is what a deployed Nightkeep
+        # would really see, not an artefact of checking after every file.
         now = time.monotonic()
         if now - last_poll < config.watcher.poll_seconds:
             return
