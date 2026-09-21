@@ -491,3 +491,50 @@ def test_back_to_back_runs_are_clean(district):
         assert len(second["actions"]) <= 3, second["actions"]
     finally:
         judge.undo()
+
+
+def test_judge_exception_still_kills_simulator_and_undoes_lock(
+    district, monkeypatch
+):
+    """If judging raises mid-attack, the simulator must not survive and the
+    read-only lock must not survive either.
+
+    Regression for the exception path in _judge_attack_live: the cleanup
+    (kill the simulator tree, reap it, judge.undo()) runs in a finally, so
+    a raising Judge cannot leave a suspended simulator behind or keep the
+    share read-only.
+    """
+    judge = _make_judge(district)
+    sim_pids: list[int] = []
+
+    real_verdict = judge.verdict
+
+    def _raising_verdict(run, events=None):
+        raise RuntimeError("simulated judge failure")
+
+    monkeypatch.setattr(judge, "verdict", _raising_verdict)
+
+    argv = _simulator_argv(district, "fast", "0.4")
+    said: list[str] = []
+    with pytest.raises(RuntimeError, match="simulated judge failure"):
+        _judge_attack_live(
+            simulator_argv=argv,
+            event_log=event_log_for(district),
+            judge=judge,
+            district_dir=district,
+            variant="fast",
+            day_no=4,
+            settle_seconds=0.2,
+            say=said.append,
+        )
+    # The simulator launch line names the real PID; it must be gone.
+    launched = [m for m in said if m.startswith("simulator launched live: pid ")]
+    assert launched, said
+    sim_pid = int(launched[0].rsplit(" ", 1)[1])
+    assert not psutil.pid_exists(sim_pid), f"simulator {sim_pid} survived"
+    # The share must be writable again: no read-only lock left behind.
+    probe = district / "share" / ".nightkeep-write-probe"
+    probe.write_text("ok")
+    probe.unlink()
+    assert judge._taken.descriptions == [], judge._taken.descriptions
+    assert judge._taken.suspended == [], judge._taken.suspended

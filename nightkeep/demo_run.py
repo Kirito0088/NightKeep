@@ -422,138 +422,146 @@ def _judge_attack_live(
         verdicts_judged += 1
         return judge.verdict(attack_run, events=list(prefix))
 
-    while True:
-        if drain_new():
-            # The simulator's state right now is the "immediately before
-            # containment" evidence, if this verdict is the INCIDENT one.
-            alive_now = proc.poll() is None
-            verdict = judge_prefix()
-            say(f"live window: {len(prefix)} events -> {verdict.level}")
-            if verdict.level == INCIDENT:
-                incident_verdict = verdict
-                sim_alive_before_containment = alive_now
-                say(
-                    f"INCIDENT with the simulator alive: {alive_now} "
-                    f"(pid {sim_pid})"
-                )
-                break
-        if proc.poll() is not None:
-            # The simulator finished. One settle wait for the watcher's
-            # tail, a final drain, and a final verdict on the whole
-            # prefix -- this is what catches a very fast attack honestly.
-            time.sleep(settle_seconds)
-            drain_new()
-            verdict = judge_prefix()
-            say(f"final window: {len(prefix)} events -> {verdict.level}")
-            if verdict.level == INCIDENT and incident_verdict is None:
-                incident_verdict = verdict
-                sim_alive_before_containment = False
-            break
-        time.sleep(_LIVE_POLL_SECONDS)
-
-    attack_end = _utcnow()
     evidence: dict = {
         "variant": variant,
         "simulator_pid": sim_pid,
         "attack_start": attack_start.isoformat(),
-        "attack_end": attack_end.isoformat(),
-        "verdicts_judged": verdicts_judged,
-        "events_observed": len(prefix),
+        "attack_end": None,
+        "verdicts_judged": 0,
+        "events_observed": 0,
         "level": "NORMAL",
         "signals": [],
         "reasons": [],
         "actions": [],
     }
-
-    if incident_verdict is not None:
-        # The verdict carries its own decision and containment
-        # timestamps, stamped inside the Judge before the server pop-up.
-        # Using them -- not a clock read after the verdict returns --
-        # keeps popup dismissal out of the latency, and gives the
-        # containment proof a cutoff no post-verdict step can move.
-        incident_decision_at = incident_verdict.decided_at
-        containment_completed_at = incident_verdict.contained_at
-        assert incident_decision_at is not None
-        assert containment_completed_at is not None
-        assert first_event_at is not None
-        latency = (
-            incident_decision_at - first_event_at
-        ).total_seconds()
-        sim_stopped = _process_is_stopped(sim_pid)
-        say(
-            f"containment: simulator pid {sim_pid} "
-            f"{'suspended' if sim_stopped else 'NOT suspended'}; "
-            f"latency {latency:.1f}s; "
-            f"{len({_canonical_affected_path(e) for e in prefix})} "
-            "files in the window"
-        )
-        # Prove the attack stopped: after containment completed, no
-        # simulator-eligible file may be written anywhere under the demo
-        # root. mtime is write time, not watch time, so a late-delivered
-        # event for a pre-containment write cannot false-positive.
-        time.sleep(_CONTAINMENT_PROOF_WAIT_SECONDS)
-        written_after = _eligible_files_modified_after(
-            district_dir, containment_completed_at.timestamp()
-        )
-        further_stopped = not written_after
-        if not further_stopped:
-            say(f"attack continued after containment: {written_after}")
-
-        evidence.update(
-            {
-                "level": incident_verdict.level,
-                "signals": [s.code for s in incident_verdict.signals],
-                "reasons": list(incident_verdict.reasons),
-                "actions": list(incident_verdict.actions),
-                "first_event_at": first_event_at.isoformat(),
-                "incident_decision_at": incident_decision_at.isoformat(),
-                "containment_completed_at": (
-                    containment_completed_at.isoformat()
-                ),
-                "detection_latency_seconds": latency,
-                "affected_files_at_incident": len(
-                    {_canonical_affected_path(e) for e in prefix}
-                ),
-                "simulator_alive_before_containment": (
-                    sim_alive_before_containment
-                ),
-                "simulator_stopped_after_containment": sim_stopped,
-                "further_attack_stopped": further_stopped,
-            }
-        )
-    else:
-        # No INCIDENT: the watcher-killer (or an unexpected quiet attack).
-        # The last verdict stands as the post-mortem.
-        evidence["simulator_alive_before_containment"] = False
-
-    # --- cleanup: the simulator must not survive the demo ----------------
-    killed = _kill_process_tree(sim_pid)
-    # Reap the direct child so it never becomes a zombie.
     try:
-        proc.wait(timeout=5)
-    except subprocess.TimeoutExpired:
-        pass
-    undone = judge.undo()
-    say(f"cleanup: signaled pids {killed}; judge undo: {undone}")
-    try:
-        still_there = psutil.pid_exists(sim_pid)
-    except Exception:
-        still_there = False
-    evidence["cleanup_killed_pids"] = killed
-    evidence["cleanup_undo"] = undone
-    evidence["simulator_process_gone"] = not still_there
-    evidence["cleanup_at"] = _utcnow().isoformat()
-    # Writability is restored by judge.undo(); prove it on one file.
-    probe = district_dir / "share" / ".nightkeep-write-probe"
-    try:
-        probe.write_text("ok")
-        probe.unlink()
-        writable = True
-    except OSError:
-        writable = False
-    evidence["share_writable_after_cleanup"] = writable
-    say(f"cleanup: simulator gone: {not still_there}; "
-        f"share writable: {writable}")
+        while True:
+            if drain_new():
+                # The simulator's state right now is the "immediately before
+                # containment" evidence, if this verdict is the INCIDENT one.
+                alive_now = proc.poll() is None
+                verdict = judge_prefix()
+                say(f"live window: {len(prefix)} events -> {verdict.level}")
+                if verdict.level == INCIDENT:
+                    incident_verdict = verdict
+                    sim_alive_before_containment = alive_now
+                    say(
+                        f"INCIDENT with the simulator alive: {alive_now} "
+                        f"(pid {sim_pid})"
+                    )
+                    break
+            if proc.poll() is not None:
+                # The simulator finished. One settle wait for the watcher's
+                # tail, a final drain, and a final verdict on the whole
+                # prefix -- this is what catches a very fast attack honestly.
+                time.sleep(settle_seconds)
+                drain_new()
+                verdict = judge_prefix()
+                say(f"final window: {len(prefix)} events -> {verdict.level}")
+                if verdict.level == INCIDENT and incident_verdict is None:
+                    incident_verdict = verdict
+                    sim_alive_before_containment = False
+                break
+            time.sleep(_LIVE_POLL_SECONDS)
+
+        attack_end = _utcnow()
+
+        if incident_verdict is not None:
+            # The verdict carries its own decision and containment
+            # timestamps, stamped inside the Judge before the server pop-up.
+            # Using them -- not a clock read after the verdict returns --
+            # keeps popup dismissal out of the latency, and gives the
+            # containment proof a cutoff no post-verdict step can move.
+            incident_decision_at = incident_verdict.decided_at
+            containment_completed_at = incident_verdict.contained_at
+            assert incident_decision_at is not None
+            assert containment_completed_at is not None
+            assert first_event_at is not None
+            latency = (
+                incident_decision_at - first_event_at
+            ).total_seconds()
+            sim_stopped = _process_is_stopped(sim_pid)
+            say(
+                f"containment: simulator pid {sim_pid} "
+                f"{'suspended' if sim_stopped else 'NOT suspended'}; "
+                f"latency {latency:.1f}s; "
+                f"{len({_canonical_affected_path(e) for e in prefix})} "
+                "files in the window"
+            )
+            # Prove the attack stopped: after containment completed, no
+            # simulator-eligible file may be written anywhere under the demo
+            # root. mtime is write time, not watch time, so a late-delivered
+            # event for a pre-containment write cannot false-positive.
+            time.sleep(_CONTAINMENT_PROOF_WAIT_SECONDS)
+            written_after = _eligible_files_modified_after(
+                district_dir, containment_completed_at.timestamp()
+            )
+            further_stopped = not written_after
+            if not further_stopped:
+                say(f"attack continued after containment: {written_after}")
+
+            evidence.update(
+                {
+                    "level": incident_verdict.level,
+                    "signals": [s.code for s in incident_verdict.signals],
+                    "reasons": list(incident_verdict.reasons),
+                    "actions": list(incident_verdict.actions),
+                    "first_event_at": first_event_at.isoformat(),
+                    "incident_decision_at": incident_decision_at.isoformat(),
+                    "containment_completed_at": (
+                        containment_completed_at.isoformat()
+                    ),
+                    "detection_latency_seconds": latency,
+                    "affected_files_at_incident": len(
+                        {_canonical_affected_path(e) for e in prefix}
+                    ),
+                    "simulator_alive_before_containment": (
+                        sim_alive_before_containment
+                    ),
+                    "simulator_stopped_after_containment": sim_stopped,
+                    "further_attack_stopped": further_stopped,
+                }
+            )
+        else:
+            # No INCIDENT: the watcher-killer (or an unexpected quiet attack).
+            # The last verdict stands as the post-mortem.
+            evidence["simulator_alive_before_containment"] = False
+        attack_end = _utcnow()
+        evidence["attack_end"] = attack_end.isoformat()
+        evidence["verdicts_judged"] = verdicts_judged
+        evidence["events_observed"] = len(prefix)
+    finally:
+        # The simulator must not survive the demo, and the read-only
+        # lock must not survive it either, even if judging raised
+        # halfway through the loop above.
+        # --- cleanup: the simulator must not survive the demo ----------------
+        killed = _kill_process_tree(sim_pid)
+        # Reap the direct child so it never becomes a zombie.
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            pass
+        undone = judge.undo()
+        say(f"cleanup: signaled pids {killed}; judge undo: {undone}")
+        try:
+            still_there = psutil.pid_exists(sim_pid)
+        except Exception:
+            still_there = False
+        evidence["cleanup_killed_pids"] = killed
+        evidence["cleanup_undo"] = undone
+        evidence["simulator_process_gone"] = not still_there
+        evidence["cleanup_at"] = _utcnow().isoformat()
+        # Writability is restored by judge.undo(); prove it on one file.
+        probe = district_dir / "share" / ".nightkeep-write-probe"
+        try:
+            probe.write_text("ok")
+            probe.unlink()
+            writable = True
+        except OSError:
+            writable = False
+        evidence["share_writable_after_cleanup"] = writable
+        say(f"cleanup: simulator gone: {not still_there}; "
+            f"share writable: {writable}")
 
     return evidence
 
