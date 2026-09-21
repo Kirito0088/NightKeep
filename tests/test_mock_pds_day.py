@@ -14,9 +14,15 @@ from dataclasses import replace
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
 
+import pytest
+
 from nightkeep.config import Clock, District, Jobs, Span, load_config
 from nightkeep.mock_pds import build_district, run_day
 from nightkeep.mock_pds import conventions as c
+
+# Every test here builds a district and runs a simulated day as real
+# subprocesses, so the whole module is slow. Skip it with `-m "not slow"`.
+pytestmark = pytest.mark.slow
 
 REPO_CONFIG = Path(__file__).resolve().parent.parent / "nightkeep" / "config.yaml"
 REPO = load_config(REPO_CONFIG)

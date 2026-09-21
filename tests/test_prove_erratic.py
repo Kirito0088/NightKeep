@@ -16,6 +16,10 @@ from nightkeep.__main__ import main
 from nightkeep.config import District, Span, load_config
 from nightkeep.mock_pds import prove_erratic
 
+# Every test here lives a full learning week of real subprocess job runs, so
+# the whole module is slow. Skip it with `-m "not slow"`.
+pytestmark = pytest.mark.slow
+
 REPO_CONFIG = Path(__file__).resolve().parent.parent / "nightkeep" / "config.yaml"
 REPO = load_config(REPO_CONFIG)
 
