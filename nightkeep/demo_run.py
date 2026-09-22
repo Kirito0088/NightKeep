@@ -483,11 +483,27 @@ def _judge_attack_live(
                     )
                     break
             if proc.poll() is not None:
-                # The simulator finished. One settle wait for the watcher's
-                # tail, a final drain, and a final verdict on the whole
-                # prefix -- this is what catches a very fast attack honestly.
-                time.sleep(settle_seconds)
-                drain_new()
+                # The simulator finished. Wait for the watcher's tail: poll
+                # until new events stop arriving (quiet for 0.5s) or the
+                # settle timeout expires. A single fixed sleep is not enough
+                # on machines where the watcher needs more time to deliver
+                # rapid file events (e.g. Windows CI with a fast simulator).
+                # This catches a very fast attack honestly via the final
+                # drain.
+                deadline = time.monotonic() + max(settle_seconds, 10.0)
+                quiet_for = 0.0
+                while time.monotonic() < deadline:
+                    had_new = drain_new()
+                    if had_new:
+                        quiet_for = 0.0
+                    else:
+                        quiet_for += 0.1
+                        # Break early if we've seen events and the log has
+                        # been quiet for 0.5s. If no events at all, wait the
+                        # full timeout (a watcher-killer has no file events).
+                        if quiet_for >= 0.5 and len(prefix) > 0:
+                            break
+                    time.sleep(0.1)
                 verdict = judge_prefix()
                 say(f"final window: {len(prefix)} events -> {verdict.level}")
                 if verdict.level == INCIDENT and incident_verdict is None:
