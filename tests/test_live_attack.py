@@ -207,6 +207,12 @@ def district():
 def _assert_contained(evidence: dict, *, alive_before: bool | None = None,
                       stopped_after: bool | None = None):
     """The behavioral proof, shared by the attack scenarios."""
+    print(
+        f"DIAG events_observed={evidence.get('events_observed')} "
+        f"verdicts_judged={evidence.get('verdicts_judged')} "
+        f"signals={evidence.get('signals')} "
+        f"level={evidence.get('level')}"
+    )
     assert evidence["level"] == "INCIDENT", evidence
     assert "S2" in evidence["signals"] or "S5" in evidence["signals"], (
         evidence["signals"]
