@@ -185,6 +185,12 @@ def _events_between(
     ]
 
 
+# The simulator's documented boundary (nightkeep/simulator/__init__.py):
+# it never enters these top-level folders, nor any _truth folder.
+_PROOF_OFF_LIMIT_TOP_LEVELS = frozenset({"logs", "data", ".nightkeep-sim"})
+_PROOF_TRUTH_FOLDER = "_truth"
+
+
 def _is_judgeable(event: Event) -> bool:
     """Events the Judge may see in a live window.
 
@@ -194,12 +200,15 @@ def _is_judgeable(event: Event) -> bool:
     Judge must never carry liveness or bookkeeping noise, even if the
     watcher's filter ever changes.
     """
-    name = event.path.rsplit("/", 1)[-1]
+    parts = event.path.replace("\\", "/").split("/")
+    if parts[0] in _PROOF_OFF_LIMIT_TOP_LEVELS:
+        return False
+    name = parts[-1]
     if name == "watcher.jsonl":
         return False
     if name == HEARTBEAT_FILENAME or name.startswith(HEARTBEAT_FILENAME + "."):
         return False
-    if "_truth" in event.path.split("/"):
+    if _PROOF_TRUTH_FOLDER in parts:
         return False
     return True
 
@@ -319,15 +328,7 @@ def _process_is_stopped(pid: int) -> bool | None:
     return status == psutil.STATUS_STOPPED
 
 
-# The simulator's documented boundary (nightkeep/simulator/__init__.py):
-# it never enters these top-level folders, nor any _truth folder. The
-# containment proof must cover exactly the same surface the simulator
-# could have written -- share/ alone is not enough, because the blast
-# radius is the whole demo root. Mirrored here rather than imported so
-# the simulator's public surface does not grow; a regression test pins
-# the two together.
-_PROOF_OFF_LIMIT_TOP_LEVELS = frozenset({"logs", "data", ".nightkeep-sim"})
-_PROOF_TRUTH_FOLDER = "_truth"
+
 
 
 def _eligible_files_modified_after(root: Path, since_ts: float) -> list[str]:
@@ -495,22 +496,25 @@ def _judge_attack_live(
                 deadline = time.monotonic() + max(settle_seconds, 10.0)
                 quiet_for = 0.0
                 while time.monotonic() < deadline:
-                    had_new = drain_new()
-                    if had_new:
+                    if drain_new():
                         quiet_for = 0.0
+                        verdict = judge_prefix()
+                        if verdict.level == INCIDENT:
+                            incident_verdict = verdict
+                            sim_alive_before_containment = False
+                            say(f"final window: {len(prefix)} events -> {verdict.level}")
+                            break
                     else:
                         quiet_for += 0.1
-                        # Break early if we've seen events and the log has
-                        # been quiet for 0.5s. If no events at all, wait the
-                        # full timeout (a watcher-killer has no file events).
-                        if quiet_for >= 0.5 and len(prefix) > 0:
+                        if quiet_for >= 1.5 and len(prefix) > 0:
                             break
                     time.sleep(0.1)
-                verdict = judge_prefix()
-                say(f"final window: {len(prefix)} events -> {verdict.level}")
-                if verdict.level == INCIDENT and incident_verdict is None:
-                    incident_verdict = verdict
-                    sim_alive_before_containment = False
+                if incident_verdict is None:
+                    verdict = judge_prefix()
+                    say(f"final window: {len(prefix)} events -> {verdict.level}")
+                    if verdict.level == INCIDENT:
+                        incident_verdict = verdict
+                        sim_alive_before_containment = False
                 break
             time.sleep(_LIVE_POLL_SECONDS)
 
