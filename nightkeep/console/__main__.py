@@ -37,31 +37,43 @@ def create_console_app(
     safety/alert/restore/locked/server-alert screens and the IT view
     rebuild their presentation from fresh on-disk state per request, so
     a demo launched from the showcase becomes visible without
-    restarting the console.
+    restarting the console. The factory is installed even when the
+    demo output does not exist yet: then build_runtime returns None and
+    the routes keep their calm, honest defaults until the demo creates
+    the runtime.
     """
     controller = ShowcaseController()
 
-    runtime = None
+    runtime_factory = None
     if config is not None and district_dir is not None:
-        runtime = build_runtime(
-            district_dir=Path(district_dir),
-            vault_dir=Path(vault_dir) if vault_dir is not None else None,
-            config=config,
-        )
-    if runtime is None:
+        district_path = Path(district_dir)
+        vault_path = Path(vault_dir) if vault_dir is not None else None
+
+        def runtime_factory():
+            return build_runtime(
+                district_dir=district_path,
+                vault_dir=vault_path,
+                config=config,
+            )
+
+    if runtime_factory is None:
         return create_app(showcase_controller=controller)
 
-    def runtime_factory():
-        return build_runtime(
-            district_dir=Path(district_dir),
-            vault_dir=Path(vault_dir) if vault_dir is not None else None,
-            config=config,
+    # Install the factory even when the runtime is not there yet. Each
+    # request rebuilds from disk, so a demo launched from /showcase shows
+    # up on every screen without restarting the console. Before the demo
+    # exists, build_runtime returns None and refreshed_pool falls back
+    # to the bound calm defaults.
+    runtime = runtime_factory()
+    if runtime is not None:
+        return create_app(
+            showcase_controller=controller,
+            runtime_factory=runtime_factory,
+            **presentation_for(runtime),
         )
-
     return create_app(
         showcase_controller=controller,
         runtime_factory=runtime_factory,
-        **presentation_for(runtime),
     )
 
 
