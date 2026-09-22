@@ -522,7 +522,7 @@ def test_judge_exception_still_kills_simulator_and_undoes_lock(
 
     real_verdict = judge.verdict
 
-    def _raising_verdict(run, events=None):
+    def _raising_verdict(run, events=None, **kwargs):
         raise RuntimeError("simulated judge failure")
 
     monkeypatch.setattr(judge, "verdict", _raising_verdict)

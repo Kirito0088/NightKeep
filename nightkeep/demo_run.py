@@ -462,7 +462,12 @@ def _judge_attack_live(
     def judge_prefix():
         nonlocal verdicts_judged
         verdicts_judged += 1
-        return judge.verdict(attack_run, events=list(prefix))
+        # The demo launched the attacker, so its pid is ground truth for
+        # containment. The verdict is still decided from events alone;
+        # suspect_pid is only the fallback the Judge pauses when no event
+        # carried a process id.
+        return judge.verdict(attack_run, events=list(prefix),
+                             suspect_pid=sim_pid)
 
     evidence: dict = {
         "variant": variant,
