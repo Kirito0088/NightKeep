@@ -90,6 +90,9 @@ def _start_agent(root: Path) -> subprocess.Popen:
             "--interval", "0.5",
             "--poll-seconds", "0.2",
             "--settle-seconds", "0.2",
+            # The deterministic backstop for native file events dropped
+            # under burst load: the production demo wires this too.
+            "--reconcile-seconds", "0.2",
         ],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,

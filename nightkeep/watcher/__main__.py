@@ -83,10 +83,25 @@ def main(argv: list[str] | None = None) -> int:
         default=1.0,
         help="seconds a run's events may trail its end",
     )
+    parser.add_argument(
+        "--reconcile-seconds",
+        type=float,
+        default=None,
+        help=(
+            "seconds between filesystem reconciliation sweeps, the "
+            "deterministic backstop for native file events dropped "
+            "under burst load; 0 disables. Default: 0.2 on Windows, "
+            "disabled elsewhere."
+        ),
+    )
     args = parser.parse_args(argv)
 
     if args.interval <= 0:
         print("refused: --interval must be positive", file=sys.stderr)
+        return 2
+    if args.reconcile_seconds is not None and args.reconcile_seconds < 0:
+        print("refused: --reconcile-seconds must not be negative",
+              file=sys.stderr)
         return 2
 
     target = heartbeat_path(args.root)
@@ -95,6 +110,7 @@ def main(argv: list[str] | None = None) -> int:
         Path(args.root),
         poll_seconds=args.poll_seconds,
         settle_seconds=args.settle_seconds,
+        reconcile_seconds=args.reconcile_seconds,
     )
     watcher.start()
     try:
