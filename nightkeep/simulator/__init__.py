@@ -48,6 +48,8 @@ from typing import Callable
 
 import psutil
 
+from nightkeep.types import HEARTBEAT_FILENAME
+
 # The one folder the simulator may touch. Hard-coded, not a tunable: a
 # boundary someone can configure away is not a boundary.
 DEMO_DIR = Path(__file__).resolve().parent.parent.parent / "demo"
@@ -151,6 +153,10 @@ def _targets(
         if path.name == ransom_note_name:
             continue
         if path.name.endswith(locked_extension):
+            continue
+        if path.name == HEARTBEAT_FILENAME or path.name.startswith(
+            HEARTBEAT_FILENAME + "."
+        ):
             continue
         if path.stat().st_size == 0:
             continue
@@ -265,7 +271,7 @@ def fast_encrypt(
         data = path.read_bytes()
         path.write_bytes(magic + _crypt(data, key, tag))
         locked = path.with_name(path.name + locked_extension)
-        path.rename(locked)
+        path.replace(locked)
         locked_paths.append(locked)
         report.files_encrypted += 1
         report.files_renamed += 1

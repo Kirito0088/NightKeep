@@ -90,6 +90,9 @@ def test_kill_process_tree_kills_descendants():
         # Reap the direct child (the caller's proc.wait() job in the real
         # cleanup path); then both must be truly gone.
         parent.wait(timeout=10)
+        deadline = time.monotonic() + 10
+        while psutil.pid_exists(parent.pid) and time.monotonic() < deadline:
+            time.sleep(0.1)
         assert not psutil.pid_exists(parent.pid)
         deadline = time.monotonic() + 10
         while psutil.pid_exists(child_pid) and time.monotonic() < deadline:

@@ -22,6 +22,7 @@ import shutil
 import subprocess
 import sys
 import time
+import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -86,8 +87,8 @@ def _spawn_agent(root: Path, interval: float = INTERVAL) -> subprocess.Popen:
     return proc
 
 
-def _stop(proc: subprocess.Popen) -> None:
-    if proc.poll() is None:
+def _stop(proc: subprocess.Popen | None) -> None:
+    if proc is not None and proc.poll() is None:
         proc.terminate()
         try:
             proc.wait(timeout=5)
@@ -338,15 +339,19 @@ def test_killer_matches_marker_plus_exact_root():
 
 
 def test_killer_terminates_only_the_marked_agent_for_its_root():
-    target_root = DEMO_DIR / "test_killer_target"
-    other_root = DEMO_DIR / "test_killer_other"
+    uid = uuid.uuid4().hex
+    target_root = DEMO_DIR / ".sim-tests" / f"test_killer_target_{uid}"
+    other_root = DEMO_DIR / ".sim-tests" / f"test_killer_other_{uid}"
     for root in (target_root, other_root):
         root.mkdir(parents=True, exist_ok=True)
         (root / "share").mkdir(exist_ok=True)
-    target = _spawn_agent(target_root)
-    other = _spawn_agent(other_root)
-    bystander = subprocess.Popen(["sleep", "30"])
+    target = None
+    other = None
+    bystander = None
     try:
+        target = _spawn_agent(target_root)
+        other = _spawn_agent(other_root)
+        bystander = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"])
         report = watcher_killer(target_root)
         assert report.variant == "watcher-killer"
         assert report.killed_pids == (target.pid,)

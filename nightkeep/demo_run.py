@@ -32,7 +32,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
+import stat
 import subprocess
 import sys
 import time
@@ -717,7 +719,15 @@ def run_demo(config: Config, out_dir: Path,
     """
     out_dir = Path(out_dir).resolve()
     if out_dir.exists():
-        shutil.rmtree(out_dir)
+        def _remove_readonly(func, p, _):
+            import stat
+            try:
+                os.chmod(p, stat.S_IWRITE)
+                func(p)
+            except OSError:
+                pass
+
+        shutil.rmtree(out_dir, onerror=_remove_readonly)
     district_dir = out_dir / "district"
     vault_dir = out_dir / "vault"
 

@@ -13,16 +13,19 @@ in the fast pre-commit gate with `-m "not slow"`.
 from dataclasses import replace
 from pathlib import Path
 
+import shutil
+from uuid import uuid4
+
 import pytest
 
-from nightkeep import demo
+from nightkeep import demo, simulator
 from nightkeep.config import District, Span, load_config
 
 CONFIG = Path(__file__).resolve().parent.parent / "nightkeep" / "config.yaml"
 
 
 @pytest.fixture(scope="module")
-def result(tmp_path_factory):
+def result():
     base = load_config(CONFIG)
     config = replace(
         base,
@@ -30,8 +33,15 @@ def result(tmp_path_factory):
         clock=replace(base.clock, learning_days=7, guard_days=1, simulated_day_seconds=1),
         watcher=replace(base.watcher, settle_seconds=0.2),
     )
-    out = tmp_path_factory.mktemp("demo")
-    return demo.run_demo(config=config, out_dir=out, variant="fast")
+    out = simulator.DEMO_DIR / ".sim-tests" / f"test-demo-{uuid4().hex}"
+    shutil.rmtree(out, ignore_errors=True)
+    out.mkdir(parents=True, exist_ok=True)
+    try:
+        res = demo.run_demo(config=config, out_dir=out, variant="fast")
+        res._test_out_dir = out
+        yield res
+    finally:
+        shutil.rmtree(out, ignore_errors=True)
 
 
 @pytest.mark.slow
@@ -98,13 +108,13 @@ def test_the_run_writes_a_report_the_console_can_read(result):
 
 
 @pytest.mark.slow
-def test_the_report_file_is_valid_json_on_disk(result, tmp_path_factory):
+def test_the_report_file_is_valid_json_on_disk(result):
     """The file the console reads is real JSON, not just the in-memory result."""
     import json
 
     # The module-scoped run wrote under its own out_dir; find run.json there.
     # (run_demo writes <out_dir>/pds/reports/run.json.)
-    found = list(Path(tmp_path_factory.getbasetemp()).rglob(demo.REPORT_NAME))
+    found = list(result._test_out_dir.rglob(demo.REPORT_NAME))
     assert found, "run.json was not written anywhere"
     on_disk = json.loads(found[0].read_text(encoding="utf-8"))
     assert on_disk["proofs"]["p4_ok"] is True

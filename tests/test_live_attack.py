@@ -474,9 +474,11 @@ def test_back_to_back_runs_are_clean(district):
 
         # Restore the district to a clean state, as the Vault restore
         # would: locked files go, originals and the trap come back.
-        exports = district / "share" / "exports"
-        for locked in exports.glob("*.locked"):
+        for locked in district.rglob("*.locked"):
             locked.unlink()
+        for note in district.rglob(NOTE_NAME):
+            note.unlink()
+        exports = district / "share" / "exports"
         for index in range(20):
             (exports / f"day_end_{index:02d}.csv").write_text(
                 "transaction_id,card_no,quantity_kg\n"
@@ -485,6 +487,10 @@ def test_back_to_back_runs_are_clean(district):
                 ),
                 encoding="utf-8",
             )
+        reports = district / "reports"
+        (reports / "monthly_summary.csv").write_text(
+            "month,total_kg\n2026-09,12345\n", encoding="utf-8",
+        )
         judge.plant_traps()
         _wait_for_log_quiet(district)
         time.sleep(1.0)  # let the watcher settle on the restored files

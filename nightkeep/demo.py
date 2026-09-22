@@ -580,7 +580,9 @@ def _finish(result: DemoResult, vault: Vault) -> None:
     ]
     result.proofs["p3_clean_point"] = clean_point.snapshot_id if clean_point else None
 
-    restore = vault.restore()
+    if clean_point is None:
+        raise ValueError("no clean snapshot to restore from")
+    restore = vault.restore(clean_point.snapshot_id)
     result.restore = {
         "ok": restore.ok,
         "snapshot_id": restore.snapshot_id,
