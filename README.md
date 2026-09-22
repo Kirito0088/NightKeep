@@ -23,13 +23,19 @@ laptops, on invented data, with no cloud, no GPU and no deep learning.
 
 ---
 
+## Repository
+
+https://github.com/Kirito0088/NightKeep
+
+---
+
 ## What it proves
 
 The whole design exists to answer one question a judge will ask: *does this
 actually tell a file-locking threat apart from normal legacy weirdness, and can
 it get the data back?* Four proofs, each **measured on a real run**, not
 claimed. The numbers below come from one seeded 5,000-card run
-(`python -m nightkeep --demo`):
+(`python -m nightkeep --demo-run`):
 
 | # | Proof | Result on the reference run |
 |---|---|---|
@@ -56,11 +62,11 @@ python -m pip install -e ".[dev]"
 nights, run the threat simulator, pull and restore:
 
 ```bash
-python -m nightkeep --demo --variant fast
+python -m nightkeep --demo-run --variant fast
 ```
 
 Variants a judge can pick: `fast` (a fast scrambler), `impersonator` (scrambles
-in place under a known job's guise), `cleanup-blocker` (also writes
+in place under a known job's guise), `recovery-killer` (also writes
 system-restore-deletion command text, which is only ever text, never run).
 
 **Open the Vault console** (binds to loopback only, never the LAN):
@@ -73,11 +79,34 @@ Then visit <http://127.0.0.1:5000>. If a demo run has happened, the console
 shows that run's real numbers and the real 5,000-card district; otherwise it
 falls back to a built-in sample so the screens always come up.
 
-**Reset a demo district** after a run (puts every scrambled file back with the
-known key):
+**One-click showcase** — the polished demo flow. Start the console, open
+<http://127.0.0.1:5000/showcase>, and click **Run Full MVP Demo**. That button
+starts the real end-to-end runner (`python -m nightkeep --demo-run --variant
+recovery-killer`) as a subprocess and tracks it live: learning, guard, attack,
+containment, Vault protection, recovery, and the final proof, each read from
+the demo's own output. Every figure shown comes from the run's own report;
+nothing is animated or invented. When the run completes, the page links to the
+real Incident Report, Restore, Locked Screen, and IT View. Starting a second
+run while one is already going is refused.
+
+**Open the Vault console against a finished demo run:**
 
 ```bash
-python -m nightkeep --restore
+python -m nightkeep --console --out-dir demo/demo_run
+```
+
+This shows the run's real state on every screen, including the read-only
+**IT View** at `/it-view` (incident diagnostics, watcher liveness, habit
+cards, Vault snapshots and manifests, or an honest "unavailable" message when
+no run is loaded).
+
+**Reset a demo district** after a run (puts every scrambled file back with the
+known key, `simulator.key` in `nightkeep/config.yaml`):
+
+```bash
+python -m nightkeep.simulator.decrypt --root demo/demo_run/district \
+    --key "$KEY" --locked-extension .locked \
+    --ransom-note-name HOW_TO_GET_YOUR_FILES_BACK.txt
 ```
 
 **Run the tests:**
@@ -104,10 +133,13 @@ python -m nightkeep --prove-erratic
 | `/alert` | The incident report, in ration-office units ("STATUS: ALL CLEAR" when unwired) |
 | `/restore` | The three-step restore wizard with its five checks |
 | `/server-alert` | The pop-up shown on the office computer |
+| `/showcase` | One-click Full MVP Demo: launches and tracks the real demo run |
+| `/it-view` | Read-only IT diagnostics (incident, watcher, habit, Vault) |
 
-> **Console `--out-dir` matters.** `--demo` writes to `demo/pds/reports/`;
-> `--demo-run` writes to `demo/demo_run/`. If you launch
-> `python -m nightkeep.console` bare (no config), it starts with sample
+> **Console `--out-dir` matters.** `--demo-run` writes to `demo/demo_run/`.
+> To see a finished run's real state, launch
+> `python -m nightkeep --console --out-dir demo/demo_run`.
+> If you launch `python -m nightkeep.console` bare (no config), it starts with sample
 > records and calm, honest screens — it never fabricates an incident.
 
 ### Operator notes
@@ -172,10 +204,13 @@ confirmed by mutation, not just by passing once.
   database's own schema, not a folder name).
 - It is fully reversible: files are XORed against a stream from a **known key**,
   and a matching recovery function puts every one back byte for byte.
-- It never runs a system command. Its "cleanup-blocker" variant writes
-  system-restore-deletion text to a file as a plain string, because that string
-  is what signal S5 reads; the package imports no `subprocess` and no
-  `os.system`, and a test holds that.
+- It never executes a destructive command. Its "recovery-killer" variant puts
+  system-restore-deletion text into a shell command line as echoed text —
+  never run as a real command — because that text is what signal S5 reads.
+  The simulator package does use `subprocess` (the live attack is launched
+  via `Popen`, and the echo shells are spawned the same way), but the
+  recovery commands themselves are simulated text only and are never
+  executed.
 - It does not spread, and it holds no path to the Vault.
 
 ---

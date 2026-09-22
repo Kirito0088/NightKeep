@@ -20,20 +20,9 @@ import argparse
 from pathlib import Path
 
 from nightkeep.config import Config, load_config
-from nightkeep.console.app import (
-    DRILL_LOCKED_DATA,
-    REAL_LOCKED_DATA,
-    create_app,
-)
-from nightkeep.console.providers import (
-    alert_presentation,
-    build_runtime,
-    calm_alert,
-    restore_service_for,
-    restore_wizard,
-    safety_home,
-    server_alert,
-)
+from nightkeep.console.app import create_app
+from nightkeep.console.providers import build_runtime, presentation_for
+from nightkeep.console.showcase import ShowcaseController
 
 
 def create_console_app(
@@ -41,7 +30,17 @@ def create_console_app(
     district_dir: Path | None = None,
     vault_dir: Path | None = None,
 ):
-    """The console app: real runtime state when given a config, else demo."""
+    """The console app: real runtime state when given a config, else demo.
+
+    The showcase controller is always attached: the one-click demo does
+    not need a wired console to run. The runtime factory lets the
+    safety/alert/restore/locked/server-alert screens and the IT view
+    rebuild their presentation from fresh on-disk state per request, so
+    a demo launched from the showcase becomes visible without
+    restarting the console.
+    """
+    controller = ShowcaseController()
+
     runtime = None
     if config is not None and district_dir is not None:
         runtime = build_runtime(
@@ -50,41 +49,20 @@ def create_console_app(
             config=config,
         )
     if runtime is None:
-        return create_app()
+        return create_app(showcase_controller=controller)
 
-    district_figures = runtime.pds.district_figures()
-
-    kwargs: dict = {"pds": runtime.pds}
-
-    if runtime.habit is not None and runtime.vault is not None:
-        kwargs["safety_home_data"] = safety_home(
-            runtime.habit, runtime.vault, district_figures, runtime.verdicts
+    def runtime_factory():
+        return build_runtime(
+            district_dir=Path(district_dir),
+            vault_dir=Path(vault_dir) if vault_dir is not None else None,
+            config=config,
         )
 
-    incident = runtime.incident
-    # The alert screens react to INCIDENT or SUSPICIOUS; only a real
-    # INCIDENT picks the restore target and gates the lock screen.
-    alert_record = runtime.alert_record
-    if alert_record is not None and runtime.vault is not None:
-        kwargs["alert_data"] = alert_presentation(
-            alert_record, runtime.vault, runtime.pds
-        )
-    else:
-        kwargs["alert_data"] = calm_alert()
-
-    if runtime.vault is not None:
-        kwargs["restore_wizard_data"] = restore_wizard(
-            runtime.vault, incident, runtime.pds
-        )
-
-    kwargs["server_alert_data"] = server_alert(alert_record)
-    kwargs["locked_data"] = (
-        REAL_LOCKED_DATA if incident is not None else DRILL_LOCKED_DATA
+    return create_app(
+        showcase_controller=controller,
+        runtime_factory=runtime_factory,
+        **presentation_for(runtime),
     )
-    kwargs["district_figures"] = district_figures
-    kwargs["restore_service"] = restore_service_for(runtime)
-
-    return create_app(**kwargs)
 
 
 def main(argv: list[str] | None = None) -> None:

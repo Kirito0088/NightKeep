@@ -1542,3 +1542,63 @@ html, body {
   background: #fdf0ec;
   border-color: #d99a8a;
 }
+
+/* Showcase: demonstration step list */
+.demo-steps-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+}
+
+.demo-step {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  color: var(--color-secondary-text);
+}
+
+.demo-step-marker {
+  width: 18px;
+  text-align: center;
+  color: var(--color-secondary-text);
+}
+
+.demo-step-label {
+  font-size: var(--font-size-body);
+  font-weight: 500;
+}
+
+.demo-step-done .demo-step-marker {
+  color: var(--color-safe-green);
+}
+
+.demo-step-done .demo-step-label {
+  color: var(--color-body-text);
+}
+
+.demo-step-current .demo-step-marker {
+  color: var(--color-active-orange);
+}
+
+.demo-step-current .demo-step-label {
+  color: var(--color-body-text);
+  font-weight: 700;
+}
+
+/* Showcase: demo output log */
+.demo-log {
+  background: #f4f6f9;
+  border: 1px solid #d7dde5;
+  padding: 12px;
+  max-height: 320px;
+  overflow-y: auto;
+  font-size: var(--font-size-caption);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--color-body-text);
+  margin: 0;
+}

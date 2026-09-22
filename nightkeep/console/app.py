@@ -10,9 +10,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from flask import Flask, render_template, request
+from flask import Flask, redirect, render_template, request, url_for
 
 from nightkeep.mock_pds import conventions as c
+
+from nightkeep.console.showcase import ShowcaseController
 
 if TYPE_CHECKING:
     # Imported for annotations only: providers.py imports this module's
@@ -584,6 +586,8 @@ def create_app(
     restore_wizard_data: RestoreWizardPresentation | None = None,
     restore_service: RestoreService | None = None,
     locked_data: LockedScreenPresentation | None = None,
+    runtime_factory=None,
+    showcase_controller: ShowcaseController | None = None,
 ) -> Flask:
     """Create and configure the Nightkeep console Flask application.
 
@@ -595,6 +599,14 @@ def create_app(
     /locked shows a live lock or a drill illustration. All are read-only
     from the routes' point of view: they call the provider, they never
     decide.
+
+    `runtime_factory` is a no-argument callable returning a fresh
+    ConsoleRuntime (or None). When present, the safety/alert/restore/
+    locked/server-alert routes rebuild their presentation pools per
+    request, so a demo launched from the showcase after the console
+    started is visible on those screens. Without it every route behaves
+    exactly as before. `showcase_controller` owns the one-click demo;
+    a default one is created when none is given.
     """
     app = Flask(__name__)
     records_pool = sample_records if sample_records is not None else DEFAULT_SAMPLE_RECORDS
@@ -607,6 +619,32 @@ def create_app(
         server_alert_data if server_alert_data is not None else DEFAULT_SERVER_ALERT_DATA
     )
     locked_pool = locked_data if locked_data is not None else DRILL_LOCKED_DATA
+
+    controller = (
+        showcase_controller
+        if showcase_controller is not None
+        else ShowcaseController()
+    )
+
+    def refreshed_pool(name: str, default):
+        """Rebuild one presentation pool from a fresh runtime, when wired.
+
+        Without a runtime factory this returns the bound pool, exactly as
+        before: unwired consoles and every existing test see no change.
+        A factory that raises or returns None degrades to the bound pool
+        rather than failing the page.
+        """
+        if runtime_factory is None:
+            return default
+        try:
+            runtime = runtime_factory()
+        except Exception:
+            return default
+        if runtime is None:
+            return default
+        from nightkeep.console.providers import presentation_for
+
+        return presentation_for(runtime).get(name, default)
 
     @app.route("/", methods=["GET"])
     @app.route("/search", methods=["GET"])
@@ -693,7 +731,7 @@ def create_app(
     def pds_locked() -> str:
         return render_template(
             "locked.html",
-            locked=locked_pool,
+            locked=refreshed_pool("locked_data", locked_pool),
             district_figures=figures,
             talukas=c.TALUKAS,
             schemes=c.SCHEMES,
@@ -705,7 +743,7 @@ def create_app(
     def nightkeep_home() -> str:
         return render_template(
             "safety.html",
-            safety=safety_pool,
+            safety=refreshed_pool("safety_home_data", safety_pool),
             active_page="safety",
         )
 
@@ -713,7 +751,7 @@ def create_app(
     def nightkeep_alert() -> str:
         return render_template(
             "alert.html",
-            alert=alert_pool,
+            alert=refreshed_pool("alert_data", alert_pool),
             active_page="safety",
         )
 
@@ -725,11 +763,11 @@ def create_app(
         service. The service checks the PIN and, only then, calls
         Vault.restore(). A wrong PIN means nothing is touched.
         """
-        wizard = (
-            restore_wizard_data
-            if restore_wizard_data is not None
-            else restore_pool
+        wizard = refreshed_pool(
+            "restore_wizard_data",
+            restore_wizard_data if restore_wizard_data is not None else restore_pool,
         )
+        service = refreshed_pool("restore_service", restore_service)
 
         if request.method == "GET":
             return render_template(
@@ -745,7 +783,7 @@ def create_app(
         from nightkeep.vault import VaultError
 
         pin = request.form.get("restore_pin", "")
-        if restore_service is None or not restore_service.available:
+        if service is None or not service.available:
             return render_template(
                 "restore.html",
                 restore=wizard,
@@ -756,7 +794,7 @@ def create_app(
                 active_page="safety",
             )
         try:
-            result = restore_service.attempt(pin)
+            result = service.attempt(pin)
         except PinRejected as exc:
             return render_template(
                 "restore.html",
@@ -782,7 +820,77 @@ def create_app(
     def server_alert() -> str:
         return render_template(
             "server_alert.html",
-            alert=server_alert_pool,
+            alert=refreshed_pool("server_alert_data", server_alert_pool),
+        )
+
+    @app.route("/showcase", methods=["GET"])
+    def showcase_page() -> str:
+        """The one-click demo showcase: launch the real demo, watch it live.
+
+        The page never fabricates: the phase comes from the demo's own
+        log markers, the figures from the run's own report, and the log
+        tail is the demo's own output, unedited.
+        """
+        status = controller.read_status()
+        state = status.get("state", "ready")
+        phase = controller.phase()
+        title, description = controller.phase_copy(phase)
+
+        order = list(controller.steps())
+        if phase == "complete":
+            progress = "complete"
+        elif phase == "failed":
+            progress = controller.progress_phase()
+        else:
+            progress = phase
+        progress_idx = order.index(progress) if progress in order else -1
+        steps = [
+            {
+                "key": key,
+                "title": controller.phase_copy(key)[0],
+                "done": order.index(key) < progress_idx
+                or (phase == "complete"),
+            }
+            for key in order
+        ]
+
+        figures = controller.report_figures() if state == "complete" else {}
+
+        return render_template(
+            "showcase.html",
+            state=state,
+            phase=phase,
+            phase_title=title,
+            phase_description=description,
+            steps=steps,
+            can_start=state != "running",
+            figures=figures,
+            log_tail=controller.log_tail(),
+            refresh=state == "running",
+            active_page="safety",
+        )
+
+    @app.route("/showcase/start", methods=["POST"])
+    def showcase_start():
+        """Start the demo unless one is already running, then show it."""
+        controller.start()
+        return redirect(url_for("showcase_page"))
+
+    @app.route("/it-view", methods=["GET"])
+    def it_view() -> str:
+        """The read-only IT view: real diagnostics, or an honest empty state."""
+        runtime = None
+        if runtime_factory is not None:
+            try:
+                runtime = runtime_factory()
+            except Exception:
+                runtime = None
+        from nightkeep.console.providers import it_diagnostics
+
+        return render_template(
+            "it_view.html",
+            it=it_diagnostics(runtime),
+            active_page="safety",
         )
 
     return app

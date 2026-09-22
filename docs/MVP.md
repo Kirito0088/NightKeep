@@ -53,7 +53,7 @@ If a feature does not help prove P1 to P4, it is not in the MVP.
 | F7 | **Pull Vault** | Vault pulls every simulated hour over a read-only share (legacy file-sharing protocol off, share open only to the Vault's address, read-only account). The live database is **never copied directly**: the Vault pulls the nightly database backup file made by `db_backup.py` (SQLite backup API in the demo, the database's own backup tool in real life), plus exports and allocation files. Files stored by SHA-256 and marked read-only. One JSON manifest per snapshot. Health check marks CLEAN / SUSPECT. Clean points pinned. Firewall on the Vault rejects every incoming connection |
 | F8 | **Restore Wizard** | Picks newest CLEAN snapshot before first alert. Restores to a new folder, and rebuilds the database from its backup file. Verifies hash, header, CSV parse, `PRAGMA integrity_check`, record count |
 | F9 | **Console** (**Flask + Jinja, superseded by ADR-0002**) + **server alerts** | Console runs **only on the Vault's own screen** (bound to the Vault itself, not reachable over the network): three lights (Habit / Ransom / Recovery), verdict feed with reasons, habit cards, snapshot timeline, Restore. Restore, delete and settings need a PIN. The server shows its own **pop-up alert** from the Watcher, so staff see warnings without opening anything on the Vault |
-| F10 | **Safe threat simulator (3 variants for Round 2)** | Fast scrambler, impersonator (replaces `nightly_export.py`), cleanup-blocker. The slow scrambler and agent-stopper come in P1 with the features that catch them (F13, F11). Touches the demo folder only (hard-coded path check). Known key + decrypt script. Recovery-blocking commands are only echoed text, never run |
+| F10 | **Safe threat simulator (3 variants for Round 2)** | Fast scrambler, impersonator (replaces `nightly_export.py`), recovery-killer. The slow scrambler and agent-stopper come in P1 with the features that catch them (F13, F11). Touches the demo folder only (hard-coded path check). Known key + decrypt script. Recovery-blocking commands are only echoed text, never run |
 | F10b | **Ground-truth check** | Every job secretly writes what it really did to a log Nightkeep never reads. Console shows learned Habit Card next to the real behaviour |
 
 ### P1: Should have (build 23 to 26 Sept, ready for the Finale on 27 Sept)
@@ -147,7 +147,7 @@ Each job also writes its true behaviour to a hidden log that Nightkeep never rea
 On stage a judge picks from a menu:
 
 - **Legit surprises:** move a job to 04:00, switch on harvest surge, or add a brand-new harmless job. Expected: ODD card, nothing blocked.
-- **Threat tests (Round 2):** fast scrambler, impersonator or cleanup-blocker. Expected: INCIDENT, process paused, backup safe, verified restore.
+- **Threat tests (Round 2):** fast scrambler, impersonator or recovery-killer. Expected: INCIDENT, process paused, backup safe, verified restore.
 - **Extra threat tests (Finale only):** slow scrambler and agent-stopper, once F13 and F11 are built.
 
 In a real office this becomes a 1 to 2 week "observe only" period before Nightkeep is allowed to act.
@@ -286,7 +286,7 @@ All numbers shown on slides after 22 Sept must come from real runs.
 6. **Protect (2:20):** process paused, folder read-only, "37 affected, 4,963 untouched" (real numbers from the run).
 7. **Backup safe (2:40):** simulator scans for shares and tries the Vault: nothing found, connection refused. Vault snapshot SUSPECT, clean point pinned.
 8. **Recovery (3:00):** Restore Wizard ticks green, 5,000 / 5,000.
-9. **Judge's choice (3:30):** a judge picks one legit surprise and one Round 2 threat test (fast, impersonator or cleanup-blocker). Both behave as expected, live. Slow and agent-stopper tests are added for the finale.
+9. **Judge's choice (3:30):** a judge picks one legit surprise and one Round 2 threat test (fast, impersonator or recovery-killer). Both behave as expected, live. Slow and agent-stopper tests are added for the finale.
 
 ## 14. Risks to the MVP and our fallback
 

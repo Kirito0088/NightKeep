@@ -46,6 +46,8 @@ from nightkeep.console.app import (
     TransactionPresentation,
     VerificationCheckPresentation,
     calm_alert,
+    DRILL_LOCKED_DATA,
+    REAL_LOCKED_DATA,
 )
 from nightkeep.habit import Habit, open_habit
 from nightkeep.mock_pds import conventions as c
@@ -1085,3 +1087,184 @@ def restore_service_for(
         expected_pin=runtime.supervisor_pin,
         snapshot_id=target.snapshot_id if target else None,
     )
+
+
+# --- showcase / IT view ------------------------------------------------------
+
+
+def presentation_for(runtime: ConsoleRuntime) -> dict:
+    """Map a live runtime to create_app's presentation pools.
+
+    The single place that turns a ConsoleRuntime into the kwargs the
+    console entrypoint builds at startup. The showcase and IT-view
+    routes call it per request so screens opened after a demo run see
+    the new state. Read-only: it only reads the runtime.
+    """
+    district_figures = runtime.pds.district_figures()
+
+    kwargs: dict = {"pds": runtime.pds}
+
+    if runtime.habit is not None and runtime.vault is not None:
+        kwargs["safety_home_data"] = safety_home(
+            runtime.habit, runtime.vault, district_figures, runtime.verdicts
+        )
+
+    incident = runtime.incident
+    # The alert screens react to INCIDENT or SUSPICIOUS; only a real
+    # INCIDENT picks the restore target and gates the lock screen.
+    alert_record = runtime.alert_record
+    if alert_record is not None and runtime.vault is not None:
+        kwargs["alert_data"] = alert_presentation(
+            alert_record, runtime.vault, runtime.pds
+        )
+    else:
+        kwargs["alert_data"] = calm_alert()
+
+    if runtime.vault is not None:
+        kwargs["restore_wizard_data"] = restore_wizard(
+            runtime.vault, incident, runtime.pds
+        )
+
+    kwargs["server_alert_data"] = server_alert(alert_record)
+    kwargs["locked_data"] = (
+        REAL_LOCKED_DATA if incident is not None else DRILL_LOCKED_DATA
+    )
+    kwargs["district_figures"] = district_figures
+    kwargs["restore_service"] = restore_service_for(runtime)
+
+    return kwargs
+
+
+def _iso(value) -> str | None:
+    return value.isoformat(timespec="seconds") if value is not None else None
+
+
+def it_diagnostics(runtime: ConsoleRuntime | None) -> dict:
+    """Read-only diagnostics for the IT view. Never raises.
+
+    Everything comes from the existing public backend APIs: the latest
+    verdict, the watcher's liveness answer, the Vault's recorded verdict
+    and snapshots, and Habit.cards(). Nothing is re-judged, re-scored,
+    or modified here. With no runtime, reports unavailable instead of
+    fabricating diagnostics. Never exposes the Vault path, the PIN, the
+    ground-truth log, or canary contents.
+    """
+    if runtime is None:
+        return {"available": False}
+
+    data: dict = {"available": True}
+
+    incident = runtime.incident
+    data["incident"] = (
+        {
+            "level": incident.level,
+            "job": incident.job,
+            "day_no": incident.day_no,
+            "signals": list(incident.signals),
+            "signal_titles": list(incident.signal_titles),
+            "reasons": list(incident.reasons),
+            "actions": list(incident.actions),
+            "started_at": _iso(incident.started_at),
+            "finished_at": _iso(incident.finished_at),
+        }
+        if incident is not None
+        else None
+    )
+
+    watcher = None
+    vault_verdict: str | None = None
+    protect_mode = False
+    if runtime.vault is not None:
+        try:
+            live = runtime.vault.check_watcher_liveness()
+        except Exception:
+            live = None
+        if live is not None:
+            watcher = {
+                "alive": live.alive,
+                "last_seen": _iso(live.last_seen),
+                "reason": live.reason,
+            }
+        try:
+            vault_verdict = runtime.vault.vault_verdict
+            protect_mode = bool(runtime.vault.protect_mode)
+        except Exception:
+            pass
+    data["watcher"] = watcher
+    data["vault_verdict"] = vault_verdict
+    data["protect_mode"] = protect_mode
+
+    habit_cards: list[dict] = []
+    if runtime.habit is not None:
+        try:
+            cards = runtime.habit.cards()
+        except Exception:
+            cards = {}
+        for job in sorted(cards):
+            try:
+                observations = runtime.habit.run_count(job)
+            except Exception:
+                observations = 0
+            for feature in sorted(cards[job]):
+                median, spread = cards[job][feature]
+                habit_cards.append(
+                    {
+                        "job": job,
+                        "feature": feature,
+                        "median": round(median, 2),
+                        "spread": round(spread, 2),
+                        "observations": observations,
+                    }
+                )
+    data["habit_cards"] = habit_cards
+
+    snapshots: list[dict] = []
+    clean_point: str | None = None
+    alerts: list[str] = []
+    if runtime.vault is not None:
+        try:
+            snaps = runtime.vault.snapshots()
+        except Exception:
+            snaps = []
+        for snap in snaps:
+            snapshots.append(
+                {
+                    "snapshot_id": snap.snapshot_id,
+                    "taken_at": _iso(snap.taken_at),
+                    "health": snap.health,
+                    "file_count": snap.file_count,
+                    "manifest_hash": (snap.manifest_hash or "")[:16],
+                    "is_clean_point": snap.is_clean_point,
+                }
+            )
+        try:
+            target = newest_clean_before(
+                runtime.vault, _incident_time(runtime.vault, incident)
+            )
+            clean_point = target.snapshot_id if target else None
+        except Exception:
+            clean_point = None
+        try:
+            raw_alerts = runtime.vault.alerts()
+        except Exception:
+            raw_alerts = []
+        for record in raw_alerts[-10:]:
+            if not isinstance(record, dict):
+                continue
+            alerts.append(
+                "{ts} -- {previous} -> {verdict} "
+                "(protect mode {protect}, watcher alive: {alive})".format(
+                    ts=record.get("ts", "?"),
+                    previous=record.get("previous_verdict", "?"),
+                    verdict=record.get("verdict", "?"),
+                    protect=(
+                        "on" if record.get("protect_mode") else "off"
+                    ),
+                    alive=record.get("watcher_alive", "?"),
+                )
+            )
+    data["snapshots"] = snapshots
+    data["clean_point"] = clean_point
+    data["alerts"] = alerts
+
+    return data

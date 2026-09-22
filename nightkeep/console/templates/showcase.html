@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}Full MVP Demo{% endblock %}
+{% block page_heading %}Full MVP Demo{% endblock %}
+
+{% block breadcrumb_items %}
+<li><a href="/">Home</a></li>
+<li class="breadcrumb-separator" aria-hidden="true">/</li>
+<li><a href="{{ url_for('nightkeep_home') }}">Data Safety</a></li>
+<li class="breadcrumb-separator" aria-hidden="true">/</li>
+<li aria-current="page">Full MVP Demo</li>
+{% endblock %}
+
+{% block content %}
+<div class="safety-screen-layout">
+  {% if refresh %}
+  <meta http-equiv="refresh" content="5">
+  {% endif %}
+
+  <!-- Current stage -->
+  <div class="safety-alert-banner" role="status" aria-live="polite">
+    <div class="safety-alert-content">
+      <div class="safety-alert-badge">{{ phase_title }}</div>
+      <h2 class="safety-alert-title">{{ phase_title }}</h2>
+      <p class="safety-alert-description">{{ phase_description }}</p>
+    </div>
+  </div>
+
+  <!-- One-click entry point -->
+  <section class="panel-block" aria-labelledby="demo-start-heading">
+    <div class="panel-header">
+      <h2 id="demo-start-heading">Run the demonstration</h2>
+    </div>
+    <div class="panel-body">
+      <p class="it-panel-text">
+        This starts the real end-to-end MVP demonstration
+        (<span class="tabular-number">python -m nightkeep --demo-run --variant recovery-killer</span>):
+        seven learning days, three guard days, a live safe ransomware attack,
+        containment, Vault protection, and verified recovery.
+      </p>
+      {% if can_start %}
+      <form method="post" action="{{ url_for('showcase_start') }}">
+        <button type="submit" class="btn btn-primary">Run Full MVP Demo</button>
+      </form>
+      {% else %}
+      <button type="button" class="btn btn-primary" disabled>
+        {% if state == "running" %}Demo already running{% else %}Demo finished{% endif %}
+      </button>
+      {% if state == "running" %}
+      <p class="it-panel-text">
+        A demonstration is already running. Reloading this page will not start
+        a second one.
+      </p>
+      {% endif %}
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- Step-by-step story -->
+  <section class="panel-block" aria-labelledby="demo-steps-heading">
+    <div class="panel-header">
+      <h2 id="demo-steps-heading">Demonstration steps</h2>
+    </div>
+    <div class="panel-body">
+      <ol class="demo-steps-list">
+        {% for step in steps %}
+        <li class="demo-step {% if step.key == phase %}demo-step-current{% elif step.done %}demo-step-done{% endif %}">
+          <span class="demo-step-marker" aria-hidden="true">
+            {% if step.done %}&#10003;{% elif step.key == phase %}&#9654;{% else %}&#9675;{% endif %}
+          </span>
+          <span class="demo-step-label">{{ step.title }}</span>
+        </li>
+        {% endfor %}
+      </ol>
+    </div>
+  </section>
+
+  {% if figures %}
+  <!-- Real figures from the run's own report -->
+  <section class="panel-block" aria-labelledby="demo-figures-heading">
+    <div class="panel-header">
+      <h2 id="demo-figures-heading">Measured on this run</h2>
+    </div>
+    <div class="panel-body">
+      <ul class="figures-list">
+        {% if figures.records_verified is defined and figures.records_expected is defined %}
+        <li class="figure-item">
+          <span class="figure-value tabular-number">{{ figures.records_verified }} / {{ figures.records_expected }}</span>
+          <span class="figure-label">records recovered and verified</span>
+        </li>
+        {% endif %}
+        {% if figures.detection_latency_seconds is defined %}
+        <li class="figure-item">
+          <span class="figure-value tabular-number">{{ figures.detection_latency_seconds }}s</span>
+          <span class="figure-label">detection latency</span>
+        </li>
+        {% endif %}
+        {% if figures.affected_files_at_incident is defined %}
+        <li class="figure-item">
+          <span class="figure-value tabular-number">{{ figures.affected_files_at_incident }}</span>
+          <span class="figure-label">files affected before the incident was declared</span>
+        </li>
+        {% endif %}
+        {% if figures.attack_level is defined %}
+        <li class="figure-item">
+          <span class="figure-value">{{ figures.attack_level }}</span>
+          <span class="figure-label">attack verdict</span>
+        </li>
+        {% endif %}
+      </ul>
+      <p class="it-panel-text">Every figure above was read from this run's own report.</p>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if state == "complete" %}
+  <!-- Final demo actions: the existing real screens -->
+  <section class="panel-block" aria-labelledby="demo-inspect-heading">
+    <div class="panel-header">
+      <h2 id="demo-inspect-heading">Inspect the result</h2>
+    </div>
+    <div class="panel-body">
+      <p class="it-panel-text">
+        The demonstration is complete. These are the existing console screens,
+        now showing this run's real state:
+      </p>
+      <p>
+        <a href="{{ url_for('nightkeep_alert') }}" class="btn btn-secondary">Incident Report</a>
+        <a href="{{ url_for('restore_wizard') }}" class="btn btn-secondary">Restore</a>
+        <a href="{{ url_for('pds_locked') }}" class="btn btn-secondary">Locked Screen</a>
+        <a href="{{ url_for('it_view') }}" class="btn btn-secondary btn-it-access">IT View</a>
+      </p>
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- Live log -->
+  <section class="panel-block" aria-labelledby="demo-log-heading">
+    <div class="panel-header">
+      <h2 id="demo-log-heading">Demo output</h2>
+    </div>
+    <div class="panel-body">
+      <pre class="demo-log" aria-label="Demonstration log">{{ log_tail }}</pre>
+    </div>
+  </section>
+</div>
+{% endblock %}

@@ -11,7 +11,7 @@ labels: bug
 **How to reproduce**
 
 ```
-python -m nightkeep --demo   # or the exact command
+python -m nightkeep --demo-run   # or the exact command
 ```
 
 **Seed / config** (a run is reproducible from its seed)

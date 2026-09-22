@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block title %}IT View{% endblock %}
+{% block page_heading %}IT View{% endblock %}
+
+{% block breadcrumb_items %}
+<li><a href="/">Home</a></li>
+<li class="breadcrumb-separator" aria-hidden="true">/</li>
+<li><a href="{{ url_for('nightkeep_home') }}">Data Safety</a></li>
+<li class="breadcrumb-separator" aria-hidden="true">/</li>
+<li aria-current="page">IT View</li>
+{% endblock %}
+
+{% block content %}
+<div class="safety-screen-layout">
+  {% if not it.available %}
+  <!-- Honest no-runtime state: never fabricate diagnostics -->
+  <section class="panel-block" aria-labelledby="it-unavailable-heading">
+    <div class="panel-header">
+      <h2 id="it-unavailable-heading">IT diagnostics</h2>
+    </div>
+    <div class="panel-body">
+      <p class="it-panel-text">
+        IT diagnostics are unavailable until a live demo run is loaded.
+        Start the console with a demo output directory
+        (<span class="tabular-number">python -m nightkeep --console --out-dir demo/demo_run</span>)
+        or run the Full MVP Demo from the showcase page.
+      </p>
+    </div>
+  </section>
+  {% else %}
+
+  <!-- Incident diagnostics -->
+  <section class="panel-block" aria-labelledby="it-incident-heading">
+    <div class="panel-header">
+      <h2 id="it-incident-heading">Incident diagnostics</h2>
+    </div>
+    <div class="panel-body">
+      {% if it.incident %}
+      <ul class="figures-list">
+        <li class="figure-item">
+          <span class="figure-value">{{ it.incident.level }}</span>
+          <span class="figure-label">latest verdict</span>
+        </li>
+        <li class="figure-item">
+          <span class="figure-value">{{ it.incident.job }}</span>
+          <span class="figure-label">judged job</span>
+        </li>
+      </ul>
+      {% if it.incident.signals %}
+      <h3>Signals</h3>
+      <ul>
+        {% for signal in it.incident.signals %}
+        <li><span class="tabular-number">{{ signal }}</span></li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      {% if it.incident.reasons %}
+      <h3>Reasons</h3>
+      <ul>
+        {% for reason in it.incident.reasons %}
+        <li>{{ reason }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      {% if it.incident.actions %}
+      <h3>Actions taken</h3>
+      <ul>
+        {% for action in it.incident.actions %}
+        <li>{{ action }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      {% else %}
+      <p class="it-panel-text">No incident verdict recorded. The judge has not declared an incident.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- Watcher diagnostics -->
+  <section class="panel-block" aria-labelledby="it-watcher-heading">
+    <div class="panel-header">
+      <h2 id="it-watcher-heading">Watcher diagnostics</h2>
+    </div>
+    <div class="panel-body">
+      {% if it.watcher %}
+      <ul class="figures-list">
+        <li class="figure-item">
+          <span class="figure-value">{% if it.watcher.alive %}alive{% else %}silent{% endif %}</span>
+          <span class="figure-label">watcher state</span>
+        </li>
+        <li class="figure-item">
+          <span class="figure-value">{{ it.vault_verdict }}</span>
+          <span class="figure-label">Vault verdict</span>
+        </li>
+        <li class="figure-item">
+          <span class="figure-value">{% if it.protect_mode %}on{% else %}off{% endif %}</span>
+          <span class="figure-label">Vault protect mode</span>
+        </li>
+      </ul>
+      <p class="it-panel-text">Watcher check: {{ it.watcher.reason }}</p>
+      {% if it.watcher.last_seen %}
+      <p class="it-panel-text">Last heartbeat seen: <span class="tabular-number">{{ it.watcher.last_seen }}</span></p>
+      {% endif %}
+      {% else %}
+      <p class="it-panel-text">No watcher state available.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- Habit diagnostics -->
+  <section class="panel-block" aria-labelledby="it-habit-heading">
+    <div class="panel-header">
+      <h2 id="it-habit-heading">Habit diagnostics</h2>
+    </div>
+    <div class="panel-body">
+      {% if it.habit_cards %}
+      <div class="table-responsive">
+        <table class="pds-table">
+          <caption>Learned habit cards: median and spread per feature</caption>
+          <thead>
+            <tr>
+              <th scope="col">Job</th>
+              <th scope="col">Feature</th>
+              <th scope="col">Median</th>
+              <th scope="col">Spread</th>
+              <th scope="col">Observations</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for card in it.habit_cards %}
+            <tr>
+              <td><strong>{{ card.job }}</strong></td>
+              <td>{{ card.feature }}</td>
+              <td class="tabular-number">{{ card.median }}</td>
+              <td class="tabular-number">{{ card.spread }}</td>
+              <td class="tabular-number">{{ card.observations }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="it-panel-text">No learned habit cards available.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- Vault diagnostics -->
+  <section class="panel-block" aria-labelledby="it-vault-heading">
+    <div class="panel-header">
+      <h2 id="it-vault-heading">Vault diagnostics</h2>
+    </div>
+    <div class="panel-body">
+      {% if it.clean_point %}
+      <p class="it-panel-text">Clean point: <span class="tabular-number">{{ it.clean_point }}</span></p>
+      {% endif %}
+      {% if it.snapshots %}
+      <div class="table-responsive">
+        <table class="pds-table">
+          <caption>Vault snapshots</caption>
+          <thead>
+            <tr>
+              <th scope="col">Snapshot</th>
+              <th scope="col">Taken at</th>
+              <th scope="col">Health</th>
+              <th scope="col">Files</th>
+              <th scope="col">Manifest hash</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for snap in it.snapshots %}
+            <tr>
+              <td><strong class="tabular-number">{{ snap.snapshot_id }}</strong></td>
+              <td class="tabular-number">{{ snap.taken_at }}</td>
+              <td>{{ snap.health }}</td>
+              <td class="tabular-number">{{ snap.file_count }}</td>
+              <td><span class="tabular-number">{{ snap.manifest_hash }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="it-panel-text">No Vault snapshots available.</p>
+      {% endif %}
+      {% if it.alerts %}
+      <h3>Vault alert records</h3>
+      <ul>
+        {% for alert in it.alerts %}
+        <li>{{ alert }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}
