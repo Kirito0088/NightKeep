@@ -447,9 +447,6 @@ def _judge_attack_live(
                 continue
             prefix.append(event)
             added = True
-            # Temporary diagnostic for Windows CI: log the first few events
-            if len(prefix) <= 5:
-                say(f"DIAG-EVENT {len(prefix)}: kind={event.kind} path={event.path} old_path={event.old_path}")
         if added and first_event_at is None:
             first_event_at = prefix[0].at
         return added
