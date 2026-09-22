@@ -57,7 +57,7 @@
     <div class="panel-body">
       <div class="table-responsive">
         <table class="pds-table">
-          <caption>Operational status of the six monitored night tasks</caption>
+          <caption>Operational status of the monitored night tasks</caption>
           <thead>
             <tr>
               <th scope="col">Task</th>
@@ -84,6 +84,9 @@
           </tbody>
         </table>
       </div>
+      {% if not safety.tasks %}
+      <p class="it-panel-text tasks-empty-note">No night activity has been recorded yet. The table fills in once the office's night tasks run.</p>
+      {% endif %}
     </div>
   </section>
 

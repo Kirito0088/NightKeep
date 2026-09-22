@@ -63,39 +63,45 @@ _PHASE_COPY: dict[str, tuple[str, str]] = {
         "Preparing the district and starting the demonstration.",
     ),
     "learning": (
-        "LEARNING NORMAL BEHAVIOUR",
-        "Nightkeep is learning the district's normal behaviour.",
+        "LEARN",
+        "Nightkeep is learning what normal night work looks like on the "
+        "district server.",
     ),
     "guard": (
-        "GUARD / WEIRD BUT SAFE",
-        "Normal legacy activity is being checked against learned habits.",
+        "GUARD",
+        "Nightkeep checks the district's normal night work against what "
+        "it learned.",
     ),
     "attack": (
-        "ATTACK STARTED",
-        "The attack has started. Nightkeep is watching the attack unfold; "
-        "no detection is claimed until the Judge raises an INCIDENT. "
-        "On the demo machine, dismiss the Windows security pop-up when "
-        "it appears: the demo waits for dismissal before continuing.",
+        "ATTACK",
+        "A safe simulated ransomware attack is running. Nightkeep watches "
+        "the files and only declares an incident when the evidence is "
+        "clear.",
     ),
     "containment": (
-        "ATTACK STOPPED",
-        "Threat detected. Process containment activated.",
+        "CONTAIN",
+        "Nightkeep detected the attack and stopped it. The office "
+        "computer is isolated.",
     ),
     "vault": (
-        "BACKUP PROTECTED",
-        "The backup remains protected.",
+        "PROTECT",
+        "The Vault keeps the safe copies protected while the attack is "
+        "being handled.",
     ),
     "recovery": (
-        "RECOVERY",
-        "Restoring from the last clean copy.",
+        "RECOVER",
+        "Records are being restored from the last clean copy and every "
+        "record is checked.",
     ),
     "complete": (
         "DEMO COMPLETE",
-        "MVP proof complete.",
+        "MVP proof complete. Every figure below came from this run's own "
+        "report.",
     ),
     "failed": (
         "DEMO FAILED",
-        "The demonstration did not complete. See the log below.",
+        "The demonstration did not complete. The reason is shown below, "
+        "with the run log.",
     ),
 }
 

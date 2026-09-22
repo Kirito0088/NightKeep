@@ -24,6 +24,46 @@
     </div>
   </div>
 
+  <!-- What the office does next: the first thing the clerk must read -->
+  <section class="panel-block office-actions-panel" aria-labelledby="office-next-heading">
+    <div class="panel-header">
+      <h2 id="office-next-heading">What the office does next</h2>
+    </div>
+    <div class="panel-body">
+      <ol class="action-steps-list">
+        <!-- Step 1 (Highlighted in red per mockup-log v10) -->
+        <li class="action-step-item action-step-highlight">
+          <div class="action-step-number" aria-hidden="true">1</div>
+          <div class="action-step-text">
+            <p class="action-step-title">Do not restart the office computer.</p>
+            <p class="action-step-reason">Restarting can wipe the evidence and can let the locking program start again.</p>
+          </div>
+        </li>
+
+        <!-- Step 2 -->
+        <li class="action-step-item">
+          <div class="action-step-number" aria-hidden="true">2</div>
+          <div class="action-step-text">
+            <p class="action-step-title">Disconnect the network cable.</p>
+            <p class="action-step-detail">Keep this computer separated until the district technician arrives.</p>
+          </div>
+        </li>
+
+        <!-- Step 3 -->
+        <li class="action-step-item">
+          <div class="action-step-number" aria-hidden="true">3</div>
+          <div class="action-step-text">
+            <p class="action-step-title">Inform the District Supply Office IT team.</p>
+            <p class="action-step-detail">Safe copies remain protected on the Vault.</p>
+            <div class="step-primary-action">
+              <a href="{{ url_for('nightkeep_home') }}" class="btn btn-secondary btn-open-safety">Open Data Safety</a>
+            </div>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
   <!-- Search Form and Side Summary Grid (Preserves Screen 1 layout structure) -->
   <div class="screen-split-layout">
     <!-- Upper Left: Disabled Search Form -->
@@ -171,53 +211,14 @@
     </div>
   </section>
 
-  <!-- Lower Split: What the office does next (Left) + Simulated Threat Note (Right) -->
-  <div class="locked-bottom-grid">
-    <!-- What the office does next -->
-    <section class="panel-block office-actions-panel" aria-labelledby="office-next-heading">
-      <div class="panel-header">
-        <h2 id="office-next-heading">What the office does next</h2>
-      </div>
-      <div class="panel-body">
-        <ol class="action-steps-list">
-          <!-- Step 1 (Highlighted in red per mockup-log v10) -->
-          <li class="action-step-item action-step-highlight">
-            <div class="action-step-number" aria-hidden="true">1</div>
-            <div class="action-step-text">
-              <p class="action-step-title">Do not restart the office computer.</p>
-              <p class="action-step-reason">Restarting can wipe the evidence and can let the locking program start again.</p>
-            </div>
-          </li>
-
-          <!-- Step 2 -->
-          <li class="action-step-item">
-            <div class="action-step-number" aria-hidden="true">2</div>
-            <div class="action-step-text">
-              <p class="action-step-title">Disconnect the network cable.</p>
-              <p class="action-step-detail">Keep this computer separated until the district technician arrives.</p>
-            </div>
-          </li>
-
-          <!-- Step 3 -->
-          <li class="action-step-item">
-            <div class="action-step-number" aria-hidden="true">3</div>
-            <div class="action-step-text">
-              <p class="action-step-title">Inform the District Supply Office IT team.</p>
-              <p class="action-step-detail">Safe copies remain protected on the Vault. Use the Data Safety screen to check your records are safe.</p>
-            </div>
-          </li>
-        </ol>
-      </div>
-    </section>
-
-    <!-- Simulated Threat Note Artifact -->
-    <section class="panel-block threat-note-panel" aria-labelledby="threat-note-heading">
-      <div class="panel-header">
-        <h2 id="threat-note-heading">Simulated Threat Note (Demonstration Artifact)</h2>
-      </div>
-      <div class="panel-body">
-        <div class="threat-note-box" aria-label="Detected Demonstration Artifact Content">
-          <pre class="threat-note-pre"><code>=== PROTOTYPE DEMONSTRATION ARTIFACT ===
+  <!-- Simulated Threat Note Artifact (secondary: a demonstration artifact, not an instruction) -->
+  <section class="panel-block threat-note-panel" aria-labelledby="threat-note-heading">
+    <div class="panel-header">
+      <h2 id="threat-note-heading">Simulated Threat Note (Demonstration Artifact)</h2>
+    </div>
+    <div class="panel-body">
+      <div class="threat-note-box" aria-label="Detected Demonstration Artifact Content">
+        <pre class="threat-note-pre"><code>=== PROTOTYPE DEMONSTRATION ARTIFACT ===
 File: README_LOCKED.txt (simulated)
 
 All files in this directory have been locked.
@@ -226,9 +227,8 @@ Do not modify files or restart the machine.
 Contact: simulator@demo.internal
 
 === END DEMONSTRATION ARTIFACT ===</code></pre>
-        </div>
       </div>
-    </section>
-  </div>
+    </div>
+  </section>
 </div>
 {% endblock %}

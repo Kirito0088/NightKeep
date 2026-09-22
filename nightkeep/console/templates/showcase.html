@@ -12,18 +12,19 @@
 {% endblock %}
 
 {% block content %}
-<div class="safety-screen-layout">
+<div class="showcase-layout">
   {% if refresh %}
   <meta http-equiv="refresh" content="5">
   {% endif %}
 
-  <!-- Current stage -->
-  <div class="safety-alert-banner" role="status" aria-live="polite">
-    <div class="safety-alert-content">
-      <div class="safety-alert-badge">{{ phase_title }}</div>
-      <h2 class="safety-alert-title">{{ phase_title }}</h2>
-      <p class="safety-alert-description">{{ phase_description }}</p>
-    </div>
+  <!-- Live demonstration status -->
+  <div class="showcase-banner showcase-banner-{{ state }}" role="status" aria-live="polite">
+    <p class="showcase-banner-kicker">Demonstration status</p>
+    <h2 class="showcase-banner-title">{{ phase_title }}</h2>
+    <p class="showcase-banner-description">{{ phase_description }}</p>
+    {% if failure_note %}
+    <p class="showcase-banner-note">Reason: {{ failure_note }}</p>
+    {% endif %}
   </div>
 
   <!-- One-click entry point -->
@@ -33,42 +34,97 @@
     </div>
     <div class="panel-body">
       <p class="it-panel-text">
-        This starts the real end-to-end MVP demonstration
-        (<span class="tabular-number">python -m nightkeep --demo-run --variant recovery-killer</span>):
-        seven learning days, three guard days, a live safe ransomware attack,
-        containment, Vault protection, and verified recovery.
+        One click runs the full end-to-end demonstration: NightKeep learns the
+        office's normal night work over seven days, watches three more days,
+        faces a safe simulated ransomware attack, stops it, protects the
+        backups, and restores every record.
       </p>
       {% if can_start %}
       <form method="post" action="{{ url_for('showcase_start') }}">
-        <button type="submit" class="btn btn-primary">Run Full MVP Demo</button>
+        <button type="submit" class="btn btn-primary btn-demo-run">Run Full MVP Demo</button>
       </form>
       {% else %}
       <button type="button" class="btn btn-primary" disabled>
         {% if state == "running" %}Demo already running{% else %}Demo finished{% endif %}
       </button>
-      {% if state == "running" %}
       <p class="it-panel-text">
         A demonstration is already running. Reloading this page will not start
         a second one.
       </p>
       {% endif %}
-      {% endif %}
     </div>
   </section>
 
-  <!-- Step-by-step story -->
-  <section class="panel-block" aria-labelledby="demo-steps-heading">
+  <!-- What this demonstrates -->
+  <section class="panel-block" aria-labelledby="demo-story-heading">
     <div class="panel-header">
-      <h2 id="demo-steps-heading">Demonstration steps</h2>
+      <h2 id="demo-story-heading">What this demonstrates</h2>
     </div>
     <div class="panel-body">
-      <ol class="demo-steps-list">
+      <ol class="showcase-story-list">
+        <li class="showcase-story-item">
+          <span class="showcase-story-stage" aria-hidden="true">1</span>
+          <div class="showcase-story-text">
+            <p class="showcase-story-title">Learn</p>
+            <p class="showcase-story-detail">NightKeep studies seven days of normal office activity to learn what ordinary looks like.</p>
+          </div>
+        </li>
+        <li class="showcase-story-item">
+          <span class="showcase-story-stage" aria-hidden="true">2</span>
+          <div class="showcase-story-text">
+            <p class="showcase-story-title">Guard</p>
+            <p class="showcase-story-detail">Three more days of real but unusual office activity are checked against what was learned. Nothing is flagged.</p>
+          </div>
+        </li>
+        <li class="showcase-story-item">
+          <span class="showcase-story-stage" aria-hidden="true">3</span>
+          <div class="showcase-story-text">
+            <p class="showcase-story-title">Attack</p>
+            <p class="showcase-story-detail">A safe simulated ransomware attack runs. NightKeep watches and only declares an incident when the evidence is clear.</p>
+          </div>
+        </li>
+        <li class="showcase-story-item">
+          <span class="showcase-story-stage" aria-hidden="true">4</span>
+          <div class="showcase-story-text">
+            <p class="showcase-story-title">Contain</p>
+            <p class="showcase-story-detail">The attack is detected, the attacker is stopped, and the office computer is isolated.</p>
+          </div>
+        </li>
+        <li class="showcase-story-item">
+          <span class="showcase-story-stage" aria-hidden="true">5</span>
+          <div class="showcase-story-text">
+            <p class="showcase-story-title">Protect</p>
+            <p class="showcase-story-detail">The Vault keeps the backups protected while the attack is being handled.</p>
+          </div>
+        </li>
+        <li class="showcase-story-item">
+          <span class="showcase-story-stage" aria-hidden="true">6</span>
+          <div class="showcase-story-text">
+            <p class="showcase-story-title">Recover</p>
+            <p class="showcase-story-detail">Every record is restored from the last clean copy and checked.</p>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- Live progress through the stages -->
+  <section class="panel-block" aria-labelledby="demo-progress-heading">
+    <div class="panel-header">
+      <h2 id="demo-progress-heading">Demonstration progress</h2>
+    </div>
+    <div class="panel-body">
+      <ol class="showcase-progress-list">
         {% for step in steps %}
-        <li class="demo-step {% if step.key == phase %}demo-step-current{% elif step.done %}demo-step-done{% endif %}">
-          <span class="demo-step-marker" aria-hidden="true">
-            {% if step.done %}&#10003;{% elif step.key == phase %}&#9654;{% else %}&#9675;{% endif %}
+        {% set is_current = step.key == phase %}
+        <li class="showcase-progress-step {% if is_current %}showcase-progress-current{% elif step.done %}showcase-progress-done{% else %}showcase-progress-waiting{% endif %}">
+          <span class="showcase-progress-marker" aria-hidden="true">
+            {% if step.done %}&#10003;{% elif is_current %}&#9654;{% else %}&#9675;{% endif %}
           </span>
-          <span class="demo-step-label">{{ step.title }}</span>
+          <span class="showcase-progress-label">{{ step.title }}</span>
+          <span class="visually-hidden">
+            {% if is_current %}(current stage){% elif step.done %}(complete){% else %}(not started){% endif %}
+          </span>
         </li>
         {% endfor %}
       </ol>
@@ -77,18 +133,18 @@
 
   {% if figures %}
   <!-- Real figures from the run's own report -->
-  <section class="panel-block" aria-labelledby="demo-figures-heading">
+  <section class="panel-block showcase-figures" aria-labelledby="demo-figures-heading">
     <div class="panel-header">
       <h2 id="demo-figures-heading">Measured on this run</h2>
     </div>
     <div class="panel-body">
+      {% if figures.records_verified is defined and figures.records_expected is defined %}
+      <div class="figure-hero">
+        <span class="figure-hero-value tabular-number">{{ figures.records_verified }} / {{ figures.records_expected }}</span>
+        <span class="figure-hero-label">records recovered and verified</span>
+      </div>
+      {% endif %}
       <ul class="figures-list">
-        {% if figures.records_verified is defined and figures.records_expected is defined %}
-        <li class="figure-item">
-          <span class="figure-value tabular-number">{{ figures.records_verified }} / {{ figures.records_expected }}</span>
-          <span class="figure-label">records recovered and verified</span>
-        </li>
-        {% endif %}
         {% if figures.detection_latency_seconds is defined %}
         <li class="figure-item">
           <span class="figure-value tabular-number">{{ figures.detection_latency_seconds }}s</span>
@@ -124,20 +180,32 @@
         The demonstration is complete. These are the existing console screens,
         now showing this run's real state:
       </p>
-      <p>
-        <a href="{{ url_for('nightkeep_alert') }}" class="btn btn-secondary">Incident Report</a>
-        <a href="{{ url_for('restore_wizard') }}" class="btn btn-secondary">Restore</a>
-        <a href="{{ url_for('pds_locked') }}" class="btn btn-secondary">Locked Screen</a>
-        <a href="{{ url_for('it_view') }}" class="btn btn-secondary btn-it-access">IT View</a>
-      </p>
+      <ul class="showcase-destinations-list">
+        <li class="showcase-destination showcase-destination-primary">
+          <a href="{{ url_for('nightkeep_alert') }}" class="btn btn-primary">Incident Report</a>
+          <p class="showcase-destination-detail">See what happened, when it was detected, and what NightKeep did.</p>
+        </li>
+        <li class="showcase-destination">
+          <a href="{{ url_for('restore_wizard') }}" class="btn btn-secondary">Restore</a>
+          <p class="showcase-destination-detail">Bring the records back from the last clean copy.</p>
+        </li>
+        <li class="showcase-destination">
+          <a href="{{ url_for('pds_locked') }}" class="btn btn-secondary">Locked Screen</a>
+          <p class="showcase-destination-detail">What the office computer shows while the records are locked.</p>
+        </li>
+        <li class="showcase-destination showcase-destination-quiet">
+          <a href="{{ url_for('it_view') }}" class="btn btn-secondary btn-it-access">IT View</a>
+          <p class="showcase-destination-detail">Technical diagnostics for the IT person.</p>
+        </li>
+      </ul>
     </div>
   </section>
   {% endif %}
 
-  <!-- Live log -->
+  <!-- Run details -->
   <section class="panel-block" aria-labelledby="demo-log-heading">
     <div class="panel-header">
-      <h2 id="demo-log-heading">Demo output</h2>
+      <h2 id="demo-log-heading">Technical output</h2>
     </div>
     <div class="panel-body">
       <pre class="demo-log" aria-label="Demonstration log">{{ log_tail }}</pre>

@@ -1125,3 +1125,15 @@ def test_card_detail_part_collected_is_not_marked_green():
     app = create_app(card_details={card.card_no: replace(card, transactions=(tx,))})
     html = app.test_client().get(f"/card/{card.card_no}").get_data(as_text=True)
     assert '<span class="status-badge status-badge-suspended">Part collected</span>' in html
+
+
+def test_alert_calm_banner_uses_calm_not_incident_styling(client):
+    response = client.get("/alert")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    # Calm state must carry the green calm variant, not incident-red styling.
+    assert 'class="alert-incident-banner alert-incident-calm"' in html
+    assert "STATUS: ALL CLEAR" in html
+    # Honest empty state for the timeline when there is no incident.
+    assert "No incident timeline yet." in html

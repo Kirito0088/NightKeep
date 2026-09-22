@@ -30,12 +30,14 @@
   </section>
   {% else %}
 
-  <!-- Incident diagnostics -->
-  <section class="panel-block" aria-labelledby="it-incident-heading">
+  <!-- INCIDENT -->
+  <section class="panel-block it-section" aria-labelledby="it-incident-heading">
     <div class="panel-header">
-      <h2 id="it-incident-heading">Incident diagnostics</h2>
+      <h2 id="it-incident-heading">Incident</h2>
+      <span class="panel-subtitle">Incident diagnostics</span>
     </div>
     <div class="panel-body">
+      <p class="it-section-summary">The latest verdict from the judge: what was detected, which signals fired, and what was done about it.</p>
       {% if it.incident %}
       <ul class="figures-list">
         <li class="figure-item">
@@ -48,24 +50,24 @@
         </li>
       </ul>
       {% if it.incident.signals %}
-      <h3>Signals</h3>
-      <ul>
+      <h3 class="it-subheading">Signals</h3>
+      <ul class="it-detail-list">
         {% for signal in it.incident.signals %}
         <li><span class="tabular-number">{{ signal }}</span></li>
         {% endfor %}
       </ul>
       {% endif %}
       {% if it.incident.reasons %}
-      <h3>Reasons</h3>
-      <ul>
+      <h3 class="it-subheading">Reasons</h3>
+      <ul class="it-detail-list">
         {% for reason in it.incident.reasons %}
         <li>{{ reason }}</li>
         {% endfor %}
       </ul>
       {% endif %}
       {% if it.incident.actions %}
-      <h3>Actions taken</h3>
-      <ul>
+      <h3 class="it-subheading">Actions taken</h3>
+      <ul class="it-detail-list">
         {% for action in it.incident.actions %}
         <li>{{ action }}</li>
         {% endfor %}
@@ -77,12 +79,14 @@
     </div>
   </section>
 
-  <!-- Watcher diagnostics -->
-  <section class="panel-block" aria-labelledby="it-watcher-heading">
+  <!-- WATCHER -->
+  <section class="panel-block it-section" aria-labelledby="it-watcher-heading">
     <div class="panel-header">
-      <h2 id="it-watcher-heading">Watcher diagnostics</h2>
+      <h2 id="it-watcher-heading">Watcher</h2>
+      <span class="panel-subtitle">Watcher diagnostics</span>
     </div>
     <div class="panel-body">
+      <p class="it-section-summary">Whether the file watcher is alive and reporting, as seen by the Vault's own liveness check.</p>
       {% if it.watcher %}
       <ul class="figures-list">
         <li class="figure-item">
@@ -108,12 +112,14 @@
     </div>
   </section>
 
-  <!-- Habit diagnostics -->
-  <section class="panel-block" aria-labelledby="it-habit-heading">
+  <!-- HABIT -->
+  <section class="panel-block it-section" aria-labelledby="it-habit-heading">
     <div class="panel-header">
-      <h2 id="it-habit-heading">Habit diagnostics</h2>
+      <h2 id="it-habit-heading">Habit</h2>
+      <span class="panel-subtitle">Habit diagnostics</span>
     </div>
     <div class="panel-body">
+      <p class="it-section-summary">The learned baseline: the median and spread of each monitored feature per night task.</p>
       {% if it.habit_cards %}
       <div class="table-responsive">
         <table class="pds-table">
@@ -146,12 +152,14 @@
     </div>
   </section>
 
-  <!-- Vault diagnostics -->
-  <section class="panel-block" aria-labelledby="it-vault-heading">
+  <!-- VAULT -->
+  <section class="panel-block it-section" aria-labelledby="it-vault-heading">
     <div class="panel-header">
-      <h2 id="it-vault-heading">Vault diagnostics</h2>
+      <h2 id="it-vault-heading">Vault</h2>
+      <span class="panel-subtitle">Vault diagnostics</span>
     </div>
     <div class="panel-body">
+      <p class="it-section-summary">The isolated backup store: snapshots, their health, and the current clean recovery point.</p>
       {% if it.clean_point %}
       <p class="it-panel-text">Clean point: <span class="tabular-number">{{ it.clean_point }}</span></p>
       {% endif %}
@@ -185,8 +193,8 @@
       <p class="it-panel-text">No Vault snapshots available.</p>
       {% endif %}
       {% if it.alerts %}
-      <h3>Vault alert records</h3>
-      <ul>
+      <h3 class="it-subheading">Vault alert records</h3>
+      <ul class="it-detail-list">
         {% for alert in it.alerts %}
         <li>{{ alert }}</li>
         {% endfor %}

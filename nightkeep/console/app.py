@@ -833,6 +833,7 @@ def create_app(
             phase=phase,
             phase_title=title,
             phase_description=description,
+            failure_note=status.get("note"),
             steps=steps,
             can_start=state != "running",
             figures=figures,

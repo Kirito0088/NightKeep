@@ -13,53 +13,59 @@
 
 {% block content %}
 <div class="alert-screen-layout">
-  <!-- Primary Incident Banner (Banner parity with Screen 3 and Screen 4) -->
-  <div class="alert-incident-banner" role="alert" aria-live="assertive">
+  <!-- Incident status -->
+  <div class="alert-incident-banner {% if not alert.timeline %}alert-incident-calm{% endif %}" role="alert" aria-live="assertive">
     <div class="alert-incident-content">
       <div class="alert-incident-badge">{{ alert.status_badge }}</div>
       <h2 class="alert-incident-title">{{ alert.headline }}</h2>
+      {% if alert.timeline %}
       <p class="alert-incident-description">
-        Nightkeep detected abnormal activity and protected your database. Safe copies are preserved on the isolated Vault.
+        NightKeep detected abnormal activity and protected your database. Safe copies are preserved on the isolated Vault.
       </p>
+      {% else %}
+      <p class="alert-incident-description">
+        NightKeep is watching the office computer. If something abnormal happens, it will be described here.
+      </p>
+      {% endif %}
     </div>
   </div>
 
-  <!-- Incident Summary Figures Section -->
-  <section class="panel-block alert-summary-section" aria-labelledby="alert-summary-heading">
+  <!-- What happened -->
+  <section class="panel-block" aria-labelledby="what-happened-heading">
     <div class="panel-header">
-      <h2 id="alert-summary-heading">Incident Summary</h2>
+      <h2 id="what-happened-heading">What happened</h2>
     </div>
     <div class="panel-body">
-      <div class="alert-summary-grid">
-        {% for figure in alert.figures %}
-          <div class="alert-stat-card">
-            <span class="alert-stat-value tabular-number">{{ figure.value }}</span>
-            <span class="alert-stat-label">{{ figure.label }}</span>
-          </div>
-        {% endfor %}
-      </div>
+      {% if alert.timeline %}
+        {% set first = alert.timeline[0] %}
+        <p class="alert-event-line">
+          <strong>{{ first.title }}</strong>
+          <span class="tabular-number">{{ first.time }}</span>
+        </p>
+        <p class="it-panel-text">{{ first.detail }}</p>
+      {% else %}
+        <p class="it-panel-text">Nothing abnormal has been detected. When an incident occurs, what happened will be written here in plain language.</p>
+      {% endif %}
     </div>
   </section>
 
-  <!-- Incident Timeline Section -->
-  <section class="panel-block alert-timeline-section" aria-labelledby="alert-timeline-heading">
+  {% for item in alert.timeline %}
+  {% if item.title == "Attack stopped" or item.title == "Flagged for review" %}
+  <!-- What NightKeep did -->
+  <section class="panel-block" aria-labelledby="what-did-heading">
     <div class="panel-header">
-      <h2 id="alert-timeline-heading">Incident Timeline</h2>
+      <h2 id="what-did-heading">What NightKeep did</h2>
     </div>
     <div class="panel-body">
-      <ol class="timeline-list">
-        {% for item in alert.timeline %}
-          <li class="timeline-item">
-            <div class="timeline-time tabular-number">{{ item.time }}</div>
-            <div class="timeline-content">
-              <p class="timeline-title">{{ item.title }}</p>
-              <p class="timeline-detail">{{ item.detail }}</p>
-            </div>
-          </li>
-        {% endfor %}
-      </ol>
+      <p class="alert-event-line">
+        <strong>{{ item.title }}</strong>
+        <span class="tabular-number">{{ item.time }}</span>
+      </p>
+      <p class="it-panel-text">{{ item.detail }}</p>
     </div>
   </section>
+  {% endif %}
+  {% endfor %}
 
   <!-- What to do now Action Panel -->
   <section class="panel-block alert-actions-panel" aria-labelledby="what-to-do-heading">
@@ -88,8 +94,49 @@
     </div>
   </section>
 
+  <!-- Evidence: figures and the full timeline -->
+  {% if alert.figures %}
+  <section class="panel-block alert-summary-section" aria-labelledby="alert-summary-heading">
+    <div class="panel-header">
+      <h2 id="alert-summary-heading">Incident figures</h2>
+    </div>
+    <div class="panel-body">
+      <div class="alert-summary-grid">
+        {% for figure in alert.figures %}
+          <div class="alert-stat-card">
+            <span class="alert-stat-value tabular-number">{{ figure.value }}</span>
+            <span class="alert-stat-label">{{ figure.label }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="panel-block alert-timeline-section" aria-labelledby="alert-timeline-heading">
+    <div class="panel-header">
+      <h2 id="alert-timeline-heading">Incident Timeline</h2>
+    </div>
+    <div class="panel-body">
+      <ol class="timeline-list">
+        {% for item in alert.timeline %}
+          <li class="timeline-item">
+            <div class="timeline-time tabular-number">{{ item.time }}</div>
+            <div class="timeline-content">
+              <p class="timeline-title">{{ item.title }}</p>
+              <p class="timeline-detail">{{ item.detail }}</p>
+            </div>
+          </li>
+        {% endfor %}
+      </ol>
+      {% if not alert.timeline %}
+      <p class="it-panel-text">No incident timeline yet. When an incident occurs, each event will appear here in order.</p>
+      {% endif %}
+    </div>
+  </section>
+
   <!-- For the IT person Entry Point -->
-  <section class="panel-block it-person-section" aria-labelledby="it-person-heading">
+  <section class="panel-block it-person-section it-person-quiet" aria-labelledby="it-person-heading">
     <div class="panel-header">
       <h2 id="it-person-heading">For the IT person</h2>
     </div>
