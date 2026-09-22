@@ -86,14 +86,20 @@ def land_transactions(
 
 _JOBS_DIR = Path(__file__).resolve().parent / "jobs"
 
-def _bat_command(path: Path, arguments: list) -> list:
+def _bat_command(path: Path, arguments: list) -> str:
     # cmd.exe re-parses everything after /c with its own tokenizer, which
-    # splits an unquoted batch path at the first space. The whole command
-    # line therefore travels as one /c argument, wrapped in one outer pair
-    # of quotes: cmd strips that pair, and the individually quoted pieces
-    # inside (from list2cmdline) then survive paths that contain spaces.
+    # does NOT understand the backslash-escaped quotes (\") that
+    # subprocess.list2cmdline produces when a list element contains quotes.
+    # A /c argument built as a list element therefore arrives at cmd.exe
+    # mangled, and cmd tries to run the whole quoted string as one command
+    # ("'\"D:\\...\\job.bat --root ...\"' is not recognized...").
+    # So the command travels as ONE pre-built string (subprocess passes a
+    # string to CreateProcess verbatim, with no list2cmdline step), using
+    # the cmd.exe /c "..." idiom: cmd strips the outer quote pair itself
+    # (its "old behavior" rule), leaving the individually quoted pieces
+    # from list2cmdline intact so spaced script/district paths survive.
     inner = subprocess.list2cmdline([str(path), *map(str, arguments)])
-    return ["cmd.exe", "/c", f'"{inner}"']
+    return f'cmd.exe /c "{inner}"'
 
 
 # Job identity is executable + script path + hash (SOLUTION_DESIGN.md), so
