@@ -242,54 +242,20 @@ DEFAULT_SERVER_ALERT_DATA: ServerAlertPresentation = ServerAlertPresentation(
 
 
 DEFAULT_SAFETY_HOME_DATA: SafetyHomePresentation = SafetyHomePresentation(
+    # Honest fallback: with no backend state there are no safe copies, no
+    # clean point, and no night-task history to report. Same shape as the
+    # no-clean-copy branch of providers.safety_home().
     status_badge="STATUS: NORMAL",
-    protection_status="Your records are safe",
+    protection_status="No safe copies yet",
     protection_detail=(
-        "All 5,000 ration cards are protected and continuous monitoring is "
-        "active. Safe copies are preserved on the isolated Vault."
+        "The Vault has not taken a clean backup yet. Run the full demo "
+        "to see live protection data."
     ),
-    protected_cards_count="5,000",
-    fps_count="50",
-    safe_copies_count="24",
-    clean_point="Day 9, 01:20",
-    tasks=(
-        NightTaskPresentation(
-            task_name="Day-end upload",
-            usually="01:00 to 02:30, writes ~240 rows",
-            last_night="01:14 (248 rows)",
-            status="Normal",
-        ),
-        NightTaskPresentation(
-            task_name="Allotment file creation",
-            usually="23:15 to 00:45, writes 50 files",
-            last_night="23:30 (50 files)",
-            status="Normal",
-        ),
-        NightTaskPresentation(
-            task_name="Safe copy of the database",
-            usually="10 to 45 min after upload",
-            last_night="01:45 (clean database backup)",
-            status="Normal",
-        ),
-        NightTaskPresentation(
-            task_name="Old file clean-up",
-            usually="03:00 to 04:30 when folder > 40 MB",
-            last_night="Did not run (folder under limit)",
-            status="Normal",
-        ),
-        NightTaskPresentation(
-            task_name="Data format maintenance",
-            usually="02:00 to 05:00, occasional nights",
-            last_night="03:40 (6 files modified)",
-            status="Later than usual",
-        ),
-        NightTaskPresentation(
-            task_name="Counter clerk entries",
-            usually="10:00 to 17:00, Mon to Sat",
-            last_night="10:15 to 16:50 (24 entries)",
-            status="Normal",
-        ),
-    ),
+    protected_cards_count="?",
+    fps_count="?",
+    safe_copies_count="0",
+    clean_point="No clean copy yet",
+    tasks=(),
 )
 
 
@@ -833,7 +799,12 @@ def create_app(
         """
         status = controller.read_status()
         state = status.get("state", "ready")
-        phase = controller.phase()
+        # Terminal states override the log-derived phase: a failed or
+        # completed run must show its outcome, not the last phase marker.
+        if state in ("failed", "complete"):
+            phase = state
+        else:
+            phase = controller.phase()
         title, description = controller.phase_copy(phase)
 
         order = list(controller.steps())

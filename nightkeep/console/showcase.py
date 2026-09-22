@@ -71,8 +71,9 @@ _PHASE_COPY: dict[str, tuple[str, str]] = {
         "Normal legacy activity is being checked against learned habits.",
     ),
     "attack": (
-        "THREAT DETECTED",
-        "Threat activity detected. Nightkeep is watching the attack. "
+        "ATTACK STARTED",
+        "The attack has started. Nightkeep is watching the attack unfold; "
+        "no detection is claimed until the Judge raises an INCIDENT. "
         "On the demo machine, dismiss the Windows security pop-up when "
         "it appears: the demo waits for dismissal before continuing.",
     ),

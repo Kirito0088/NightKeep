@@ -133,7 +133,9 @@ def test_console_wires_itself_to_a_runtime_created_after_startup(tmp_path):
     assert "DEMONSTRATION DRILL" in locked
 
     safety = client.get("/safety").get_data(as_text=True)
-    assert "Day 9, 01:20" in safety  # the hardcoded calm clean-point label
+    # Honest calm state: no fabricated clean point before the demo runs.
+    assert "No clean copy yet" in safety
+    assert "Day 9, 01:20" not in safety
 
     it_view = client.get("/it-view").get_data(as_text=True)
     assert "IT diagnostics are unavailable" in it_view

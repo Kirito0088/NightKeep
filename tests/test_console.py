@@ -480,7 +480,8 @@ def test_safety_home_protection_headline(client):
     response = client.get("/safety")
     assert response.status_code == 200
     html = response.get_data(as_text=True)
-    assert "Your records are safe" in html
+    # Honest calm state: no runtime has run, so no safe copies exist yet.
+    assert "No safe copies yet" in html
     assert "STATUS: NORMAL" in html
 
 
@@ -488,17 +489,19 @@ def test_safety_home_protected_record_count(client):
     response = client.get("/safety")
     assert response.status_code == 200
     html = response.get_data(as_text=True)
-    assert "5,000" in html
-    assert "ration cards protected" in html
+    # Honest calm state: no fabricated protection counts without a runtime.
+    assert "5,000" not in html
+    assert "No clean copy yet" in html
 
 
 def test_safety_home_clean_point(client):
     response = client.get("/safety")
     assert response.status_code == 200
     html = response.get_data(as_text=True)
-    assert "Day 9, 01:20" in html
-    assert "24" in html
-    assert "safe copies on Vault" in html
+    # Honest calm state: no fabricated clean point or safe-copy count.
+    assert "No clean copy yet" in html
+    assert "Day 9, 01:20" not in html
+    assert "24 safe copies" not in html
 
 
 def test_safety_home_night_tasks_table(client):
@@ -512,18 +515,15 @@ def test_safety_home_night_tasks_table(client):
     assert '<th scope="col">Last night</th>' in html
     assert '<th scope="col">Status</th>' in html
 
-    # Verify all 6 documented task names
-    assert "Day-end upload" in html
-    assert "Allotment file creation" in html
-    assert "Safe copy of the database" in html
-    assert "Old file clean-up" in html
-    assert "Data format maintenance" in html
-    assert "Counter clerk entries" in html
+    # Honest calm state: no runtime has run, so no task history exists.
+    # No fabricated task names or rows.
+    assert "Day-end upload" not in html
+    assert "Data format maintenance" not in html
 
-    # Count rows in tbody
+    # Count rows in tbody: zero, no fabricated activity.
     tbody_content = html.split("<tbody>")[1].split("</tbody>")[0]
     row_count = tbody_content.count("<tr")
-    assert row_count == 6
+    assert row_count == 0
 
 
 def test_safety_home_later_than_usual_state(client):
@@ -531,8 +531,9 @@ def test_safety_home_later_than_usual_state(client):
     assert response.status_code == 200
     html = response.get_data(as_text=True)
 
-    assert "Later than usual" in html
-    assert "03:40 (6 files modified)" in html
+    # Honest calm state: no fabricated "later than usual" task activity.
+    assert "Later than usual" not in html
+    assert "03:40 (6 files modified)" not in html
 
 
 def test_safety_home_for_it_person_present(client):
