@@ -257,7 +257,7 @@ def _learn_and_guard(
                     odd_cards += 1
                 result.guard_verdicts.append(odd["record"])
 
-        snapshot = vault.pull(at=sim_day)
+        snapshot = vault.pull(taken_at=sim_day)
         say(f"  safe copy pulled: {snapshot.snapshot_id} ({snapshot.health})")
         sim_day += timedelta(days=1)
 
@@ -403,7 +403,7 @@ def _attack(watcher, judge, vault, config, pds, variant, result, say):
         caught_at["files"] = report.files_scrambled
         caught_at["seconds"] = round(time.monotonic() - began, 2)
 
-    attack_snapshot = vault.pull(at=datetime.now(timezone.utc))
+    attack_snapshot = vault.pull(taken_at=datetime.now(timezone.utc))
 
     result.attack = {
         "variant": variant,
