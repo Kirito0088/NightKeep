@@ -69,17 +69,24 @@ Variants a judge can pick: `fast` (a fast scrambler), `impersonator` (scrambles
 in place under a known job's guise), `recovery-killer` (also writes
 system-restore-deletion command text, which is only ever text, never run).
 
-**Open the Vault console** (binds to loopback only, never the LAN):
+**Open the Vault console** (binds to loopback only, never the LAN).
+Start it wired to the demo run directory so every screen reads real state:
 
 ```bash
-python -m nightkeep.console
+python -m nightkeep --console --out-dir demo/demo_run
 ```
 
 Then visit <http://127.0.0.1:5000>. If a demo run has happened, the console
 shows that run's real numbers and the real 5,000-card district; otherwise it
-falls back to a built-in sample so the screens always come up.
+shows calm, honest screens until a run creates state. The console picks up
+the run's state on each request, so no restart is needed after a run.
 
-**One-click showcase** — the polished demo flow. Start the console, open
+`python -m nightkeep.console` with no config is the isolated UI mode for
+screen work only: it starts with sample records and calm, honest screens
+and is never wired to a real demo run.
+
+**One-click showcase** — the polished demo flow. Start the wired console
+(`python -m nightkeep --console --out-dir demo/demo_run`), open
 <http://127.0.0.1:5000/showcase>, and click **Run Full MVP Demo**. That button
 starts the real end-to-end runner (`python -m nightkeep --demo-run --variant
 recovery-killer`) as a subprocess and tracks it live: learning, guard, attack,

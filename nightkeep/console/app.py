@@ -867,7 +867,7 @@ def create_app(
             figures=figures,
             log_tail=controller.log_tail(),
             refresh=state == "running",
-            active_page="safety",
+            active_page="showcase",
         )
 
     @app.route("/showcase/start", methods=["POST"])

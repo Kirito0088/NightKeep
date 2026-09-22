@@ -131,8 +131,9 @@ Instead of driving the CLI, the showcase page runs the whole story from
 one button:
 
 1. **Install:** `python -m pip install -e ".[dev]"` (Python 3.11).
-2. **Start the console:** `python -m nightkeep.console` and open
-   `http://127.0.0.1:5000/showcase`.
+2. **Start the console wired to the run directory:**
+   `python -m nightkeep --console --out-dir demo/demo_run` and open
+   `http://127.0.0.1:5000/showcase` (click **Full MVP Demo** in the nav).
 3. **Click "Run Full MVP Demo".** The button launches the real runner
    (`python -m nightkeep --demo-run --variant recovery-killer`) as a
    subprocess with the current interpreter. The button disables while
