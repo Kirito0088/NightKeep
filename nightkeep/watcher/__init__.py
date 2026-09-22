@@ -19,6 +19,7 @@ is *inside* a file is judge's question, asked of the file on disk.
 """
 
 import threading
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -102,6 +103,7 @@ class Watcher:
         self._observer = Observer()
         self._observer.schedule(_Handler(self), str(self.root), recursive=True)
         self._started = False
+        self._last_fallback_poll = 0.0
 
     # --- lifecycle --------------------------------------------------------
 
@@ -181,15 +183,21 @@ class Watcher:
             return
         at = datetime.now(timezone.utc)
         writer = self._poll.writer_at(at)
-        # Note: we do NOT fall back to a synchronous poll_once() here.
-        # On Windows, a fast ransomware simulator can generate dozens of
-        # file events in under a second; a synchronous process sweep per
-        # event (100-300ms each) makes the watcher fall so far behind that
-        # the live Judge sees only 1 event instead of 80+. The background
-        # ProcessPoll thread (0.2s interval) is the primary attribution
-        # mechanism; if it missed a short-lived writer, the event is still
-        # logged with writer=None and S2 (canary path check) fires without
-        # needing process attribution.
+        if writer is None:
+            # A job that finished between two polls would otherwise go
+            # unattributed. We do a synchronous sweep, but rate-limit it:
+            # on Windows, a fast ransomware simulator can generate dozens
+            # of file events in under a second, and a synchronous process
+            # sweep per event (100-300ms each) makes the watcher fall so
+            # far behind that the live Judge sees only 1 event instead of
+            # 80+. At most one fallback sweep per second; the background
+            # ProcessPoll thread (0.2s interval) remains the primary
+            # attribution mechanism.
+            now = time.monotonic()
+            if now - self._last_fallback_poll >= 1.0:
+                self._last_fallback_poll = now
+                self._poll.poll_once()
+                writer = self._poll.writer_at(datetime.now(timezone.utc))
         try:
             size = path.stat().st_size if kind != DELETED else 0
         except OSError:
