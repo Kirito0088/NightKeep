@@ -181,12 +181,15 @@ class Watcher:
             return
         at = datetime.now(timezone.utc)
         writer = self._poll.writer_at(at)
-        if writer is None:
-            # A job that finished between two polls would otherwise go
-            # unattributed. Asking once more, right now, costs one sweep and
-            # only happens on the path that was about to give up anyway.
-            self._poll.poll_once()
-            writer = self._poll.writer_at(datetime.now(timezone.utc))
+        # Note: we do NOT fall back to a synchronous poll_once() here.
+        # On Windows, a fast ransomware simulator can generate dozens of
+        # file events in under a second; a synchronous process sweep per
+        # event (100-300ms each) makes the watcher fall so far behind that
+        # the live Judge sees only 1 event instead of 80+. The background
+        # ProcessPoll thread (0.2s interval) is the primary attribution
+        # mechanism; if it missed a short-lived writer, the event is still
+        # logged with writer=None and S2 (canary path check) fires without
+        # needing process attribution.
         try:
             size = path.stat().st_size if kind != DELETED else 0
         except OSError:
