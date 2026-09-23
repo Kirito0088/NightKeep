@@ -214,12 +214,15 @@ def test_live_engine_learns_catches_holds_and_releases():
         assert report["attack"]["snapshot_health"] == "SUSPECT"
         assert report["attack"]["clean_pin_held"] is True
         assert report["attack"]["simulator_process_gone"] is True
-        if report["attack"]["simulator_alive_before_containment"]:
-            # Caught mid-attack: the Judge must have paused the simulator
-            # itself, not a night job that had already exited.
-            assert any(action.startswith("paused")
-                       for action in report["attack"]["actions"]), report["attack"]
-            assert report["attack"]["simulator_stopped_after_containment"] is True
+        # Either the Judge paused the simulator itself (not a night job that
+        # had already exited), or the simulator had finished on its own
+        # before containment and cleanup found nothing left to end. What
+        # must never happen is a simulator left running, unpaused.
+        attack = report["attack"]
+        if any(action.startswith("paused") for action in attack["actions"]):
+            assert attack["simulator_stopped_after_containment"] is True, attack
+        else:
+            assert attack["cleanup_killed_pids"] == [], attack
         assert any(
             is_read_only(path)
             for path in (paths.district / "share").rglob("*") if path.is_file()
