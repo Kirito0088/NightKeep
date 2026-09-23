@@ -186,3 +186,48 @@ def test_mixed_case_windows_drive_letter_matches():
         ("C:\\DEMO\\DISTRICT\\share\\exports\\a.csv",), spellings, _nt=True)
     assert not _mentions_root(("c:/demo/district2",), spellings, _nt=True)
     assert not _mentions_root(("c:/other/district",), spellings, _nt=True)
+
+
+def test_a_new_writer_is_not_blamed_on_the_last_job_that_exited(tmp_path: Path):
+    """The newest sighting outlives its process until the next poll.
+
+    Seen live on Windows: the last night job was sighted, exited, and the
+    simulator's first events (before the next poll) were blamed on the dead
+    job's pid, so the Judge tried to pause a process that no longer existed.
+    A sighting whose process has exited must not name a new writer.
+    """
+    from nightkeep.watcher import Watcher
+
+    (tmp_path / "share").mkdir()
+    job = _sleeper("--root", str(tmp_path))
+    # A background poll far in the future: only the start-up sweep and the
+    # watcher's own fallback sweep can see anybody.
+    watcher = Watcher(tmp_path, poll_seconds=600, settle_seconds=0.2).start()
+    try:
+        assert job.pid in _sighted_pids(watcher._poll)
+        _stop(job)
+
+        target = tmp_path / "share" / "records.csv"
+        writer = subprocess.Popen(
+            [sys.executable, "-c",
+             "import sys, time; time.sleep(0.5); "
+             "open(sys.argv[1], 'w').write('x'); time.sleep(60)",
+             str(target), "--root", str(tmp_path)],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        try:
+            deadline = time.monotonic() + 20
+            events = []
+            while not events and time.monotonic() < deadline:
+                time.sleep(0.1)
+                events = [e for e in watcher.events_since(
+                    datetime(2000, 1, 1, tzinfo=timezone.utc))
+                    if e.path == "share/records.csv"]
+            assert events, "the write was never seen"
+            assert events[0].pid == writer.pid, (
+                f"blamed on pid {events[0].pid}; the dead job was {job.pid}")
+        finally:
+            _stop(writer)
+    finally:
+        watcher.stop()
+        _stop(job)

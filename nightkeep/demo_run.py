@@ -540,6 +540,15 @@ def _judge_attack_live(
             latency = (
                 incident_decision_at - first_event_at
             ).total_seconds()
+            # Prove the attack stopped: after containment completed, no
+            # simulator-eligible file may be written anywhere under the demo
+            # root. mtime is write time, not watch time, so a late-delivered
+            # event for a pre-containment write cannot false-positive.
+            time.sleep(_CONTAINMENT_PROOF_WAIT_SECONDS)
+            # Asked after the wait, not straight after the verdict: on
+            # Windows a thread in the middle of a file write only settles
+            # into the suspended state once that write returns, and a
+            # paused simulator was being reported as "NOT suspended".
             sim_stopped = _process_is_stopped(sim_pid)
             say(
                 f"containment: simulator pid {sim_pid} "
@@ -548,11 +557,6 @@ def _judge_attack_live(
                 f"{len({_canonical_affected_path(e) for e in prefix})} "
                 "files in the window"
             )
-            # Prove the attack stopped: after containment completed, no
-            # simulator-eligible file may be written anywhere under the demo
-            # root. mtime is write time, not watch time, so a late-delivered
-            # event for a pre-containment write cannot false-positive.
-            time.sleep(_CONTAINMENT_PROOF_WAIT_SECONDS)
             written_after = _eligible_files_modified_after(
                 district_dir, containment_completed_at.timestamp()
             )

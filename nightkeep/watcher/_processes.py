@@ -128,6 +128,10 @@ class Sighting:
     at: datetime
     pid: int
     name: str
+    # The process's creation time, so a later check can tell this process
+    # from an unrelated one that reused its pid. None when psutil could not
+    # say, and then only the pid is compared.
+    created: float | None = None
 
 
 class ProcessPoll:
@@ -184,7 +188,9 @@ class ProcessPoll:
         """
         now = datetime.now(timezone.utc)
         found: list[Sighting] = []
-        for process in psutil.process_iter(["pid", "name", "cmdline"]):
+        for process in psutil.process_iter(
+            ["pid", "name", "cmdline", "create_time"]
+        ):
             try:
                 cmdline = tuple(process.info["cmdline"] or ())
                 if _is_watcher_agent(cmdline):
@@ -192,7 +198,8 @@ class ProcessPoll:
                 if _mentions_root(cmdline, self._spellings):
                     found.append(
                         Sighting(at=now, pid=process.info["pid"],
-                                 name=process.info["name"] or "unknown")
+                                 name=process.info["name"] or "unknown",
+                                 created=process.info["create_time"])
                     )
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 # A process that died between listing and asking. Normal.
@@ -219,6 +226,22 @@ class ProcessPoll:
                 # forward to the earliest sighting if one exists at all.
                 return self._sightings[0] if self._sightings else None
             return self._sightings[index - 1]
+
+
+def still_running(sighting: Sighting) -> bool:
+    """Is the process behind this sighting still the one running?
+
+    A sighting outlives its process: the last job seen stays the newest
+    sighting until the next poll finds someone else. Comparing the creation
+    time as well as the pid means a reused pid is not mistaken for it.
+    """
+    try:
+        process = psutil.Process(sighting.pid)
+        if sighting.created is None:
+            return process.is_running()
+        return process.create_time() == sighting.created
+    except (psutil.NoSuchProcess, psutil.AccessDenied):
+        return False
 
 
 def suspend(pid: int) -> None:

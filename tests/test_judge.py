@@ -8,6 +8,7 @@ that pauses a district's PDS server because a job ran late.
 
 import ast
 import os
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -517,3 +518,81 @@ def test_would_incident_changes_nothing(judge, habit, root):
     assert judge.history() == [] or len(judge.history()) == before_history
     assert habit.run_count("nightly_export") == before_runs
     assert not judge._baseline.knows("data/card_0.csv.locked")
+
+
+def test_incident_pauses_the_running_writer_when_the_busiest_pid_has_exited(
+    judge, root
+):
+    """A finished night job can still be named on an attack's first events.
+
+    The busiest pid in the window is then a process that no longer exists.
+    Containment must not stop there: the Judge pauses the next busiest writer
+    that is actually running. Seen live on Windows, where the simulator ran
+    unpaused because its first events carried the last job's dead pid.
+    """
+    import subprocess
+    import sys
+
+    import psutil
+
+    gone = subprocess.Popen([sys.executable, "-c", "pass"])
+    gone.wait(timeout=30)
+    live = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
+    try:
+        events = [Event(path=CANARIES[0], kind=MODIFIED, at=AT, size=1,
+                        pid=gone.pid)]
+        events += [Event(path=f"share/exports/x{n}.csv", kind=MODIFIED, at=AT,
+                         size=10, pid=gone.pid) for n in range(5)]
+        events += [Event(path=f"share/exports/y{n}.csv", kind=MODIFIED, at=AT,
+                         size=10, pid=live.pid) for n in range(2)]
+
+        verdict = judge.verdict(job_run(events))
+
+        assert verdict.level == INCIDENT
+        assert any(action.startswith("paused") for action in verdict.actions)
+        assert psutil.Process(live.pid).status() == psutil.STATUS_STOPPED
+    finally:
+        judge.undo()
+        live.kill()
+        live.wait(timeout=10)
+
+
+def test_incident_pauses_the_children_of_the_program_it_pauses(judge, root):
+    """The impersonator's parent is named on the events while its staged
+    child does the writing. Pausing the parent alone left the child free to
+    keep scrambling. Both are paused, and undo resumes both."""
+    import subprocess
+    import sys
+
+    import psutil
+
+    parent = subprocess.Popen([
+        sys.executable, "-c",
+        "import subprocess, sys, time; "
+        "subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)']); "
+        "time.sleep(60)",
+    ])
+    try:
+        deadline = time.monotonic() + 20
+        while not psutil.Process(parent.pid).children():
+            assert time.monotonic() < deadline, "the child never started"
+            time.sleep(0.05)
+        child = [c for c in psutil.Process(parent.pid).children()
+                 if c.name().lower().startswith("python")][0]
+
+        verdict = judge.verdict(job_run([
+            Event(path=CANARIES[0], kind=MODIFIED, at=AT, size=1, pid=parent.pid)
+        ]))
+
+        assert verdict.level == INCIDENT
+        assert psutil.Process(parent.pid).status() == psutil.STATUS_STOPPED
+        assert child.status() == psutil.STATUS_STOPPED
+        judge.undo()
+        assert child.status() != psutil.STATUS_STOPPED
+        assert psutil.Process(parent.pid).status() != psutil.STATUS_STOPPED
+    finally:
+        judge.undo()
+        for process in psutil.Process(parent.pid).children(recursive=True):
+            process.kill()
+        parent.kill()
+        parent.wait(timeout=10)

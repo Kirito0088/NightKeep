@@ -282,9 +282,12 @@ class Judge:
 
         if level == INCIDENT:
             taken = self._taken
-            pid = self._busiest_pid(events)
-            if pid is not None:
-                _actions.suspend_process(pid, taken)
+            # The busiest writer first. If it has already exited (a job that
+            # finished just before the attack began can still be named on
+            # its first events), pause the next busiest that is running.
+            for pid in self._pids_by_activity(events):
+                if _actions.suspend_process(pid, taken):
+                    break
             _actions.make_read_only(self.root / "data", taken)
             _actions.make_read_only(self.root / "share", taken)
             actions = list(taken.descriptions)
@@ -322,12 +325,10 @@ class Judge:
         return verdict
 
     @staticmethod
-    def _busiest_pid(events: list[Event]) -> int | None:
-        """The process behind most of these changes, if the watcher knew one."""
+    def _pids_by_activity(events: list[Event]) -> list[int]:
+        """The processes behind these changes, busiest first."""
         counted = Counter(event.pid for event in events if event.pid is not None)
-        if not counted:
-            return None
-        return counted.most_common(1)[0][0]
+        return [pid for pid, _ in counted.most_common()]
 
 
 __all__ = ["Judge"]

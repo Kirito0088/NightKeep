@@ -35,7 +35,7 @@ from nightkeep.types import (
     Event,
 )
 from nightkeep.watcher._log import LOG_NAME, EventLog
-from nightkeep.watcher._processes import ProcessPoll
+from nightkeep.watcher._processes import ProcessPoll, still_running
 
 
 def event_log_for(root: Path) -> EventLog:
@@ -183,21 +183,30 @@ class Watcher:
             return
         at = datetime.now(timezone.utc)
         writer = self._poll.writer_at(at)
-        if writer is None:
-            # A job that finished between two polls would otherwise go
-            # unattributed. We do a synchronous sweep, but rate-limit it:
-            # on Windows, a fast ransomware simulator can generate dozens
-            # of file events in under a second, and a synchronous process
-            # sweep per event (100-300ms each) makes the watcher fall so
-            # far behind that the live Judge sees only 1 event instead of
-            # 80+. At most one fallback sweep per second; the background
-            # ProcessPoll thread (0.2s interval) remains the primary
-            # attribution mechanism.
+        if writer is None or not still_running(writer):
+            # Nobody seen yet, or the last process seen has since exited:
+            # the newest sighting outlives its process until the next poll,
+            # so a program that starts writing between two polls would be
+            # blamed on the last night job, and the Judge would try to
+            # pause a process that is already gone. Sweep now and take the
+            # writer that is really running. If the sweep finds nobody, the
+            # old sighting stands: a job's last writes can land a moment
+            # after it exits, and they are still that job's.
+            #
+            # Rate-limited: on Windows a fast simulator makes dozens of file
+            # events in under a second, and a synchronous sweep per event
+            # (100-300ms each) would leave the watcher far behind. At most
+            # one fallback sweep per second; the background ProcessPoll
+            # thread remains the primary attribution mechanism.
             now = time.monotonic()
             if now - self._last_fallback_poll >= 1.0:
                 self._last_fallback_poll = now
                 self._poll.poll_once()
-                writer = self._poll.writer_at(datetime.now(timezone.utc))
+                fresh = self._poll.writer_at(datetime.now(timezone.utc))
+                if fresh is not None and still_running(fresh):
+                    writer = fresh
+                elif writer is None:
+                    writer = fresh
         try:
             size = path.stat().st_size if kind != DELETED else 0
         except OSError:

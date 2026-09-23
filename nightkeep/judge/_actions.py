@@ -33,10 +33,27 @@ class Taken:
 
 
 def suspend_process(pid: int, taken: Taken) -> bool:
-    """Pause a process. Returns whether it was still there to pause."""
+    """Pause a process and the processes it started.
+
+    Returns whether it was still there to pause. The children go too: a
+    program that hands the writing to a child (a staged script, a shell)
+    would otherwise keep changing files while only its parent sits paused.
+    Children are paused first, so none of them keeps running under a
+    parent that is already frozen.
+    """
     try:
         process = psutil.Process(pid)
         name = process.name()
+        try:
+            family = process.children(recursive=True)
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            family = []
+        for child in reversed(family):
+            try:
+                child.suspend()
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+            taken.suspended.append(child.pid)
         process.suspend()
     except (psutil.NoSuchProcess, psutil.AccessDenied):
         return False
