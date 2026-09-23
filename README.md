@@ -69,43 +69,45 @@ Variants a judge can pick: `fast` (a fast scrambler), `impersonator` (scrambles
 in place under a known job's guise), `recovery-killer` (also writes
 system-restore-deletion command text, which is only ever text, never run).
 
-**Open the Vault console** (binds to loopback only, never the LAN).
-Start it wired to the demo run directory so every screen reads real state:
+**Run the whole prototype from one command** (binds to loopback only, never
+the LAN):
 
 ```bash
-python -m nightkeep --console --out-dir demo/demo_run
+python -m nightkeep --console
 ```
 
-Then visit <http://127.0.0.1:5000>. If a demo run has happened, the console
-shows that run's real numbers and the real 5,000-card district; otherwise it
-shows calm, honest screens until a run creates state. The console picks up
-the run's state on each request, so no restart is needed after a run.
+Then visit <http://127.0.0.1:5000>. This starts a **live session**: the Thane
+district is built fresh in `demo/live/`, its six night jobs start running on
+the simulated clock, and Nightkeep learns them for 7 days (about 3.5 minutes at
+30 s a day) and then checks every run. Every screen reads that one run and
+refreshes itself when what it shows changes. For a quicker rehearsal, shorten
+the day: `python -m nightkeep --console --day-seconds 10`.
+
+What you can click, on every page:
+
+- **Demo controls** (bottom left): pick a safe simulator variant (fast
+  scrambler, impersonator, recovery-killer) and **Run simulated attack**. It
+  unlocks after day 1, once the Vault holds a clean copy. Nightkeep stops the
+  attack, the office pop-up appears (a warning only, nothing waits on it), the
+  records are locked, and the Vault marks the damaged copy SUSPECT. **Start a
+  fresh run** rebuilds the district and learns again.
+- **Harvest surge** (top strip): switches peak-season volumes on from the next
+  simulated day. Days 4 and 9 are surge days anyway, as seeded in config.
+- **A-, A, A+** and **English / मराठी** (top strip): text size and language
+  (Marathi covers the chrome and headings).
+- **Night Jobs** tab: each job's learning status, what it usually does, its
+  last run and how that run was judged.
+- After an attack, **Restore** with the supervisor PIN (`console.supervisor_pin`
+  in `nightkeep/config.yaml`, 246810 in the demo) runs the five checks and
+  verifies 5,000 of 5,000 cards, then releases the lock.
+
+**Full MVP Demo** tab: **Run Full MVP Demo** restarts the live session on
+autopilot. It learns, guards, attacks with the recovery-killer, restores and
+prints the same proof lines as `--demo-run`, all on the same screens.
 
 `python -m nightkeep.console` with no config is the isolated UI mode for
 screen work only: it starts with sample records and calm, honest screens
-and is never wired to a real demo run.
-
-**One-click showcase** — the polished demo flow. Start the wired console
-(`python -m nightkeep --console --out-dir demo/demo_run`), open
-<http://127.0.0.1:5000/showcase>, and click **Run Full MVP Demo**. That button
-starts the real end-to-end runner (`python -m nightkeep --demo-run --variant
-recovery-killer`) as a subprocess and tracks it live: learning, guard, attack,
-containment, Vault protection, recovery, and the final proof, each read from
-the demo's own output. Every figure shown comes from the run's own report;
-nothing is animated or invented. When the run completes, the page links to the
-real Incident Report, Restore, Locked Screen, and IT View. Starting a second
-run while one is already going is refused.
-
-**Open the Vault console against a finished demo run:**
-
-```bash
-python -m nightkeep --console --out-dir demo/demo_run
-```
-
-This shows the run's real state on every screen, including the read-only
-**IT View** at `/it-view` (incident diagnostics, watcher liveness, habit
-cards, Vault snapshots and manifests, or an honest "unavailable" message when
-no run is loaded).
+and is never wired to a real run.
 
 **Reset a demo district** after a run (puts every scrambled file back with the
 known key, `simulator.key` in `nightkeep/config.yaml`):
@@ -137,17 +139,15 @@ python -m nightkeep --prove-erratic
 | `/card/<card_no>` | Card detail: members, entitlements, ePoS history |
 | `/locked` | The search screen during the incident (labelled "DEMONSTRATION DRILL" until a real INCIDENT) |
 | `/safety` | Data Safety home: "am I okay?", the six night tasks |
+| `/night-jobs` | Night Jobs: learning status, usual pattern and last check for each job |
 | `/alert` | The incident report, in ration-office units ("STATUS: ALL CLEAR" when unwired) |
 | `/restore` | The three-step restore wizard with its five checks |
 | `/server-alert` | The pop-up shown on the office computer |
-| `/showcase` | One-click Full MVP Demo: launches and tracks the real demo run |
+| `/showcase` | Full MVP Demo: runs the live session on autopilot and tracks it |
 | `/it-view` | Read-only IT diagnostics (incident, watcher, habit, Vault) |
 
-> **Console `--out-dir` matters.** `--demo-run` writes to `demo/demo_run/`.
-> To see a finished run's real state, launch
-> `python -m nightkeep --console --out-dir demo/demo_run`.
-> If you launch `python -m nightkeep.console` bare (no config), it starts with sample
-> records and calm, honest screens — it never fabricates an incident.
+> The live session keeps everything in `demo/live/` (`--out-dir` changes it).
+> `--demo-run` still writes its one-shot proof to `demo/demo_run/`.
 
 ### Operator notes
 

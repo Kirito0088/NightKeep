@@ -148,7 +148,7 @@ history and the reasoning behind every decision recorded at
 read the matching artboard(s) from that canvas and the relevant section of
 the log. This section is a summary for orientation, not a substitute.
 
-Seven screens, and only these. Anything else (architecture write-up, research, demo video, threat model) goes on the separate project website, not in the console.
+Seven screens, plus the Night Jobs tab and the Full MVP Demo page (ADR-0011), and only these. Anything else (architecture write-up, research, demo video, threat model) goes on the separate project website, not in the console.
 
 **Three screens of the PDS system itself**, which is what gets attacked and what makes the demo legible: ration card search with results, ration card detail with members and ePoS history, and the same search screen during the attack. GIGW house style: blue utility strip, tri-colour hairline, district seal, bilingual header, navy nav with one orange active tab, dense bordered tables, labels above inputs, square corners everywhere.
 
@@ -191,6 +191,7 @@ Recorded as ADRs in `docs/adr/`. These beat the plain document precedence order.
 | 0008 | Console is a shallow presentation layer with plain-language main path and strict color rules |
 | 0009 | The erratic-week proof is a script inside `mock_pds`, run by the entrypoint, not a third entry in the module table |
 | 0010 | S6 liveness is Vault-owned; the Vault's public interface widens to carry it, in three documented tiers |
+| 0011 | `--console` runs a live session (engine process + demo controls); Night Jobs nav tab; Full MVP Demo drives the same session on autopilot; pop-up never waits on OK |
 
 Resolved without an ADR, because the newer document already says so: the product is **Nightkeep** (not QuirkGuard); the console binds to `127.0.0.1` only (MVP.md section 8 reverses SOLUTION_DESIGN's LAN web page); there are **6** erratic jobs (not 3); learning is **7** simulated days plus **3** guard days (not 5 nights); one simulated day is **30 s** (not 20 s).
 
