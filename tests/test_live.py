@@ -119,6 +119,49 @@ def test_protocol_reads_a_missing_or_torn_file_as_empty(tmp_path):
     assert lp.read_json(torn) == {"phase": "learning"}
 
 
+def test_a_restore_reported_mid_attack_still_releases_the_lock(tmp_path):
+    """The supervisor can finish a restore while the engine is still
+    pulling the damage into the Vault. That restore must not be dropped:
+    it releases the lock as soon as the records are CONTAINED."""
+    from nightkeep.config import load_config
+
+    config = load_config(PACKAGE / "config.yaml")
+    engine = live.LiveEngine(config, lp.SessionPaths(tmp_path), autopilot=False,
+                             variant="fast")
+    released = []
+    engine.judge = type("Judge", (), {
+        "undo": lambda self: released.append(True) or ["unlocked"]})()
+    engine._control = {**lp.empty_control(), "restored": {
+        "id": 1, "ok": True, "snapshot_id": "x",
+        "records_verified": 5000, "records_expected": 5000}}
+
+    engine.phase = lp.VAULT
+    engine._obey_commands()
+    assert engine.phase == lp.VAULT and not released
+
+    engine.phase = lp.CONTAINED
+    engine._obey_commands()
+    assert engine.phase == lp.RECOVERED
+    assert released == [True]
+
+
+def test_the_engine_refuses_an_earlier_sessions_leftovers(tmp_path):
+    """A district or Vault already in the folder belongs to another run: its
+    .locked files and snapshots would pass for this run's evidence."""
+    from nightkeep.config import load_config
+
+    config = load_config(PACKAGE / "config.yaml")
+    paths = lp.SessionPaths(tmp_path)
+    (paths.district / "share").mkdir(parents=True)
+    engine = live.LiveEngine(config, paths, autopilot=True, variant="fast")
+
+    assert engine.run() == 1
+    status = lp.read_json(paths.status)
+    assert status["phase"] == lp.FAILED
+    assert "earlier session" in status["error"]
+    assert not (paths.district / "data").exists(), "nothing was built"
+
+
 # --- the whole manual story, as a real process --------------------------------
 
 
@@ -199,6 +242,18 @@ def test_live_engine_learns_catches_holds_and_releases():
         lp.write_json(paths.control, control)
         assert proc.wait(timeout=60) == 0
         assert _status(paths)["phase"] == lp.STOPPED
+        # Nothing the engine started may outlive it: no watcher agent, no
+        # simulator, no night job still pointed at the district.
+        district = str(paths.district).lower()
+        leftovers = []
+        for process in psutil.process_iter(["pid", "cmdline"]):
+            try:
+                cmdline = " ".join(process.info["cmdline"] or ()).lower()
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+            if district in cmdline:
+                leftovers.append((process.info["pid"], cmdline))
+        assert not leftovers, leftovers
     finally:
         if proc.poll() is None:
             for child in psutil.Process(proc.pid).children(recursive=True):

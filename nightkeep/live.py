@@ -233,6 +233,16 @@ class LiveEngine:
         self._write_status()
         agent_proc = None
         try:
+            leftovers = [path.name for path in (district_dir, self.paths.vault)
+                         if path.exists()]
+            if leftovers:
+                # The console wipes the session folder before every start.
+                # A district or Vault already here is an older session's:
+                # its .locked files and snapshots would pass for this one's.
+                raise RuntimeError(
+                    f"{self.paths.root} already holds {', '.join(leftovers)} "
+                    "from an earlier session; start from an empty folder"
+                )
             mock_pds.build_district(cfg.seed, cfg.district, district_dir)
             self.say(f"district built at {district_dir} "
                      f"({cfg.district.ration_cards:,} ration cards)")
@@ -282,7 +292,11 @@ class LiveEngine:
             self.phase = lp.FAILED
             self.note = "The live session stopped because of an error."
         finally:
-            self._office.halted.set()
+            # halt(), not halted.set(): wait for a night job that is running
+            # right now. The days thread is a daemon, so without the wait
+            # the job's own process would outlive the engine and keep
+            # writing into a district the console is about to wipe.
+            self._office.halt()
             self._office.stop()
             self._acks.put(None)
             if self.vault is not None:
@@ -471,9 +485,16 @@ class LiveEngine:
         restored = self._control.get("restored")
         if (isinstance(restored, dict)
                 and restored.get("id") != self._handled_restore_id):
-            self._handled_restore_id = restored.get("id")
-            if self.phase == lp.CONTAINED and restored.get("ok"):
-                self._release_after_restore(restored)
+            if self.phase == lp.CONTAINED:
+                self._handled_restore_id = restored.get("id")
+                if restored.get("ok"):
+                    self._release_after_restore(restored)
+            elif self.phase not in lp.LOCKED_PHASES:
+                # No lock to release: nothing to do with this restore.
+                self._handled_restore_id = restored.get("id")
+            # Otherwise the attack is still being handled (the Vault is
+            # pulling): keep the restore until the records are CONTAINED,
+            # or the lock would never be released.
 
     def attack_readiness(self) -> str:
         if self.phase not in (lp.LEARNING, lp.GUARD):

@@ -7,6 +7,7 @@ that). LiveSession itself is exercised against a real folder.
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -256,6 +257,33 @@ def test_session_refuses_to_wipe_a_folder_it_did_not_make(tmp_path):
     with pytest.raises(SessionFolderRefused):
         session._wipe()
     assert (root / "precious.txt").exists()
+
+
+def test_session_wipe_clears_read_only_leftovers(tmp_path):
+    """An engine that died mid-incident leaves the Judge's lock behind."""
+    import stat
+
+    root = tmp_path / "live"
+    locked = root / "district" / "share" / "exports" / "epos.csv"
+    locked.parent.mkdir(parents=True)
+    locked.write_text("x", encoding="utf-8")
+    locked.chmod(stat.S_IREAD)
+    LiveSession(lp.SessionPaths(root), ["python", "-c", "pass"])._wipe()
+    assert not root.exists()
+
+
+@pytest.mark.skipif(sys.platform != "win32",
+                    reason="only Windows refuses to delete an open file")
+def test_session_wipe_never_leaves_the_old_run_behind_silently(tmp_path):
+    """A file something still holds open cannot be deleted on Windows. A
+    fresh run must not be built on top of the old one's leftovers."""
+    root = tmp_path / "live"
+    held = root / "district" / "logs" / "watcher.jsonl"
+    held.parent.mkdir(parents=True)
+    with open(held, "w", encoding="utf-8"):
+        session = LiveSession(lp.SessionPaths(root), ["python", "-c", "pass"])
+        with pytest.raises(SessionFolderRefused):
+            session._wipe()
 
 
 def test_session_writes_controls_the_engine_can_read(tmp_path):

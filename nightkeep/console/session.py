@@ -125,12 +125,18 @@ class LiveSession:
                 f"{root} holds {sorted(stray)}, which a live session never "
                 "writes; refusing to delete it"
             )
-        shutil.rmtree(root, onerror=_remove_readonly)
-        # Windows can report the tree gone a moment before it is.
+        # A file still held open (a pop-up's or a job's last handle) makes
+        # one pass leave things behind, and Windows can report the tree gone
+        # a moment before it is. Try again for a short while; a fresh run
+        # must never be built on top of the old one's leftovers.
         for _ in range(20):
+            shutil.rmtree(root, onerror=_remove_readonly)
             if not root.exists():
                 return
             time.sleep(0.1)
+        raise SessionFolderRefused(
+            f"{root} could not be cleared; something still holds files in it"
+        )
 
     # --- what the engine says -------------------------------------------
 
