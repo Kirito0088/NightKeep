@@ -129,7 +129,7 @@ class Judge:
 
         level = self._level(codes, habit_score)
         # The decision instant, taken here and carried on the verdict:
-        # everything after this (containment, the blocking server pop-up)
+        # everything after this (containment, the server pop-up)
         # must not move it, or detection latency would include a human
         # dismissing a dialog.
         decided_at = datetime.now(timezone.utc)
@@ -301,8 +301,8 @@ class Judge:
             actions = ["logged it"]
 
         # Containment is done at this point; the server pop-up below is
-        # informational and (on Windows) blocks on a human. Stamping here
-        # keeps containment time honest and separate from dismissal time.
+        # informational and never waits on a human. Stamping here keeps
+        # containment time honest and separate from anything the pop-up does.
         contained_at = datetime.now(timezone.utc)
 
         verdict = Verdict(

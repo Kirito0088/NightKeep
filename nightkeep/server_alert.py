@@ -105,17 +105,33 @@ def _alert_text(alert: ServerAlert) -> str:
     return "\n".join((alert.headline, *alert.details))
 
 
-def _windows_popup(alert: ServerAlert) -> bool:
-    """A system-modal message box. Blocks until dismissed, by design: the
-    incident is the demo's beat, and staff must acknowledge it."""
-    import ctypes
+# Shown by a separate interpreter: MB_ICONWARNING | MB_SYSTEMMODAL, title in
+# argv[1], text in argv[2]. The message box stays on top of everything until
+# someone clicks OK, which is the urgency the office needs.
+_WINDOWS_POPUP_SCRIPT = (
+    "import ctypes, sys; "
+    "ctypes.windll.user32.MessageBoxW(None, sys.argv[2], sys.argv[1], 0x30 | 0x1000)"
+)
+_CREATE_NO_WINDOW = 0x08000000
 
-    MB_ICONWARNING = 0x30
-    MB_SYSTEMMODAL = 0x1000
-    pressed = ctypes.windll.user32.MessageBoxW(
-        None, _alert_text(alert), alert.title, MB_ICONWARNING | MB_SYSTEMMODAL
-    )
-    return pressed != 0
+
+def _windows_popup(alert: ServerAlert) -> bool:
+    """A system-modal warning box, shown by its own process.
+
+    The pop-up is a warning, never a gate: it is launched and not waited on,
+    so containment, the Vault pull and the rest of the response carry on
+    whether or not anyone clicks OK. Its own process also keeps it on screen
+    after the process that raised it has moved on or exited.
+    """
+    try:
+        subprocess.Popen(
+            [sys.executable, "-I", "-c", _WINDOWS_POPUP_SCRIPT,
+             alert.title, _alert_text(alert)],
+            creationflags=_CREATE_NO_WINDOW,
+        )
+    except OSError:
+        return False
+    return True
 
 
 def _macos_popup(alert: ServerAlert) -> bool:

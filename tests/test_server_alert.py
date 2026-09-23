@@ -208,3 +208,44 @@ def test_judge_does_not_pop_up_for_quiet_verdicts(alerting_judge, monkeypatch):
     verdict = alerting_judge.verdict(job_run([]))
     assert verdict.level != INCIDENT
     assert shown == []
+
+
+# --- the Windows pop-up never holds up containment ------------------------------
+
+
+def test_windows_popup_runs_in_its_own_process_and_does_not_wait(monkeypatch):
+    """The pop-up is a warning, not a gate: Nightkeep's security steps go on
+    whether or not anyone clicks OK. It is shown by a separate process, so it
+    also survives the process that raised it."""
+    launched = []
+
+    class FakePopen:
+        def __init__(self, argv, **kwargs):
+            launched.append((argv, kwargs))
+
+        def wait(self, *args, **kwargs):  # pragma: no cover - must not be called
+            raise AssertionError("the pop-up must not be waited on")
+
+    monkeypatch.setattr(server_alert.subprocess, "Popen", FakePopen)
+    alert = ServerAlert(
+        title="Nightkeep Security Alert",
+        headline="A program tried to lock your files. It was paused.",
+        details=("Do not restart this computer.",),
+    )
+
+    assert server_alert._windows_popup(alert) is True
+
+    assert len(launched) == 1
+    argv, _ = launched[0]
+    assert "Nightkeep Security Alert" in argv
+    assert any("It was paused." in part and "Do not restart" in part for part in argv)
+    assert any("MessageBoxW" in part for part in argv)
+
+
+def test_windows_popup_reports_failure_when_it_cannot_start(monkeypatch):
+    def refuse(*args, **kwargs):
+        raise OSError("no interpreter")
+
+    monkeypatch.setattr(server_alert.subprocess, "Popen", refuse)
+    alert = ServerAlert(title="t", headline="h", details=())
+    assert server_alert._windows_popup(alert) is False
