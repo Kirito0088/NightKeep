@@ -120,7 +120,15 @@ def assess(
     suspect_changed_fraction: float,
     suspect_record_drop_fraction: float,
 ) -> Assessment:
-    """Judge one pull against the previous CLEAN snapshot."""
+    """Judge one pull against the previous CLEAN snapshot.
+
+    Damage is measured on the files the clean copy already had: changed,
+    removed, or renamed to a type the clean copy never had. New files are
+    what an office adds every night (a day's export, the month-start
+    allotment run, a job's own .tmp files), so on their own they are not
+    damage; a new file is still checked for scrambled content and a broken
+    header like any other.
+    """
     if baseline is None:
         return Assessment(CLEAN, (), current_record_count)
 
@@ -132,12 +140,13 @@ def assess(
         for path in current_paths | baseline_paths
         if entries.get(path) != baseline.get(path)
     }
-    total = len(current_paths | baseline_paths)
-    changed_fraction = len(changed) / max(total, 1)
-    if changed_fraction > suspect_changed_fraction:
+    damaged = {path for path in baseline_paths if entries.get(path) != baseline[path]}
+    damaged_fraction = len(damaged) / max(len(baseline_paths), 1)
+    if damaged_fraction > suspect_changed_fraction:
         reasons.append(
-            f"{len(changed)} of {total} files changed since the last clean "
-            f"snapshot, over the {suspect_changed_fraction:.0%} limit"
+            f"{len(damaged)} of {len(baseline_paths)} files from the last clean "
+            f"snapshot were changed or removed, over the "
+            f"{suspect_changed_fraction:.0%} limit"
         )
 
     rewritten = [path for path in changed if path in entries]
@@ -162,15 +171,22 @@ def assess(
             f"{len(scrambled)} changed files look randomly scrambled: "
             f"{shown}{extra}"
         )
-    new_extensions = {
-        Path(path).suffix.lower() for path in current_paths
-    } - {
-        Path(path).suffix.lower() for path in baseline_paths
+    # A file from the clean copy that reappears with a new extension added
+    # to its name (epos.csv -> epos.csv.locked) is the ransomware rename.
+    # A brand-new file of an unseen type is not, and neither is a job
+    # swapping one extension for another (fix_dat's .tmp -> .dat).
+    known_types = {Path(path).suffix.lower() for path in baseline_paths}
+    gone = baseline_paths - current_paths
+    renamed_to = {
+        Path(path).suffix.lower()
+        for path in current_paths - baseline_paths
+        if Path(path).suffix.lower() not in known_types
+        and path[: -len(Path(path).suffix)] in gone
     } - {""}
-    if new_extensions:
+    if renamed_to:
         reasons.append(
-            "new file types never seen before: "
-            + ", ".join(sorted(new_extensions))
+            "files from the last clean snapshot were renamed to a file type "
+            "never seen before: " + ", ".join(sorted(renamed_to))
         )
 
     if current_record_count is None:
