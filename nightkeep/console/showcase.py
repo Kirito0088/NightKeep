@@ -302,31 +302,7 @@ class ShowcaseController:
         """
         from nightkeep.console.providers import load_report
 
-        report = load_report(self._district_dir)
-        figures: dict = {}
-        if not isinstance(report, dict):
-            return figures
-        restore = report.get("restore")
-        if isinstance(restore, dict):
-            if isinstance(restore.get("records_verified"), int):
-                figures["records_verified"] = restore["records_verified"]
-            if isinstance(restore.get("records_expected"), int):
-                figures["records_expected"] = restore["records_expected"]
-        attack = report.get("attack")
-        if isinstance(attack, dict):
-            latency = attack.get("detection_latency_seconds")
-            if isinstance(latency, (int, float)):
-                figures["detection_latency_seconds"] = latency
-            affected = attack.get("affected_files_at_incident")
-            if isinstance(affected, int):
-                figures["affected_files_at_incident"] = affected
-            if isinstance(attack.get("level"), str):
-                figures["attack_level"] = attack["level"]
-        if isinstance(report.get("variant"), str):
-            figures["variant"] = report["variant"]
-        if isinstance(report.get("seed"), int):
-            figures["seed"] = report["seed"]
-        return figures
+        return figures_from_report(load_report(self._district_dir))
 
     # -- internals ------------------------------------------------------
 
@@ -383,3 +359,122 @@ class ShowcaseController:
             if marker in text:
                 return phase
         return "starting" if text.strip() else "ready"
+
+
+def figures_from_report(report) -> dict:
+    """Real numbers from a run's own report, or nothing.
+
+    Only keys actually present are returned, so the page can never show a
+    figure the run did not produce.
+    """
+    figures: dict = {}
+    if not isinstance(report, dict):
+        return figures
+    restore = report.get("restore")
+    if isinstance(restore, dict):
+        if isinstance(restore.get("records_verified"), int):
+            figures["records_verified"] = restore["records_verified"]
+        if isinstance(restore.get("records_expected"), int):
+            figures["records_expected"] = restore["records_expected"]
+    attack = report.get("attack")
+    if isinstance(attack, dict):
+        latency = attack.get("detection_latency_seconds")
+        if isinstance(latency, (int, float)):
+            figures["detection_latency_seconds"] = latency
+        affected = attack.get("affected_files_at_incident")
+        if isinstance(affected, int):
+            figures["affected_files_at_incident"] = affected
+        if isinstance(attack.get("level"), str):
+            figures["attack_level"] = attack["level"]
+    if isinstance(report.get("variant"), str):
+        figures["variant"] = report["variant"]
+    if isinstance(report.get("seed"), int):
+        figures["seed"] = report["seed"]
+    return figures
+
+
+# The live engine's phases, as the showcase's steps.
+_LIVE_PHASE_STEP = {
+    "starting": "starting",
+    "learning": "learning",
+    "guard": "guard",
+    "attack": "attack",
+    "containment": "containment",
+    "vault": "vault",
+    "contained": "vault",
+    "recovery": "recovery",
+    "recovered": "recovery",
+    "complete": "complete",
+    "failed": "failed",
+}
+
+
+class LiveShowcase:
+    """The Full MVP Demo, driven through the console's live session.
+
+    "Run Full MVP Demo" restarts the live session on autopilot: the same
+    engine the demo controls steer, so every screen shows this one run. The
+    engine learns, guards, attacks with the configured variant, restores and
+    writes the same proof lines demo_run prints. This class only words its
+    status: the phase, the figures and the log all come from the engine.
+    """
+
+    def __init__(self, session, variant: str) -> None:
+        self._session = session
+        self._variant = variant
+
+    def _autopilot_status(self) -> dict:
+        status = self._session.status()
+        return status if status.get("mode") == "autopilot" else {}
+
+    def read_status(self) -> dict:
+        status = self._autopilot_status()
+        if not status:
+            if self._session.is_running() and not self._session.status().get("mode"):
+                # Just restarted: the engine has not written its mode yet.
+                return {"state": "running"}
+            return {"state": "ready"}
+        phase = status.get("phase")
+        if phase == "complete":
+            return {"state": "complete"}
+        if phase in ("failed", "stopped"):
+            return {"state": "failed",
+                    "note": status.get("error") or status.get("note")}
+        return {"state": "running"}
+
+    def start(self) -> dict:
+        if self.read_status().get("state") == "running":
+            return {"started": False, "reason": "already_running"}
+        self._session.start(autopilot=True, variant=self._variant)
+        return {"started": True, "variant": self._variant}
+
+    def phase(self) -> str:
+        status = self._autopilot_status()
+        if not status:
+            return "starting" if self.read_status()["state"] == "running" else "ready"
+        return _LIVE_PHASE_STEP.get(status.get("phase"), "starting")
+
+    def progress_phase(self) -> str:
+        """How far a failed run got, from what its report records."""
+        report = self._session.report()
+        if report.get("restore"):
+            return "recovery"
+        if report.get("attack"):
+            return "vault"
+        if report.get("guard_days"):
+            return "guard"
+        if report.get("learning_days"):
+            return "learning"
+        return "ready"
+
+    def phase_copy(self, phase: str) -> tuple[str, str]:
+        return _PHASE_COPY.get(phase, _PHASE_COPY["ready"])
+
+    def steps(self) -> tuple[str, ...]:
+        return _STEPS
+
+    def log_tail(self, lines: int = 40) -> str:
+        return self._session.log_tail(lines)
+
+    def report_figures(self) -> dict:
+        return figures_from_report(self._session.report())

@@ -128,6 +128,18 @@ _MARATHI: dict[str, str] = {
     "The live session stopped with a problem.": "थेट सत्र एका अडचणीमुळे थांबले.",
     "The live session has stopped.": "थेट सत्र थांबले आहे.",
 
+    # --- the Full MVP Demo's phases ---------------------------------------
+    "READY": "तयार",
+    "STARTING": "सुरू होत आहे",
+    "LEARN": "शिकणे",
+    "GUARD": "पहारा",
+    "ATTACK": "हल्ला",
+    "CONTAIN": "रोखणे",
+    "PROTECT": "संरक्षण",
+    "RECOVER": "पुनर्प्राप्ती",
+    "DEMO COMPLETE": "प्रात्यक्षिक पूर्ण",
+    "DEMO FAILED": "प्रात्यक्षिक अयशस्वी",
+
     # --- table column headers -------------------------------------------------
     "Card Number": "शिधापत्रिका क्रमांक",
     "Head of Family": "कुटुंबप्रमुख",

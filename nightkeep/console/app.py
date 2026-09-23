@@ -1016,8 +1016,11 @@ def create_app(
             can_start=state != "running",
             figures=figures,
             log_tail=controller.log_tail(),
-            refresh=state == "running",
+            # With a live session, live.js keeps the page current instead.
+            refresh=state == "running" and session is None,
+            restarts_live_session=session is not None,
             active_page="showcase",
+            live_scope="all",
         )
 
     @app.route("/showcase/start", methods=["POST"])

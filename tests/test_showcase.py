@@ -244,7 +244,7 @@ def test_it_view_without_runtime_is_honest(showcase_dirs):
     controller = make_controller(base, script, district, FAKE_PASSED_SCRIPT)
     html = make_client(controller).get("/it-view").get_data(as_text=True)
     assert (
-        "IT diagnostics are unavailable until a live demo run is loaded."
+        "IT diagnostics are unavailable until the live session has built the district."
         in html
     )
     # No fabricated diagnostics: no verdict, no snapshots, no cards.
@@ -337,7 +337,7 @@ def test_it_view_renders_real_runtime_diagnostics(showcase_dirs):
     assert "snap-0007" in html
     assert "abcdef1234567890"[:16] in html
     # The unavailable message must not appear when runtime exists.
-    assert "unavailable until a live demo run is loaded" not in html
+    assert "unavailable until the live session" not in html
 
 
 def test_it_view_never_mutates_backend(showcase_dirs):

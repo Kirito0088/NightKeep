@@ -20,7 +20,7 @@
   <!-- Live demonstration status -->
   <div class="showcase-banner showcase-banner-{{ state }}" role="status" aria-live="polite">
     <p class="showcase-banner-kicker">Demonstration status</p>
-    <h2 class="showcase-banner-title">{{ phase_title }}</h2>
+    <h2 class="showcase-banner-title">{{ t(phase_title) }}</h2>
     <p class="showcase-banner-description">{{ phase_description }}</p>
     {% if failure_note %}
     <p class="showcase-banner-note">Reason: {{ failure_note }}</p>
@@ -39,6 +39,13 @@
         faces a safe simulated ransomware attack, stops it, protects the
         backups, and restores every record.
       </p>
+      {% if restarts_live_session %}
+      <p class="it-panel-text">
+        It runs on the same live session as every other screen: starting it
+        begins a fresh run, and the attack and the restore then happen by
+        themselves.
+      </p>
+      {% endif %}
       {% if can_start %}
       <form method="post" action="{{ url_for('showcase_start') }}">
         <button type="submit" class="btn btn-primary btn-demo-run">{{ t("Run Full MVP Demo") }}</button>
@@ -121,7 +128,7 @@
           <span class="showcase-progress-marker" aria-hidden="true">
             {% if step.done %}&#10003;{% elif is_current %}&#9654;{% else %}&#9675;{% endif %}
           </span>
-          <span class="showcase-progress-label">{{ step.title }}</span>
+          <span class="showcase-progress-label">{{ t(step.title) }}</span>
           <span class="visually-hidden">
             {% if is_current %}(current stage){% elif step.done %}(complete){% else %}(not started){% endif %}
           </span>
@@ -147,7 +154,7 @@
       <ul class="figures-list">
         {% if figures.detection_latency_seconds is defined %}
         <li class="figure-item">
-          <span class="figure-value tabular-number">{{ figures.detection_latency_seconds }}s</span>
+          <span class="figure-value tabular-number">{{ '%.1f'|format(figures.detection_latency_seconds) }}s</span>
           <span class="figure-label">detection latency</span>
         </li>
         {% endif %}

@@ -128,14 +128,16 @@ def test_showcase_reachable_from_unconfigured_console():
     assert "Run Full MVP Demo" in html
 
 
-def test_showcase_fabricates_nothing_before_a_run():
+def test_showcase_fabricates_nothing_before_a_run(showcase_dirs):
     """/showcase with no run must never claim an incident happened.
 
     The static step list names the demo's planned phases (that is the
     plan, not a claim); the status banner itself must stay at READY
-    with no incident figures.
+    with no incident figures. The controller points at an empty folder:
+    the real demo/ folder may hold a finished run from an earlier session.
     """
-    client = make_client()
+    base, script, district = showcase_dirs
+    client = make_client(make_controller(base, script, district))
     html = client.get("/showcase").get_data(as_text=True)
     assert "READY" in html
     # No completed-state figures or failure verdicts before any run exists.

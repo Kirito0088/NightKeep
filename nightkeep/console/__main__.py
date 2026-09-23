@@ -22,7 +22,7 @@ from pathlib import Path
 from nightkeep.config import Config, load_config
 from nightkeep.console.app import create_app
 from nightkeep.console.providers import build_runtime, presentation_for
-from nightkeep.console.showcase import ShowcaseController
+from nightkeep.console.showcase import LiveShowcase, ShowcaseController
 
 
 def create_console_app(
@@ -55,7 +55,11 @@ def create_console_app(
         district_dir = session.paths.district
         vault_dir = session.paths.vault
         report_path = session.paths.report
-    controller = ShowcaseController()
+    if session is not None and config is not None:
+        # The Full MVP Demo drives the same live session, on autopilot.
+        controller = LiveShowcase(session, config.console.full_demo_variant)
+    else:
+        controller = ShowcaseController()
     live_kwargs = {
         "session": session,
         "console_settings": config.console if config is not None else None,
