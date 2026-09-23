@@ -690,6 +690,47 @@ def simulate(
     raise SimulatorRefused(f"unknown simulator variant: {variant!r}")
 
 
+def simulator_argv(
+    *,
+    variant: str,
+    root: str | Path,
+    key: str,
+    locked_extension: str,
+    ransom_note_name: str,
+    delay: float,
+    recovery_commands: tuple[str, ...] = (),
+) -> list[str]:
+    """Build the argv for running the simulator as its own process.
+
+    The simulator's CLI (``python -m nightkeep.simulator``) takes every
+    tunable as an argument; the simulator never reads configuration
+    itself. This is the single construction both the legacy demo and
+    demo_run.py use, so the two runners cannot drift apart.
+
+    For the recovery-killer variant at least one recovery command is
+    required: with none the simulator would build a broken echo shell
+    and silently exercise no S5 evidence.
+    """
+    argv = [
+        sys.executable, "-m", "nightkeep.simulator",
+        "--variant", variant,
+        "--root", str(root),
+        "--key", key,
+        "--locked-extension", locked_extension,
+        "--ransom-note-name", ransom_note_name,
+        "--delay", str(delay),
+    ]
+    if variant in (RECOVERY_KILLER, CLEANUP_BLOCKER):
+        if not recovery_commands:
+            raise SimulatorRefused(
+                "the recovery-killer variant needs at least one recovery "
+                "command; got none"
+            )
+        for command in recovery_commands:
+            argv.extend(("--command", command))
+    return argv
+
+
 __all__ = [
     "DEMO_DIR",
     "FAST",
@@ -707,5 +748,6 @@ __all__ = [
     "impersonate",
     "recovery_killer",
     "simulate",
+    "simulator_argv",
     "watcher_killer",
 ]

@@ -37,17 +37,18 @@ Two things keep the witnesses honest here, and they are load-bearing:
 
 import json
 import shutil
+import subprocess
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable
 
-from nightkeep import mock_pds
+from nightkeep import mock_pds, simulator
 from nightkeep.config import Config
 from nightkeep.habit import Habit, open_habit
 from nightkeep.judge import Judge
-from nightkeep.simulator import FAST, simulate
+from nightkeep.simulator import FAST
 from nightkeep.types import (
     CREATED,
     DELETED,
@@ -350,65 +351,123 @@ def _attack(watcher, judge, vault, config, pds, variant, result, say):
     "how many files before it was caught" is what the deployed product would
     really see rather than an artefact of a tight loop. The moment the poll
     crosses into INCIDENT, the scramble is stopped where it stands: in an
-    office the Judge suspends the process; here the in-process simulator
-    honours the same stop, so the demo shows the damage halting rather than
-    running to the end.
+    office the Judge suspends the process; here the demo terminates the
+    simulator's own process, so the demo shows the damage halting rather
+    than running to the end.
+
+    The simulator runs as a subprocess, not in-process: its CPU-bound
+    encryption loop would otherwise hold the GIL and starve the Watcher's
+    native observer and the reconciler, collapsing the observed event
+    stream. The argv is built by the simulator module, the same
+    construction demo_run.py uses.
     """
     say(f"Threat test: {variant}")
     sim = config.simulator
     identity = _identity("nightly_export")  # it strikes the export folder
-    touched = 0
     caught_at: dict[str, float | int | None] = {"files": None, "seconds": None}
     began = time.monotonic()
-    last_poll = began  # first poll lands one cadence in, not on the first file
+    last_poll = began  # first poll lands one cadence in, not immediately
     attack_start = datetime.now(timezone.utc)
 
-    def watch_each(_path: Path) -> None:
-        nonlocal touched, last_poll
-        touched += 1
-        if caught_at["files"] is not None:
-            return
+    proc = subprocess.Popen(
+        simulator.simulator_argv(
+            variant=variant,
+            root=pds,
+            key=sim.key,
+            locked_extension=sim.locked_extension,
+            ransom_note_name=sim.ransom_note_name,
+            delay=sim.delay_between_files_seconds,
+            recovery_commands=config.judge.recovery_commands,
+        )
+    )
+    sim_pid = proc.pid
+    say(f"  simulator pid: {sim_pid}")
+
+    try:
         # Poll at the Watcher's cadence, the same rhythm the real Judge runs
         # on, so the file count at detection is what a deployed Nightkeep
-        # would really see, not an artefact of checking after every file.
-        now = time.monotonic()
-        if now - last_poll < config.watcher.poll_seconds:
-            return
-        last_poll = now
-        events = watcher.events_since(attack_start)
-        incident, _codes = judge.would_incident(_threat_run(events, identity), events)
-        if incident:
-            caught_at["files"] = touched
-            caught_at["seconds"] = round(now - began, 2)
-
-    def caught() -> bool:
-        return caught_at["files"] is not None
-
-    report = simulate(
-        pds, variant=variant, config=sim,
-        recovery_commands=config.judge.recovery_commands,
-        on_file=watch_each, stop_when=caught,
-    )
+        # would really see, not an artefact of checking too often. The
+        # simulator is in its own process now, so the poll is driven by a
+        # timer loop instead of the old per-file callback; the cadence
+        # logic is unchanged.
+        while proc.poll() is None:
+            now = time.monotonic()
+            if now - last_poll >= config.watcher.poll_seconds:
+                last_poll = now
+                events = watcher.events_since(attack_start)
+                incident, _codes = judge.would_incident(
+                    _threat_run(events, identity), events
+                )
+                if incident:
+                    # Capture the damage boundary NOW, from the same event
+                    # window that triggered the INCIDENT. The simulator is
+                    # terminated below, so no further files should be
+                    # scrambled; the final drain is for the committing
+                    # verdict, not for reconstructing this count.
+                    caught_at["files"] = len({
+                        event.path for event in events
+                        if event.kind == RENAMED
+                        and event.path.endswith(sim.locked_extension)
+                    })
+                    caught_at["seconds"] = round(now - began, 2)
+                    say("  INCIDENT while the simulator was still running; "
+                        "stopping it where it stood")
+                    proc.terminate()
+                    break
+            time.sleep(0.05)
+        # The simulator finished on its own, or was terminated above. Wait
+        # for the exit so no simulator process leaks; the finally below is
+        # the backstop if it refuses to die.
+        try:
+            proc.wait(timeout=30)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+            proc.wait()
 
     time.sleep(config.watcher.settle_seconds + 0.3)
     events = watcher.events_between(attack_start, datetime.now(timezone.utc))
+    # The simulator is a subprocess now, so its in-process report is not
+    # available. Count what the Watcher actually saw instead: each
+    # scrambled file is renamed to the locked extension exactly once.
+    files_scrambled = len({
+        event.path for event in events
+        if event.kind == RENAMED and event.path.endswith(sim.locked_extension)
+    })
+    files_renamed = sum(
+        1 for event in events
+        if event.kind == RENAMED and event.path.endswith(sim.locked_extension)
+    )
     run = _threat_run(events, identity)
-    verdict = judge.verdict(run, events)
+    # suspect_pid is a containment fallback, not evidence: when the verdict
+    # is INCIDENT but no event carried a process id, the Judge pauses the
+    # simulator instead of leaving it running. The verdict itself is decided
+    # from events alone; a missing pid never changes it.
+    verdict = judge.verdict(run, events, suspect_pid=sim_pid)
     actions = list(verdict.actions)
     judge.undo()  # a demo can be run again; leave nothing paused or locked
 
     # A share small enough to finish before the first poll is still caught by
     # the committing verdict; record the whole burst as the loss window then.
-    if caught_at["files"] is None and verdict.level == INCIDENT:
-        caught_at["files"] = report.files_scrambled
-        caught_at["seconds"] = round(time.monotonic() - began, 2)
+    # When the poll did catch it mid-attack, caught_at["files"] was captured
+    # from the detection-time event window above, and the simulator was
+    # terminated at that boundary, so the final drained count should match:
+    # files_scrambled == files_before_incident.
+    if verdict.level == INCIDENT:
+        if caught_at["files"] is None:
+            caught_at["files"] = files_scrambled
+        if caught_at["seconds"] is None:
+            caught_at["seconds"] = round(time.monotonic() - began, 2)
 
     attack_snapshot = vault.pull(taken_at=datetime.now(timezone.utc))
 
     result.attack = {
         "variant": variant,
-        "files_scrambled": report.files_scrambled,
-        "files_renamed": report.files_renamed,
+        "files_scrambled": files_scrambled,
+        "files_renamed": files_renamed,
         "files_before_incident": caught_at["files"],
         "detection_seconds": caught_at["seconds"],
         "verdict_level": verdict.level,
@@ -418,7 +477,10 @@ def _attack(watcher, judge, vault, config, pds, variant, result, say):
             {"code": s.code, "title": s.title, "reason": s.reason}
             for s in verdict.signals
         ],
-        "command_text_written_to": report.command_text_written_to,
+        # The simulator runs as a subprocess now, so its in-process report
+        # (including this path) is not available. It was None for the fast
+        # variant anyway.
+        "command_text_written_to": None,
     }
     result.proofs["p2_files_before_incident"] = caught_at["files"]
     result.proofs["p2_detection_seconds"] = caught_at["seconds"]
