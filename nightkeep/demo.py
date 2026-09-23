@@ -36,7 +36,6 @@ Two things keep the witnesses honest here, and they are load-bearing:
 """
 
 import json
-import os
 import shutil
 import time
 from dataclasses import dataclass, field
@@ -178,18 +177,10 @@ def run_demo(
         guard_days=config.clock.guard_days,
     )
 
-    # On Windows, ReadDirectoryChangesW can drop events when the
-    # in-process simulator writes or renames dozens of files in under a
-    # second (the burst pattern of both _legit_surprise and _attack).
-    # The reconciler is the deterministic backstop for that loss.
-    # demo_run.py already enables it for the live watcher agent subprocess;
-    # here we enable it for the in-process demo on the same platform.
-    _reconcile_secs = 0.2 if os.name == "nt" else 0.0
     with Watcher(
         pds,
         config.watcher.poll_seconds,
         config.watcher.settle_seconds,
-        reconcile_seconds=_reconcile_secs,
     ) as watcher:
         last_runs = _learn_and_guard(
             watcher, habit, judge, vault, config, pds, result, say
