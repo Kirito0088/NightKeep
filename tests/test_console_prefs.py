@@ -86,10 +86,10 @@ def test_marathi_switches_the_chrome_and_headings(client):
     client.post("/prefs/language", data={"lang": "mr", "next": "/safety"})
     html = client.get("/safety").get_data(as_text=True)
     assert '<html lang="mr"' in html
-    assert "शिधापत्रिका शोध" in html          # nav: Ration Card Search
+    assert "रेशन कार्ड शोधा" in html          # nav: Ration Card Search
     assert "डेटा सुरक्षा" in html              # nav and heading: Data Safety
     assert "रात्रीची कामे" in html            # nav: Night Jobs
-    assert "संरक्षण सारांश" in html            # panel: Protection Summary
+    assert "सुरक्षेचा सारांश" in html          # panel: Protection Summary
     assert DISCLAIMER in html
 
 
@@ -133,3 +133,13 @@ def test_every_wrapped_template_string_has_a_marathi_entry():
 def test_no_em_dash_in_the_marathi_catalogue():
     for english, marathi in catalogue().items():
         assert "—" not in english and "—" not in marathi
+
+
+def test_marathi_is_everyday_office_marathi():
+    """Modern, easily understood Marathi: the words a clerk actually says
+    (रेशन कार्ड, डेटा, बॅकअप), not formal coinages like शिधापत्रिका."""
+    formal = ("शिधापत्रिका", "पुनर्स्थापना", "प्रात्यक्षिक", "कार्यालयीन",
+              "संगणक", "अधिकृतता", "पर्यवेक्षक")
+    for english, marathi in catalogue().items():
+        for word in formal:
+            assert word not in marathi, (english, marathi)
