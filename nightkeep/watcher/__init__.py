@@ -138,10 +138,10 @@ class Watcher:
         # somebody to attribute it to.
         self._poll.poll_once()
         self._observer.start()
-        # The reconciliation baseline: everything already on disk is "seen",
-        # so the first sweep only reports what changes from here on.
-        self._reconciler = TreeReconciler(self.root, self._reconcile_ignored)
         if self.reconcile_seconds > 0:
+            # The reconciliation baseline: everything already on disk is "seen",
+            # so the first sweep only reports what changes from here on.
+            self._reconciler = TreeReconciler(self.root, self._reconcile_ignored)
             self._reconcile_stop.clear()
             self._reconcile_thread = threading.Thread(
                 target=self._reconcile_loop,
