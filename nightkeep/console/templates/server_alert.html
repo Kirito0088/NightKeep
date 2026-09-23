@@ -10,12 +10,12 @@
   <div class="server-alert-backdrop">
     <div class="server-alert-window" role="alertdialog" aria-modal="true" aria-labelledby="server-alert-title" aria-describedby="server-alert-headline">
       <header class="server-alert-header">
-        <h1 id="server-alert-title" class="server-alert-header-title">{{ alert.title }}</h1>
+        <h1 id="server-alert-title" class="server-alert-header-title">{{ t(alert.title) }}</h1>
       </header>
 
       <div class="server-alert-body">
         <div class="server-alert-banner">
-          <h2 id="server-alert-headline" class="server-alert-headline">{{ alert.headline }}</h2>
+          <h2 id="server-alert-headline" class="server-alert-headline">{{ t(alert.headline) }}</h2>
         </div>
 
         <ol class="server-alert-actions-list">
@@ -29,8 +29,8 @@
 
         <div class="server-alert-footer">
           <div class="server-alert-buttons">
-            <button type="button" class="btn btn-primary btn-alert-ack">Acknowledge</button>
-            <a href="{{ url_for('nightkeep_alert') }}" class="btn btn-secondary btn-alert-vault-link">Open Vault Console (Simulation)</a>
+            <button type="button" class="btn btn-primary btn-alert-ack">{{ t("Acknowledge") }}</button>
+            <a href="{{ url_for('nightkeep_alert') }}" class="btn btn-secondary btn-alert-vault-link">{{ t("Open Vault Console (Simulation)") }}</a>
           </div>
           <p class="server-alert-disclaimer">Prototype on invented data. Not a live government system.</p>
         </div>

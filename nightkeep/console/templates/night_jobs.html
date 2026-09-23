@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
-{% block title %}Night Jobs{% endblock %}
-{% block page_heading %}Night Jobs{% endblock %}
+{% block title %}{{ t("Night Jobs") }}{% endblock %}
+{% block page_heading %}{{ t("Night Jobs") }}{% endblock %}
 
 {% block breadcrumb_items %}
-<li><a href="/">Home</a></li>
+<li><a href="/">{{ t("Home") }}</a></li>
 <li class="breadcrumb-separator" aria-hidden="true">/</li>
-<li aria-current="page">Night Jobs</li>
+<li aria-current="page">{{ t("Night Jobs") }}</li>
 {% endblock %}
 
 {% block content %}
@@ -15,14 +15,14 @@
   <div class="safety-alert-banner state-banner-{{ jobs.tone }}" role="status" aria-live="polite">
     <div class="safety-alert-content">
       <div class="safety-alert-badge">{{ jobs.badge }}</div>
-      <h2 class="safety-alert-title">{{ jobs.headline }}</h2>
+      <h2 class="safety-alert-title">{{ t(jobs.headline) }}</h2>
       <p class="safety-alert-description">{{ jobs.detail }}</p>
     </div>
   </div>
 
   <section class="panel-block" aria-labelledby="learning-progress-heading">
     <div class="panel-header">
-      <h2 id="learning-progress-heading">Learning Progress</h2>
+      <h2 id="learning-progress-heading">{{ t("Learning Progress") }}</h2>
     </div>
     <div class="panel-body">
       <div class="safety-summary-grid">
@@ -39,7 +39,7 @@
 
   <section class="panel-block" aria-labelledby="night-jobs-heading">
     <div class="panel-header">
-      <h2 id="night-jobs-heading">The Night Jobs</h2>
+      <h2 id="night-jobs-heading">{{ t("The Night Jobs") }}</h2>
     </div>
     <div class="panel-body">
       <div class="table-responsive">
@@ -47,12 +47,12 @@
           <caption>Every night job on the district server, and what Nightkeep has learned about it</caption>
           <thead>
             <tr>
-              <th scope="col">Night job</th>
-              <th scope="col">What it does</th>
-              <th scope="col">Learning</th>
-              <th scope="col">Usually</th>
-              <th scope="col">Last run</th>
-              <th scope="col">Last check</th>
+              <th scope="col">{{ t("Night job") }}</th>
+              <th scope="col">{{ t("What it does") }}</th>
+              <th scope="col">{{ t("Learning") }}</th>
+              <th scope="col">{{ t("Usually") }}</th>
+              <th scope="col">{{ t("Last run") }}</th>
+              <th scope="col">{{ t("Last check") }}</th>
             </tr>
           </thead>
           <tbody>
@@ -89,7 +89,7 @@
 
   <section class="panel-block" aria-labelledby="recent-checks-heading">
     <div class="panel-header">
-      <h2 id="recent-checks-heading">Recent Checks</h2>
+      <h2 id="recent-checks-heading">{{ t("Recent Checks") }}</h2>
     </div>
     <div class="panel-body">
       {% if jobs.recent %}
@@ -98,10 +98,10 @@
           <caption>The most recent night job runs Nightkeep checked, newest first</caption>
           <thead>
             <tr>
-              <th scope="col">Day</th>
-              <th scope="col">Night job</th>
-              <th scope="col">Result</th>
-              <th scope="col">Why</th>
+              <th scope="col">{{ t("Day") }}</th>
+              <th scope="col">{{ t("Night job") }}</th>
+              <th scope="col">{{ t("Result") }}</th>
+              <th scope="col">{{ t("Why") }}</th>
             </tr>
           </thead>
           <tbody>
@@ -132,11 +132,11 @@
 
   <section class="panel-block it-person-section" aria-labelledby="it-person-heading">
     <div class="panel-header">
-      <h2 id="it-person-heading">For the IT person</h2>
+      <h2 id="it-person-heading">{{ t("For the IT person") }}</h2>
     </div>
     <div class="panel-body it-panel-body">
       <p class="it-panel-text">The habit cards behind this screen, with their medians and spreads, are in the IT View.</p>
-      <a href="{{ url_for('it_view') }}" class="btn btn-secondary btn-it-access">IT View</a>
+      <a href="{{ url_for('it_view') }}" class="btn btn-secondary btn-it-access">{{ t("IT View") }}</a>
     </div>
   </section>
 </div>

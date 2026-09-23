@@ -632,6 +632,25 @@ def create_app(
         console_settings.status_refresh_seconds
         if console_settings is not None else 2.0
     )
+    text_steps = (
+        tuple(console_settings.text_scale_steps)
+        if console_settings is not None else (0.875, 1.0, 1.125, 1.25)
+    )
+    normal_step = text_steps.index(1.0) if 1.0 in text_steps else 0
+
+    def text_step() -> int:
+        """The reader's text size, as an index into the configured steps."""
+        try:
+            step = int(request.cookies.get("nk_text", normal_step))
+        except ValueError:
+            return normal_step
+        return min(max(step, 0), len(text_steps) - 1)
+
+    def language() -> str:
+        from nightkeep.console.i18n import LANGUAGES, ENGLISH
+
+        chosen = request.cookies.get("nk_lang", ENGLISH)
+        return chosen if chosen in LANGUAGES else ENGLISH
 
     def live_status() -> dict:
         if session is None:
@@ -651,7 +670,15 @@ def create_app(
     def chrome_context() -> dict:
         from nightkeep.console.live_view import live_controls, stamp
 
+        from nightkeep.console.i18n import translate
+
+        lang = language()
         return {
+            "lang": lang,
+            "t": lambda text: translate(text, lang),
+            "text_scale": text_steps[text_step()],
+            "text_step": text_step(),
+            "text_steps": len(text_steps),
             "live_stamp": lambda scope: stamp(live_status(), scope),
             "live": (
                 live_controls(live_status(), variants)
@@ -660,6 +687,37 @@ def create_app(
             "live_refresh_ms": int(refresh_seconds * 1000),
             "here": request.full_path.rstrip("?"),
         }
+
+    # A year, so the reader's choice survives closing the browser.
+    preference_seconds = 365 * 24 * 60 * 60
+
+    @app.route("/prefs/text-size", methods=["POST"])
+    def prefs_text_size():
+        """A-, A and A+: one step smaller, normal, one step larger."""
+        step = text_step()
+        move = request.form.get("step", "")
+        if move == "down":
+            step = max(step - 1, 0)
+        elif move == "up":
+            step = min(step + 1, len(text_steps) - 1)
+        else:
+            step = normal_step
+        response = redirect(local_next())
+        response.set_cookie("nk_text", str(step), max_age=preference_seconds,
+                            samesite="Lax")
+        return response
+
+    @app.route("/prefs/language", methods=["POST"])
+    def prefs_language():
+        from nightkeep.console.i18n import ENGLISH, LANGUAGES
+
+        chosen = request.form.get("lang", ENGLISH)
+        response = redirect(local_next())
+        response.set_cookie(
+            "nk_lang", chosen if chosen in LANGUAGES else ENGLISH,
+            max_age=preference_seconds, samesite="Lax",
+        )
+        return response
 
     @app.route("/live/status.json", methods=["GET"])
     def live_status_json():

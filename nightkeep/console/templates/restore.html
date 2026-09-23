@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 
-{% block title %}Get my records back{% endblock %}
-{% block page_heading %}Get my records back{% endblock %}
+{% block title %}{{ t("Get my records back") }}{% endblock %}
+{% block page_heading %}{{ t("Get my records back") }}{% endblock %}
 
 {% block breadcrumb_items %}
-<li><a href="/">Home</a></li>
+<li><a href="/">{{ t("Home") }}</a></li>
 <li class="breadcrumb-separator" aria-hidden="true">/</li>
-<li><a href="{{ url_for('nightkeep_home') }}">Data Safety</a></li>
+<li><a href="{{ url_for('nightkeep_home') }}">{{ t("Data Safety") }}</a></li>
 <li class="breadcrumb-separator" aria-hidden="true">/</li>
-<li aria-current="page">Restore Records</li>
+<li aria-current="page">{{ t("Restore Records") }}</li>
 {% endblock %}
 
 {% block content %}
@@ -17,7 +17,7 @@
   <div class="restore-summary-banner" role="region" aria-label="Restore Target Summary">
     <div class="restore-summary-content">
       <div class="restore-summary-badge">RESTORE WIZARD</div>
-      <h2 class="restore-summary-title">{{ restore.headline }}</h2>
+      <h2 class="restore-summary-title">{{ t(restore.headline) }}</h2>
       <p class="restore-summary-description">
         Restoring <strong>{{ restore.records_count }} ration cards</strong> for District Supply Office, Thane from the verified clean backup at <strong>{{ restore.clean_point }}</strong> preserved on the Vault.
       </p>
@@ -27,7 +27,7 @@
   <!-- Three-step workflow stepper -->
   <section class="panel-block restore-steps-section" aria-labelledby="restore-steps-heading">
     <div class="panel-header">
-      <h2 id="restore-steps-heading">Restore Progress</h2>
+      <h2 id="restore-steps-heading">{{ t("Restore Progress") }}</h2>
     </div>
     <div class="panel-body">
       <ol class="restore-steps-list">
@@ -60,7 +60,7 @@
   <!-- Five Plain-Language Verification Checks -->
   <section class="panel-block verification-section" aria-labelledby="verification-heading">
     <div class="panel-header">
-      <h2 id="verification-heading">Safety Verification (Five Checks)</h2>
+      <h2 id="verification-heading">{{ t("Safety Verification (Five Checks)") }}</h2>
       {% set passed = restore.checks | selectattr("status", "equalto", "Passed") | list | length %}
       <span class="status-badge {% if passed == 5 %}status-badge-active{% else %}status-badge-suspended{% endif %}">{{ passed }} of 5 Verified</span>
     </div>
@@ -79,7 +79,7 @@
   <!-- Loss Window Advisory -->
   <section class="panel-block loss-window-section" aria-labelledby="loss-window-heading">
     <div class="panel-header">
-      <h2 id="loss-window-heading">Loss Window Advisory</h2>
+      <h2 id="loss-window-heading">{{ t("Loss Window Advisory") }}</h2>
       <span class="status-badge status-badge-suspended">{{ restore.loss_window_entries }} entries to re-check</span>
     </div>
     <div class="panel-body">
@@ -97,7 +97,7 @@
   <!-- Step 3: Authorization PIN and Restore Confirmation -->
   <section class="panel-block restore-confirm-section" aria-labelledby="restore-confirm-heading">
     <div class="panel-header">
-      <h2 id="restore-confirm-heading">Step 3: Authorisation and Confirmation</h2>
+      <h2 id="restore-confirm-heading">{{ t("Step 3: Authorisation and Confirmation") }}</h2>
     </div>
     <div class="panel-body">
       {% if restore_success %}
@@ -112,7 +112,7 @@
       {% endif %}
       <form class="restore-form-block" method="post" action="{{ url_for('restore_wizard') }}">
         <div class="form-group pin-form-group">
-          <label for="restore_pin" class="form-label">Supervisor authorisation PIN</label>
+          <label for="restore_pin" class="form-label">{{ t("Supervisor authorisation PIN") }}</label>
           <input
             type="password"
             id="restore_pin"
@@ -129,10 +129,10 @@
 
         <div class="restore-actions-bar">
           <button type="submit" class="btn btn-primary btn-restore-confirm" id="restore-confirm-btn">
-            Restore records to office computer
+            {{ t("Restore records to office computer") }}
           </button>
           <a href="{{ url_for('nightkeep_alert') }}" class="btn btn-secondary btn-cancel-restore">
-            Return to Incident Alert
+            {{ t("Return to Incident Alert") }}
           </a>
         </div>
       </form>

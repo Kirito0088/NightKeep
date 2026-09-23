@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 
-{% block title %}Full MVP Demo{% endblock %}
-{% block page_heading %}Full MVP Demo{% endblock %}
+{% block title %}{{ t("Full MVP Demo") }}{% endblock %}
+{% block page_heading %}{{ t("Full MVP Demo") }}{% endblock %}
 
 {% block breadcrumb_items %}
-<li><a href="/">Home</a></li>
+<li><a href="/">{{ t("Home") }}</a></li>
 <li class="breadcrumb-separator" aria-hidden="true">/</li>
-<li><a href="{{ url_for('nightkeep_home') }}">Data Safety</a></li>
+<li><a href="{{ url_for('nightkeep_home') }}">{{ t("Data Safety") }}</a></li>
 <li class="breadcrumb-separator" aria-hidden="true">/</li>
-<li aria-current="page">Full MVP Demo</li>
+<li aria-current="page">{{ t("Full MVP Demo") }}</li>
 {% endblock %}
 
 {% block content %}
@@ -30,7 +30,7 @@
   <!-- One-click entry point -->
   <section class="panel-block" aria-labelledby="demo-start-heading">
     <div class="panel-header">
-      <h2 id="demo-start-heading">Run the demonstration</h2>
+      <h2 id="demo-start-heading">{{ t("Run the demonstration") }}</h2>
     </div>
     <div class="panel-body">
       <p class="it-panel-text">
@@ -41,7 +41,7 @@
       </p>
       {% if can_start %}
       <form method="post" action="{{ url_for('showcase_start') }}">
-        <button type="submit" class="btn btn-primary btn-demo-run">Run Full MVP Demo</button>
+        <button type="submit" class="btn btn-primary btn-demo-run">{{ t("Run Full MVP Demo") }}</button>
       </form>
       {% else %}
       <button type="button" class="btn btn-primary" disabled>
@@ -58,7 +58,7 @@
   <!-- What this demonstrates -->
   <section class="panel-block" aria-labelledby="demo-story-heading">
     <div class="panel-header">
-      <h2 id="demo-story-heading">What this demonstrates</h2>
+      <h2 id="demo-story-heading">{{ t("What this demonstrates") }}</h2>
     </div>
     <div class="panel-body">
       <ol class="showcase-story-list">
@@ -111,7 +111,7 @@
   <!-- Live progress through the stages -->
   <section class="panel-block" aria-labelledby="demo-progress-heading">
     <div class="panel-header">
-      <h2 id="demo-progress-heading">Demonstration progress</h2>
+      <h2 id="demo-progress-heading">{{ t("Demonstration progress") }}</h2>
     </div>
     <div class="panel-body">
       <ol class="showcase-progress-list">
@@ -135,7 +135,7 @@
   <!-- Real figures from the run's own report -->
   <section class="panel-block showcase-figures" aria-labelledby="demo-figures-heading">
     <div class="panel-header">
-      <h2 id="demo-figures-heading">Measured on this run</h2>
+      <h2 id="demo-figures-heading">{{ t("Measured on this run") }}</h2>
     </div>
     <div class="panel-body">
       {% if figures.records_verified is defined and figures.records_expected is defined %}
@@ -173,7 +173,7 @@
   <!-- Final demo actions: the existing real screens -->
   <section class="panel-block" aria-labelledby="demo-inspect-heading">
     <div class="panel-header">
-      <h2 id="demo-inspect-heading">Inspect the result</h2>
+      <h2 id="demo-inspect-heading">{{ t("Inspect the result") }}</h2>
     </div>
     <div class="panel-body">
       <p class="it-panel-text">
@@ -182,19 +182,19 @@
       </p>
       <ul class="showcase-destinations-list">
         <li class="showcase-destination showcase-destination-primary">
-          <a href="{{ url_for('nightkeep_alert') }}" class="btn btn-primary">Incident Report</a>
+          <a href="{{ url_for('nightkeep_alert') }}" class="btn btn-primary">{{ t("Incident Report") }}</a>
           <p class="showcase-destination-detail">See what happened, when it was detected, and what NightKeep did.</p>
         </li>
         <li class="showcase-destination">
-          <a href="{{ url_for('restore_wizard') }}" class="btn btn-secondary">Restore</a>
+          <a href="{{ url_for('restore_wizard') }}" class="btn btn-secondary">{{ t("Restore") }}</a>
           <p class="showcase-destination-detail">Bring the records back from the last clean copy.</p>
         </li>
         <li class="showcase-destination">
-          <a href="{{ url_for('pds_locked') }}" class="btn btn-secondary">Locked Screen</a>
+          <a href="{{ url_for('pds_locked') }}" class="btn btn-secondary">{{ t("Locked Screen") }}</a>
           <p class="showcase-destination-detail">What the office computer shows while the records are locked.</p>
         </li>
         <li class="showcase-destination showcase-destination-quiet">
-          <a href="{{ url_for('it_view') }}" class="btn btn-secondary btn-it-access">IT View</a>
+          <a href="{{ url_for('it_view') }}" class="btn btn-secondary btn-it-access">{{ t("IT View") }}</a>
           <p class="showcase-destination-detail">Technical diagnostics for the IT person.</p>
         </li>
       </ul>
@@ -205,7 +205,7 @@
   <!-- Run details -->
   <section class="panel-block" aria-labelledby="demo-log-heading">
     <div class="panel-header">
-      <h2 id="demo-log-heading">Technical output</h2>
+      <h2 id="demo-log-heading">{{ t("Technical output") }}</h2>
     </div>
     <div class="panel-body">
       <pre class="demo-log" aria-label="Demonstration log">{{ log_tail }}</pre>

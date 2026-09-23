@@ -4,13 +4,13 @@
 {% block page_heading %}Ration Card Detail: {{ card.card_no }}{% endblock %}
 
 {% block page_heading_actions %}
-<a href="{{ url_for('search_cards') }}" class="btn btn-secondary btn-heading-back">Back to Search</a>
+<a href="{{ url_for('search_cards') }}" class="btn btn-secondary btn-heading-back">{{ t("Back to Search") }}</a>
 {% endblock %}
 
 {% block breadcrumb_items %}
-<li><a href="/">Home</a></li>
+<li><a href="/">{{ t("Home") }}</a></li>
 <li class="breadcrumb-separator" aria-hidden="true">/</li>
-<li><a href="{{ url_for('search_cards') }}">Ration Card Search</a></li>
+<li><a href="{{ url_for('search_cards') }}">{{ t("Ration Card Search") }}</a></li>
 <li class="breadcrumb-separator" aria-hidden="true">/</li>
 <li aria-current="page">Card {{ card.card_no }}</li>
 {% endblock %}
@@ -20,7 +20,7 @@
   <!-- Section 1: Household Details Panel -->
   <section class="panel-block card-household-section" aria-labelledby="household-heading">
     <div class="panel-header detail-panel-header">
-      <h2 id="household-heading">Household Details</h2>
+      <h2 id="household-heading">{{ t("Household Details") }}</h2>
       <span class="status-badge status-badge-{{ card.status|lower }}">{{ card.status }}</span>
     </div>
     <div class="panel-body">
@@ -78,7 +78,7 @@
   <!-- Section 2: Monthly Entitlement Panel -->
   <section class="panel-block entitlement-section" aria-labelledby="entitlement-heading">
     <div class="panel-header">
-      <h2 id="entitlement-heading">Monthly Entitlement</h2>
+      <h2 id="entitlement-heading">{{ t("Monthly Entitlement") }}</h2>
     </div>
     <div class="panel-body">
       <p class="section-lead-note">
@@ -89,10 +89,10 @@
           <caption>Monthly foodgrain quota and rates for ration card {{ card.card_no }}</caption>
           <thead>
             <tr>
-              <th scope="col">Commodity</th>
-              <th scope="col">Monthly Allotment</th>
-              <th scope="col">Issue Price</th>
-              <th scope="col">Allotment Basis</th>
+              <th scope="col">{{ t("Commodity") }}</th>
+              <th scope="col">{{ t("Monthly Allotment") }}</th>
+              <th scope="col">{{ t("Issue Price") }}</th>
+              <th scope="col">{{ t("Allotment Basis") }}</th>
             </tr>
           </thead>
           <tbody>
@@ -107,7 +107,7 @@
           </tbody>
           <tfoot>
             <tr class="table-summary-row">
-              <th scope="row">Total Monthly Grain</th>
+              <th scope="row">{{ t("Total Monthly Grain") }}</th>
               <td class="tabular-number"><strong>{{ "%.3f"|format(total_entitlement_kg) }} kg</strong></td>
               <td>Free under PMGKAY</td>
               <td>{{ card.member_count }} registered family members</td>
@@ -121,7 +121,7 @@
   <!-- Section 3: Family Members Table -->
   <section class="panel-block members-section" aria-labelledby="members-heading">
     <div class="panel-header detail-panel-header">
-      <h2 id="members-heading">Family Members</h2>
+      <h2 id="members-heading">{{ t("Family Members") }}</h2>
       <span class="results-count">{{ card.member_count }} members registered</span>
     </div>
     <div class="panel-body">
@@ -130,13 +130,13 @@
           <caption>Registered household members for ration card {{ card.card_no }}</caption>
           <thead>
             <tr>
-              <th scope="col">Sr No</th>
-              <th scope="col">Member Name</th>
-              <th scope="col">Relation to Head</th>
-              <th scope="col">Sex</th>
-              <th scope="col">Age</th>
-              <th scope="col">Aadhaar Seeded</th>
-              <th scope="col">e-KYC Status</th>
+              <th scope="col">{{ t("Sr No") }}</th>
+              <th scope="col">{{ t("Member Name") }}</th>
+              <th scope="col">{{ t("Relation to Head") }}</th>
+              <th scope="col">{{ t("Sex") }}</th>
+              <th scope="col">{{ t("Age") }}</th>
+              <th scope="col">{{ t("Aadhaar Seeded") }}</th>
+              <th scope="col">{{ t("e-KYC Status") }}</th>
             </tr>
           </thead>
           <tbody>
@@ -170,7 +170,7 @@
   <!-- Section 4: ePoS Collection History -->
   <section class="panel-block transactions-section" aria-labelledby="transactions-heading">
     <div class="panel-header detail-panel-header">
-      <h2 id="transactions-heading">ePoS Collection History</h2>
+      <h2 id="transactions-heading">{{ t("ePoS Collection History") }}</h2>
       <span class="results-count">{{ card.transactions|length }} recorded transactions</span>
     </div>
     <div class="panel-body">
@@ -179,12 +179,12 @@
           <caption>Recent electronic Point of Sale transaction history for ration card {{ card.card_no }}</caption>
           <thead>
             <tr>
-              <th scope="col">Date &amp; Time</th>
-              <th scope="col">Allotment Month</th>
-              <th scope="col">Commodity / Quantity</th>
-              <th scope="col">Fair Price Shop</th>
-              <th scope="col">Authentication Mode</th>
-              <th scope="col">Status</th>
+              <th scope="col">{{ t("Date & Time") }}</th>
+              <th scope="col">{{ t("Allotment Month") }}</th>
+              <th scope="col">{{ t("Commodity / Quantity") }}</th>
+              <th scope="col">{{ t("Fair Price Shop") }}</th>
+              <th scope="col">{{ t("Authentication Mode") }}</th>
+              <th scope="col">{{ t("Status") }}</th>
             </tr>
           </thead>
           <tbody>
@@ -208,7 +208,7 @@
 
   <!-- Page Footer Actions -->
   <div class="detail-actions-bar">
-    <a href="{{ url_for('search_cards') }}" class="btn btn-secondary">Back to Ration Card Search</a>
+    <a href="{{ url_for('search_cards') }}" class="btn btn-secondary">{{ t("Back to Ration Card Search") }}</a>
   </div>
 </div>
 {% endblock %}

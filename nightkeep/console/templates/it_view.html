@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 
-{% block title %}IT View{% endblock %}
-{% block page_heading %}IT View{% endblock %}
+{% block title %}{{ t("IT View") }}{% endblock %}
+{% block page_heading %}{{ t("IT View") }}{% endblock %}
 
 {% block breadcrumb_items %}
-<li><a href="/">Home</a></li>
+<li><a href="/">{{ t("Home") }}</a></li>
 <li class="breadcrumb-separator" aria-hidden="true">/</li>
-<li><a href="{{ url_for('nightkeep_home') }}">Data Safety</a></li>
+<li><a href="{{ url_for('nightkeep_home') }}">{{ t("Data Safety") }}</a></li>
 <li class="breadcrumb-separator" aria-hidden="true">/</li>
-<li aria-current="page">IT View</li>
+<li aria-current="page">{{ t("IT View") }}</li>
 {% endblock %}
 
 {% block content %}
@@ -17,7 +17,7 @@
   <!-- Honest no-runtime state: never fabricate diagnostics -->
   <section class="panel-block" aria-labelledby="it-unavailable-heading">
     <div class="panel-header">
-      <h2 id="it-unavailable-heading">IT diagnostics</h2>
+      <h2 id="it-unavailable-heading">{{ t("IT diagnostics") }}</h2>
     </div>
     <div class="panel-body">
       <p class="it-panel-text">
@@ -33,7 +33,7 @@
   <!-- INCIDENT -->
   <section class="panel-block it-section" aria-labelledby="it-incident-heading">
     <div class="panel-header">
-      <h2 id="it-incident-heading">Incident</h2>
+      <h2 id="it-incident-heading">{{ t("Incident") }}</h2>
       <span class="panel-subtitle">Incident diagnostics</span>
     </div>
     <div class="panel-body">
@@ -50,7 +50,7 @@
         </li>
       </ul>
       {% if it.incident.signals %}
-      <h3 class="it-subheading">Signals</h3>
+      <h3 class="it-subheading">{{ t("Signals") }}</h3>
       <ul class="it-detail-list">
         {% for signal in it.incident.signals %}
         <li><span class="tabular-number">{{ signal }}</span></li>
@@ -58,7 +58,7 @@
       </ul>
       {% endif %}
       {% if it.incident.reasons %}
-      <h3 class="it-subheading">Reasons</h3>
+      <h3 class="it-subheading">{{ t("Reasons") }}</h3>
       <ul class="it-detail-list">
         {% for reason in it.incident.reasons %}
         <li>{{ reason }}</li>
@@ -66,7 +66,7 @@
       </ul>
       {% endif %}
       {% if it.incident.actions %}
-      <h3 class="it-subheading">Actions taken</h3>
+      <h3 class="it-subheading">{{ t("Actions taken") }}</h3>
       <ul class="it-detail-list">
         {% for action in it.incident.actions %}
         <li>{{ action }}</li>
@@ -82,7 +82,7 @@
   <!-- WATCHER -->
   <section class="panel-block it-section" aria-labelledby="it-watcher-heading">
     <div class="panel-header">
-      <h2 id="it-watcher-heading">Watcher</h2>
+      <h2 id="it-watcher-heading">{{ t("Watcher") }}</h2>
       <span class="panel-subtitle">Watcher diagnostics</span>
     </div>
     <div class="panel-body">
@@ -115,7 +115,7 @@
   <!-- HABIT -->
   <section class="panel-block it-section" aria-labelledby="it-habit-heading">
     <div class="panel-header">
-      <h2 id="it-habit-heading">Habit</h2>
+      <h2 id="it-habit-heading">{{ t("Habit") }}</h2>
       <span class="panel-subtitle">Habit diagnostics</span>
     </div>
     <div class="panel-body">
@@ -126,11 +126,11 @@
           <caption>Learned habit cards: median and spread per feature</caption>
           <thead>
             <tr>
-              <th scope="col">Job</th>
-              <th scope="col">Feature</th>
-              <th scope="col">Median</th>
-              <th scope="col">Spread</th>
-              <th scope="col">Observations</th>
+              <th scope="col">{{ t("Job") }}</th>
+              <th scope="col">{{ t("Feature") }}</th>
+              <th scope="col">{{ t("Median") }}</th>
+              <th scope="col">{{ t("Spread") }}</th>
+              <th scope="col">{{ t("Observations") }}</th>
             </tr>
           </thead>
           <tbody>
@@ -155,7 +155,7 @@
   <!-- VAULT -->
   <section class="panel-block it-section" aria-labelledby="it-vault-heading">
     <div class="panel-header">
-      <h2 id="it-vault-heading">Vault</h2>
+      <h2 id="it-vault-heading">{{ t("Vault") }}</h2>
       <span class="panel-subtitle">Vault diagnostics</span>
     </div>
     <div class="panel-body">
@@ -169,11 +169,11 @@
           <caption>Vault snapshots</caption>
           <thead>
             <tr>
-              <th scope="col">Snapshot</th>
-              <th scope="col">Taken at</th>
-              <th scope="col">Health</th>
-              <th scope="col">Files</th>
-              <th scope="col">Manifest hash</th>
+              <th scope="col">{{ t("Snapshot") }}</th>
+              <th scope="col">{{ t("Taken at") }}</th>
+              <th scope="col">{{ t("Health") }}</th>
+              <th scope="col">{{ t("Files") }}</th>
+              <th scope="col">{{ t("Manifest hash") }}</th>
             </tr>
           </thead>
           <tbody>
@@ -193,7 +193,7 @@
       <p class="it-panel-text">No Vault snapshots available.</p>
       {% endif %}
       {% if it.alerts %}
-      <h3 class="it-subheading">Vault alert records</h3>
+      <h3 class="it-subheading">{{ t("Vault alert records") }}</h3>
       <ul class="it-detail-list">
         {% for alert in it.alerts %}
         <li>{{ alert }}</li>

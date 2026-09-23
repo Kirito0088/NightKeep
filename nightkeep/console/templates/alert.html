@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 
-{% block title %}Data Safety Alert{% endblock %}
-{% block page_heading %}Data Safety{% endblock %}
+{% block title %}{{ t("Data Safety Alert") }}{% endblock %}
+{% block page_heading %}{{ t("Data Safety") }}{% endblock %}
 
 {% block breadcrumb_items %}
-<li><a href="/">Home</a></li>
+<li><a href="/">{{ t("Home") }}</a></li>
 <li class="breadcrumb-separator" aria-hidden="true">/</li>
-<li><a href="{{ url_for('nightkeep_home') }}">Data Safety</a></li>
+<li><a href="{{ url_for('nightkeep_home') }}">{{ t("Data Safety") }}</a></li>
 <li class="breadcrumb-separator" aria-hidden="true">/</li>
-<li aria-current="page">Incident Alert</li>
+<li aria-current="page">{{ t("Incident Alert") }}</li>
 {% endblock %}
 
 {% block content %}
@@ -17,7 +17,7 @@
   <div class="alert-incident-banner {% if not alert.timeline %}alert-incident-calm{% endif %}" role="alert" aria-live="assertive">
     <div class="alert-incident-content">
       <div class="alert-incident-badge">{{ alert.status_badge }}</div>
-      <h2 class="alert-incident-title">{{ alert.headline }}</h2>
+      <h2 class="alert-incident-title">{{ t(alert.headline) }}</h2>
       {% if alert.timeline %}
       <p class="alert-incident-description">
         NightKeep detected abnormal activity and protected your database. Safe copies are preserved on the isolated Vault.
@@ -33,7 +33,7 @@
   <!-- What happened -->
   <section class="panel-block" aria-labelledby="what-happened-heading">
     <div class="panel-header">
-      <h2 id="what-happened-heading">What happened</h2>
+      <h2 id="what-happened-heading">{{ t("What happened") }}</h2>
     </div>
     <div class="panel-body">
       {% if alert.timeline %}
@@ -54,7 +54,7 @@
   <!-- What NightKeep did -->
   <section class="panel-block" aria-labelledby="what-did-heading">
     <div class="panel-header">
-      <h2 id="what-did-heading">What NightKeep did</h2>
+      <h2 id="what-did-heading">{{ t("What NightKeep did") }}</h2>
     </div>
     <div class="panel-body">
       <p class="alert-event-line">
@@ -70,7 +70,7 @@
   <!-- What to do now Action Panel -->
   <section class="panel-block alert-actions-panel" aria-labelledby="what-to-do-heading">
     <div class="panel-header">
-      <h2 id="what-to-do-heading">What to do now</h2>
+      <h2 id="what-to-do-heading">{{ t("What to do now") }}</h2>
     </div>
     <div class="panel-body">
       <ol class="action-steps-list">
@@ -84,7 +84,7 @@
               </p>
               {% if action.number == 3 %}
                 <div class="step-primary-action">
-                  <a href="{{ url_for('restore_wizard') }}" class="btn btn-primary btn-restore-action">Get my records back</a>
+                  <a href="{{ url_for('restore_wizard') }}" class="btn btn-primary btn-restore-action">{{ t("Get my records back") }}</a>
                 </div>
               {% endif %}
             </div>
@@ -98,7 +98,7 @@
   {% if alert.figures %}
   <section class="panel-block alert-summary-section" aria-labelledby="alert-summary-heading">
     <div class="panel-header">
-      <h2 id="alert-summary-heading">Incident figures</h2>
+      <h2 id="alert-summary-heading">{{ t("Incident figures") }}</h2>
     </div>
     <div class="panel-body">
       <div class="alert-summary-grid">
@@ -115,7 +115,7 @@
 
   <section class="panel-block alert-timeline-section" aria-labelledby="alert-timeline-heading">
     <div class="panel-header">
-      <h2 id="alert-timeline-heading">Incident Timeline</h2>
+      <h2 id="alert-timeline-heading">{{ t("Incident Timeline") }}</h2>
     </div>
     <div class="panel-body">
       <ol class="timeline-list">
@@ -138,13 +138,13 @@
   <!-- For the IT person Entry Point -->
   <section class="panel-block it-person-section it-person-quiet" aria-labelledby="it-person-heading">
     <div class="panel-header">
-      <h2 id="it-person-heading">For the IT person</h2>
+      <h2 id="it-person-heading">{{ t("For the IT person") }}</h2>
     </div>
     <div class="panel-body it-panel-body">
       <p class="it-panel-text">
         Technical incident diagnostics, process attribution records, and Vault recovery manifests are available for authorized staff.
       </p>
-      <a href="{{ url_for('it_view') }}" class="btn btn-secondary btn-it-access">IT View</a>
+      <a href="{{ url_for('it_view') }}" class="btn btn-secondary btn-it-access">{{ t("IT View") }}</a>
     </div>
   </section>
 </div>

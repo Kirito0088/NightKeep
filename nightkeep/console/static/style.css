@@ -6,14 +6,14 @@
 :root {
   --font-family: "Noto Sans", "Noto Sans Devanagari", sans-serif;
 
-  /* 7-size type scale */
-  --font-size-utility: 11.5px;
-  --font-size-caption: 12px;
-  --font-size-table: 12.5px;
-  --font-size-body: 13.5px;
-  --font-size-lead: 15px;
-  --font-size-h1: 18px;
-  --font-size-status: 25px;
+  /* 7-size type scale, scaled by A-, A and A+ (--text-scale on <html>) */
+  --font-size-utility: calc(11.5px * var(--text-scale, 1));
+  --font-size-caption: calc(12px * var(--text-scale, 1));
+  --font-size-table: calc(12.5px * var(--text-scale, 1));
+  --font-size-body: calc(13.5px * var(--text-scale, 1));
+  --font-size-lead: calc(15px * var(--text-scale, 1));
+  --font-size-h1: calc(18px * var(--text-scale, 1));
+  --font-size-status: calc(25px * var(--text-scale, 1));
 
   /* Color palette */
   --color-primary-navy: #14387f;
@@ -169,7 +169,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: var(--font-size-utility);
   font-weight: 700;
   color: var(--color-secondary-text);
   background-color: var(--color-bg-surface);
@@ -1753,7 +1753,7 @@ html, body {
 }
 
 .figure-hero-value {
-  font-size: 30px;
+  font-size: calc(30px * var(--text-scale, 1));
   font-weight: 700;
   color: var(--color-safe-green);
   line-height: 1.1;
@@ -2044,4 +2044,34 @@ html, body {
 .night-jobs-running {
   margin-top: 12px;
   font-weight: 600;
+}
+
+/* English / Marathi switch in the utility strip. */
+.language-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.language-toggle button {
+  background: transparent;
+  border: 0;
+  color: #ffffff;
+  font-size: var(--font-size-utility);
+  font-family: inherit;
+  padding: 1px 2px;
+  cursor: pointer;
+  text-decoration: underline;
+  opacity: 0.8;
+}
+
+.language-toggle button[aria-pressed="true"] {
+  font-weight: 700;
+  text-decoration: none;
+  opacity: 1;
+}
+
+.text-resize-controls button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }

@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
-{% block title %}Data Safety{% endblock %}
-{% block page_heading %}Data Safety{% endblock %}
+{% block title %}{{ t("Data Safety") }}{% endblock %}
+{% block page_heading %}{{ t("Data Safety") }}{% endblock %}
 
 {% block breadcrumb_items %}
-<li><a href="/">Home</a></li>
+<li><a href="/">{{ t("Home") }}</a></li>
 <li class="breadcrumb-separator" aria-hidden="true">/</li>
-<li aria-current="page">Data Safety</li>
+<li aria-current="page">{{ t("Data Safety") }}</li>
 {% endblock %}
 
 {% block content %}
@@ -17,7 +17,7 @@
   <div class="safety-alert-banner state-banner-{{ tone }}" role="status" aria-live="polite">
     <div class="safety-alert-content">
       <div class="safety-alert-badge">{{ safety.status_badge }}</div>
-      <h2 class="safety-alert-title">{{ safety.protection_status }}</h2>
+      <h2 class="safety-alert-title">{{ t(safety.protection_status) }}</h2>
       <p class="safety-alert-description">
         {{ safety.protection_detail }}
       </p>
@@ -27,7 +27,7 @@
   <!-- Protection Summary Section -->
   <section class="panel-block safety-summary-section" aria-labelledby="safety-summary-heading">
     <div class="panel-header">
-      <h2 id="safety-summary-heading">Protection Summary</h2>
+      <h2 id="safety-summary-heading">{{ t("Protection Summary") }}</h2>
     </div>
     <div class="panel-body">
       <div class="safety-summary-grid">
@@ -54,7 +54,7 @@
   <!-- Night Tasks Activity Table -->
   <section class="panel-block night-tasks-section" aria-labelledby="night-tasks-heading">
     <div class="panel-header">
-      <h2 id="night-tasks-heading">Night Tasks Activity</h2>
+      <h2 id="night-tasks-heading">{{ t("Night Tasks Activity") }}</h2>
     </div>
     <div class="panel-body">
       <div class="table-responsive">
@@ -62,10 +62,10 @@
           <caption>Operational status of the monitored night tasks</caption>
           <thead>
             <tr>
-              <th scope="col">Task</th>
-              <th scope="col">Usually</th>
-              <th scope="col">Last night</th>
-              <th scope="col">Status</th>
+              <th scope="col">{{ t("Task") }}</th>
+              <th scope="col">{{ t("Usually") }}</th>
+              <th scope="col">{{ t("Last night") }}</th>
+              <th scope="col">{{ t("Status") }}</th>
             </tr>
           </thead>
           <tbody>
@@ -95,13 +95,13 @@
   <!-- For the IT person Entry Point -->
   <section class="panel-block it-person-section" aria-labelledby="it-person-heading">
     <div class="panel-header">
-      <h2 id="it-person-heading">For the IT person</h2>
+      <h2 id="it-person-heading">{{ t("For the IT person") }}</h2>
     </div>
     <div class="panel-body it-panel-body">
       <p class="it-panel-text">
         Technical diagnostics, baseline habit cards, and Vault snapshot manifests are available for authorized staff.
       </p>
-      <a href="{{ url_for('it_view') }}" class="btn btn-secondary btn-it-access">IT View</a>
+      <a href="{{ url_for('it_view') }}" class="btn btn-secondary btn-it-access">{{ t("IT View") }}</a>
     </div>
   </section>
 </div>

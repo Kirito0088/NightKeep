@@ -1,21 +1,21 @@
 {% extends "base.html" %}
 
-{% block title %}Ration Card Not Found{% endblock %}
-{% block page_heading %}Ration Card Not Found{% endblock %}
+{% block title %}{{ t("Ration Card Not Found") }}{% endblock %}
+{% block page_heading %}{{ t("Ration Card Not Found") }}{% endblock %}
 
 {% block breadcrumb_items %}
-<li><a href="/">Home</a></li>
+<li><a href="/">{{ t("Home") }}</a></li>
 <li class="breadcrumb-separator" aria-hidden="true">/</li>
-<li><a href="{{ url_for('search_cards') }}">Ration Card Search</a></li>
+<li><a href="{{ url_for('search_cards') }}">{{ t("Ration Card Search") }}</a></li>
 <li class="breadcrumb-separator" aria-hidden="true">/</li>
-<li aria-current="page">Not Found</li>
+<li aria-current="page">{{ t("Not Found") }}</li>
 {% endblock %}
 
 {% block content %}
 <div class="not-found-layout">
   <section class="panel-block not-found-panel" aria-labelledby="not-found-heading">
     <div class="panel-header">
-      <h2 id="not-found-heading">Record Not Found</h2>
+      <h2 id="not-found-heading">{{ t("Record Not Found") }}</h2>
     </div>
     <div class="panel-body not-found-body">
       <p class="not-found-message">
@@ -25,7 +25,7 @@
         Please check the 12-digit ration card number and try searching again.
       </p>
       <div class="not-found-actions">
-        <a href="{{ url_for('search_cards') }}" class="btn btn-primary">Return to Ration Card Search</a>
+        <a href="{{ url_for('search_cards') }}" class="btn btn-primary">{{ t("Return to Ration Card Search") }}</a>
       </div>
     </div>
   </section>

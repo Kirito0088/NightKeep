@@ -1,32 +1,38 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ lang }}" style="--text-scale: {{ text_scale }};">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}Ration Card Search{% endblock %} - District Supply Office, Thane</title>
+  <title>{% block title %}{{ t("Ration Card Search") }}{% endblock %} - District Supply Office, Thane</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 {% set page_scope = live_scope|default('day') %}
 <body{% if live is not none and live_poll|default(true) %} data-live-url="{{ url_for('live_status_json', scope=page_scope) }}" data-live-every="{{ live_refresh_ms }}" data-live-stamp="{{ live_stamp(page_scope) }}"{% endif %}>
   <!-- Accessibility Skip Link -->
-  <a href="#main-content" class="skip-link">Skip to main content</a>
+  <a href="#main-content" class="skip-link">{{ t("Skip to main content") }}</a>
 
   <!-- Chrome 1: Blue Utility Strip -->
   <aside class="utility-strip" aria-label="Accessibility and System Notice">
     <div class="utility-strip-left">
-      <a href="#main-content" class="screen-reader-link">Screen Reader Access</a>
-      <div class="text-resize-controls" aria-label="Text Size Controls">
-        <button type="button" aria-label="Decrease text size">A-</button>
-        <button type="button" aria-label="Normal text size">A</button>
-        <button type="button" aria-label="Increase text size">A+</button>
-      </div>
-      <span class="language-indicator">English / मराठी</span>
+      <a href="#main-content" class="screen-reader-link">{{ t("Screen Reader Access") }}</a>
+      <form method="post" action="{{ url_for('prefs_text_size') }}" class="text-resize-controls" aria-label="Text Size Controls">
+        <input type="hidden" name="next" value="{{ here }}">
+        <button type="submit" name="step" value="down" aria-label="Decrease text size" {% if text_step == 0 %}disabled{% endif %}>A-</button>
+        <button type="submit" name="step" value="reset" aria-label="Normal text size">A</button>
+        <button type="submit" name="step" value="up" aria-label="Increase text size" {% if text_step == text_steps - 1 %}disabled{% endif %}>A+</button>
+      </form>
+      <form method="post" action="{{ url_for('prefs_language') }}" class="language-toggle" aria-label="Language">
+        <input type="hidden" name="next" value="{{ here }}">
+        <button type="submit" name="lang" value="en" lang="en" aria-pressed="{{ 'true' if lang == 'en' else 'false' }}">English</button>
+        <span aria-hidden="true">/</span>
+        <button type="submit" name="lang" value="mr" lang="mr" aria-pressed="{{ 'true' if lang == 'mr' else 'false' }}">मराठी</button>
+      </form>
       {% if live is not none %}
       <form method="post" action="{{ url_for('live_harvest_surge') }}" class="surge-toggle">
         <input type="hidden" name="next" value="{{ here }}">
         <input type="hidden" name="on" value="{{ '0' if live.surge_requested else '1' }}">
         <button type="submit" aria-pressed="{{ 'true' if live.surge_requested else 'false' }}">
-          Harvest surge: <strong>{{ 'On' if live.surge_requested else 'Off' }}</strong>
+          {{ t("Harvest surge") }}: <strong>{{ t("On") if live.surge_requested else t("Off") }}</strong>
         </button>
       </form>
       {% endif %}
@@ -58,16 +64,16 @@
   <nav class="site-nav" aria-label="Primary Navigation">
     <ul class="nav-list">
       <li class="nav-item">
-        <a href="{{ url_for('search_cards') }}" class="nav-link {% if active_page == 'search' %}active{% endif %}" {% if active_page == 'search' %}aria-current="page"{% endif %}>Ration Card Search</a>
+        <a href="{{ url_for('search_cards') }}" class="nav-link {% if active_page == 'search' %}active{% endif %}" {% if active_page == 'search' %}aria-current="page"{% endif %}>{{ t("Ration Card Search") }}</a>
       </li>
       <li class="nav-item">
-        <a href="{{ url_for('nightkeep_home') }}" class="nav-link {% if active_page == 'safety' %}active{% endif %}" {% if active_page == 'safety' %}aria-current="page"{% endif %}>Data Safety</a>
+        <a href="{{ url_for('nightkeep_home') }}" class="nav-link {% if active_page == 'safety' %}active{% endif %}" {% if active_page == 'safety' %}aria-current="page"{% endif %}>{{ t("Data Safety") }}</a>
       </li>
       <li class="nav-item">
-        <a href="{{ url_for('night_jobs') }}" class="nav-link {% if active_page == 'night_jobs' %}active{% endif %}" {% if active_page == 'night_jobs' %}aria-current="page"{% endif %}>Night Jobs</a>
+        <a href="{{ url_for('night_jobs') }}" class="nav-link {% if active_page == 'night_jobs' %}active{% endif %}" {% if active_page == 'night_jobs' %}aria-current="page"{% endif %}>{{ t("Night Jobs") }}</a>
       </li>
       <li class="nav-item">
-        <a href="{{ url_for('showcase_page') }}" class="nav-link {% if active_page == 'showcase' %}active{% endif %}" {% if active_page == 'showcase' %}aria-current="page"{% endif %}>Full MVP Demo</a>
+        <a href="{{ url_for('showcase_page') }}" class="nav-link {% if active_page == 'showcase' %}active{% endif %}" {% if active_page == 'showcase' %}aria-current="page"{% endif %}>{{ t("Full MVP Demo") }}</a>
       </li>
     </ul>
   </nav>
@@ -76,9 +82,9 @@
   <nav aria-label="Breadcrumb" class="breadcrumb-container">
     <ol class="breadcrumb-list">
       {% block breadcrumb_items %}
-      <li><a href="/">Home</a></li>
+      <li><a href="/">{{ t("Home") }}</a></li>
       <li class="breadcrumb-separator" aria-hidden="true">/</li>
-      <li aria-current="page">Ration Card Search</li>
+      <li aria-current="page">{{ t("Ration Card Search") }}</li>
       {% endblock %}
     </ol>
   </nav>
@@ -86,7 +92,7 @@
   <!-- Chrome 6: White Page Heading Band -->
   <div class="page-heading-band">
     <div class="page-heading-inner">
-      <h1>{% block page_heading %}Ration Card Search{% endblock %}</h1>
+      <h1>{% block page_heading %}{{ t("Ration Card Search") }}{% endblock %}</h1>
       <div class="page-heading-actions">
         {% block page_heading_actions %}{% endblock %}
       </div>
@@ -102,24 +108,24 @@
   <!-- Demo controls: the judge's menu (MVP.md section 6), not part of Nightkeep -->
   <aside class="demo-dock" aria-label="Demo controls">
     <details class="demo-dock-details" open>
-    <summary class="demo-dock-title">Demo controls</summary>
+    <summary class="demo-dock-title">{{ t("Demo controls") }}</summary>
     <div class="demo-dock-body">
     <p class="demo-dock-line" data-dock="line" aria-live="polite">{{ live.line }}</p>
     <p class="demo-dock-line" data-dock="surge">{{ live.surge_line }}</p>
     <form method="post" action="{{ url_for('live_attack') }}" class="demo-dock-form">
       <input type="hidden" name="next" value="{{ here }}">
-      <label for="demo-variant" class="demo-dock-label">Simulated attack</label>
+      <label for="demo-variant" class="demo-dock-label">{{ t("Simulated attack") }}</label>
       <select id="demo-variant" name="variant" class="form-control demo-dock-select">
         {% for value, label in live.variants %}
         <option value="{{ value }}">{{ label }}</option>
         {% endfor %}
       </select>
-      <button type="submit" class="btn btn-primary demo-dock-attack" data-dock="attack" {% if not live.can_attack %}disabled{% endif %}>Run simulated attack</button>
+      <button type="submit" class="btn btn-primary demo-dock-attack" data-dock="attack" {% if not live.can_attack %}disabled{% endif %}>{{ t("Run simulated attack") }}</button>
     </form>
     <p class="demo-dock-hint" data-dock="reason">{{ live.attack_reason }}</p>
     <form method="post" action="{{ url_for('live_reset') }}" class="demo-dock-form" onsubmit="return confirm('Start a fresh run? The district is rebuilt and Nightkeep learns the night jobs again.');">
       <input type="hidden" name="next" value="{{ here }}">
-      <button type="submit" class="btn btn-secondary demo-dock-reset">Start a fresh run</button>
+      <button type="submit" class="btn btn-secondary demo-dock-reset">{{ t("Start a fresh run") }}</button>
     </form>
     </div>
     </details>
