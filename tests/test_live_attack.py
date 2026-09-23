@@ -548,3 +548,41 @@ def test_judge_exception_still_kills_simulator_and_undoes_lock(
     probe.unlink()
     assert judge._taken.descriptions == [], judge._taken.descriptions
     assert judge._taken.suspended == [], judge._taken.suspended
+
+
+def test_live_console_keeps_the_lock_until_the_restore(district):
+    """The live console holds the records read-only after containment, so
+    the office sees them locked until it restores from the Vault. The
+    simulator itself never survives the call."""
+    from nightkeep.judge._actions import is_read_only
+
+    judge = _make_judge(district)
+    try:
+        evidence = _judge_attack_live(
+            simulator_argv=_simulator_argv(district, "fast", "0.05"),
+            event_log=event_log_for(district),
+            judge=judge,
+            district_dir=district,
+            variant="fast",
+            day_no=4,
+            settle_seconds=2.0,
+            say=lambda message: None,
+            release_lock=False,
+        )
+        assert evidence["level"] == "INCIDENT", evidence
+        assert evidence["simulator_process_gone"] is True, evidence
+        assert evidence["cleanup_undo"] == [], evidence
+        assert evidence["share_writable_after_cleanup"] is None, evidence
+        locked = [
+            path for path in (district / "share").rglob("*")
+            if path.is_file() and is_read_only(path)
+        ]
+        assert locked, "the share should still be read-only"
+
+        judge.undo()
+        assert not any(
+            is_read_only(path)
+            for path in (district / "share").rglob("*") if path.is_file()
+        )
+    finally:
+        judge.undo()

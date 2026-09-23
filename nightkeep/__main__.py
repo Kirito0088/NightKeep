@@ -20,6 +20,7 @@ DEFAULT_CONFIG = Path(__file__).resolve().parent / "config.yaml"
 DEMO_DIR = Path(__file__).resolve().parent.parent / "demo"
 ERRATIC_DIR = DEMO_DIR / "erratic_week"
 DEMO_RUN_DIR = DEMO_DIR / "demo_run"
+LIVE_DIR = DEMO_DIR / "live"
 
 
 def main(arguments: list[str]) -> int:
@@ -45,8 +46,10 @@ def main(arguments: list[str]) -> int:
     )
     parser.add_argument("--seed", type=int, help="overrides the seed in config.yaml")
     parser.add_argument(
-        "--out-dir", type=Path, default=ERRATIC_DIR,
-        help="where --prove-erratic builds its district",
+        "--out-dir", type=Path, default=None,
+        help="where --prove-erratic builds its district (default "
+             "demo/erratic_week), or where the live session keeps its "
+             "district, Vault and state (default demo/live)",
     )
     parser.add_argument(
         "--day-seconds", type=int,
@@ -55,10 +58,17 @@ def main(arguments: list[str]) -> int:
     parser.add_argument(
         "--console", action="store_true",
         help=(
-            "run the Vault's console on 127.0.0.1:5000 with real runtime "
-            "state from --out-dir"
+            "run the Vault's console on 127.0.0.1:5000 with a live session: "
+            "the district's night jobs start at once, and the demo controls "
+            "switch the harvest surge and launch the safe simulator"
         ),
     )
+    # The live session's engine. The console starts it; nobody types this.
+    parser.add_argument("--live-engine", action="store_true",
+                        help=argparse.SUPPRESS)
+    parser.add_argument("--autopilot", action="store_true",
+                        help=argparse.SUPPRESS)
+    parser.add_argument("--parent-pid", type=int, help=argparse.SUPPRESS)
     args = parser.parse_args(arguments)
 
     try:
@@ -75,10 +85,19 @@ def main(arguments: list[str]) -> int:
         )
 
     if args.prove_erratic:
-        return _prove_erratic(config, args.out_dir)
+        return _prove_erratic(config, args.out_dir or ERRATIC_DIR)
+
+    if args.live_engine:
+        from nightkeep import live
+
+        return live.main(
+            config, args.out_dir or LIVE_DIR, autopilot=args.autopilot,
+            variant=args.variant if args.autopilot else None,
+            parent_pid=args.parent_pid,
+        )
 
     if args.console:
-        return _console(config, args.out_dir)
+        return _console(config, args, args.out_dir or ERRATIC_DIR)
 
     if args.demo_run:
         return _demo_run(config, DEMO_RUN_DIR, args.variant)
@@ -101,7 +120,7 @@ def main(arguments: list[str]) -> int:
     return 0
 
 
-def _console(config: Config, out_dir: Path) -> int:
+def _console(config: Config, args: argparse.Namespace, out_dir: Path) -> int:
     from nightkeep.console.__main__ import create_console_app
 
     app = create_console_app(

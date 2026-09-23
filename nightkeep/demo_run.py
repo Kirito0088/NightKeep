@@ -389,6 +389,7 @@ def _judge_attack_live(
     day_no: int,
     settle_seconds: float,
     say: Callable[[str], None],
+    release_lock: bool = True,
 ) -> dict:
     """Run the simulator live and judge cumulative windows until INCIDENT.
 
@@ -413,6 +414,11 @@ def _judge_attack_live(
 
     Returns behavioral evidence for the report: real PIDs, timestamps and
     counts, nothing inferred.
+
+    The simulator never survives this call. `release_lock` decides whether
+    the Judge's read-only lock does: the one-shot proof releases it here, and
+    the live console keeps it holding the records until the office has
+    restored from the Vault (nightkeep.live).
     """
     import psutil
 
@@ -595,7 +601,7 @@ def _judge_attack_live(
             proc.wait(timeout=5)
         except subprocess.TimeoutExpired:
             pass
-        undone = judge.undo()
+        undone = judge.undo() if release_lock else []
         say(f"cleanup: signaled pids {killed}; judge undo: {undone}")
         try:
             still_there = psutil.pid_exists(sim_pid)
@@ -605,17 +611,22 @@ def _judge_attack_live(
         evidence["cleanup_undo"] = undone
         evidence["simulator_process_gone"] = not still_there
         evidence["cleanup_at"] = _utcnow().isoformat()
-        # Writability is restored by judge.undo(); prove it on one file.
-        probe = district_dir / "share" / ".nightkeep-write-probe"
-        try:
-            probe.write_text("ok")
-            probe.unlink()
-            writable = True
-        except OSError:
-            writable = False
-        evidence["share_writable_after_cleanup"] = writable
-        say(f"cleanup: simulator gone: {not still_there}; "
-            f"share writable: {writable}")
+        if release_lock:
+            # Writability is restored by judge.undo(); prove it on one file.
+            probe = district_dir / "share" / ".nightkeep-write-probe"
+            try:
+                probe.write_text("ok")
+                probe.unlink()
+                writable = True
+            except OSError:
+                writable = False
+            evidence["share_writable_after_cleanup"] = writable
+            say(f"cleanup: simulator gone: {not still_there}; "
+                f"share writable: {writable}")
+        else:
+            evidence["share_writable_after_cleanup"] = None
+            say(f"cleanup: simulator gone: {not still_there}; "
+                "records stay read-only until the restore")
 
     return evidence
 

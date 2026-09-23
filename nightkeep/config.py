@@ -85,6 +85,17 @@ class _Reader:
             )
         return tuple(value)
 
+    def numbers(self, key: str) -> tuple[float, ...]:
+        value = self._take(key)
+        if not isinstance(value, list) or any(
+            isinstance(item, bool) or not isinstance(item, (int, float))
+            for item in value
+        ):
+            raise ConfigError(
+                f"config.yaml: {self._at(key)} must be a list of numbers"
+            )
+        return tuple(float(item) for item in value)
+
     def texts(self, key: str) -> tuple[str, ...]:
         value = self._take(key)
         if not isinstance(value, list) or any(
@@ -300,9 +311,22 @@ class Simulator:
 
 @dataclass(frozen=True)
 class Console:
-    """The Vault's own screen: what unlocks the PIN-gated actions."""
+    """The Vault's own screen: what unlocks the PIN-gated actions, and how
+    the live demo controls behave."""
 
     supervisor_pin: str
+    status_refresh_seconds: float
+    attack_variants: tuple[str, ...]
+    full_demo_variant: str
+    text_scale_steps: tuple[float, ...]
+
+
+@dataclass(frozen=True)
+class Live:
+    """The live session engine: the district PDS server under demo control."""
+
+    command_poll_seconds: float
+    recent_checks_kept: int
 
 
 @dataclass(frozen=True)
@@ -320,6 +344,7 @@ class Config:
     vault: Vault
     simulator: Simulator
     console: Console
+    live: Live
 
 
 def _read_span(reader: _Reader, key: str) -> Span:
@@ -522,9 +547,29 @@ def _read_simulator(reader: _Reader) -> Simulator:
 def _read_console(reader: _Reader) -> Console:
     console = Console(
         supervisor_pin=reader.text("supervisor_pin"),
+        status_refresh_seconds=reader.number("status_refresh_seconds"),
+        attack_variants=reader.texts("attack_variants"),
+        full_demo_variant=reader.text("full_demo_variant"),
+        text_scale_steps=reader.numbers("text_scale_steps"),
     )
     reader.done()
+    if not console.attack_variants:
+        raise ConfigError("config.yaml: console.attack_variants must not be empty")
+    if 1.0 not in console.text_scale_steps:
+        raise ConfigError(
+            "config.yaml: console.text_scale_steps must include 1.0, "
+            "the normal size the A button returns to"
+        )
     return console
+
+
+def _read_live(reader: _Reader) -> Live:
+    live = Live(
+        command_poll_seconds=reader.number("command_poll_seconds"),
+        recent_checks_kept=reader.integer("recent_checks_kept"),
+    )
+    reader.done()
+    return live
 
 
 def load_config(path: str | Path) -> Config:
@@ -557,6 +602,7 @@ def load_config(path: str | Path) -> Config:
         vault=_read_vault(top.block("vault")),
         simulator=_read_simulator(top.block("simulator")),
         console=_read_console(top.block("console")),
+        live=_read_live(top.block("live")),
     )
     top.done()
     return config
