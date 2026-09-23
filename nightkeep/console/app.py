@@ -813,6 +813,21 @@ def create_app(
             active_page="safety",
         )
 
+    @app.route("/night-jobs", methods=["GET"])
+    def night_jobs() -> str:
+        """What the night jobs are, what Nightkeep has learned about each,
+        and how every run since was judged. Read from the live session."""
+        from nightkeep.console.live_view import night_jobs as present
+        from nightkeep.console.providers import JOB_LABELS, _usually
+
+        return render_template(
+            "night_jobs.html",
+            jobs=present(live_status(), JOB_LABELS, _usually),
+            has_session=session is not None,
+            active_page="night_jobs",
+            live_scope="all",
+        )
+
     @app.route("/alert", methods=["GET"])
     def nightkeep_alert() -> str:
         return render_template(

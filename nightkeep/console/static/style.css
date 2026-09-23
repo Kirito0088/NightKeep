@@ -2013,3 +2013,35 @@ html, body {
 .surge-toggle button[aria-pressed="true"]:hover {
   background: #e8eef8;
 }
+
+/* One banner, three real states: safe (green), review (amber), incident (red). */
+.state-banner-review {
+  border-color: var(--color-review-amber);
+  background-color: #fff8eb;
+}
+
+.state-banner-review .safety-alert-badge {
+  background-color: var(--color-review-amber);
+}
+
+.state-banner-review .safety-alert-title {
+  color: var(--color-review-amber);
+}
+
+.state-banner-incident {
+  border-color: var(--color-incident-red);
+  background-color: #fdf2f2;
+}
+
+.state-banner-incident .safety-alert-badge {
+  background-color: var(--color-incident-red);
+}
+
+.state-banner-incident .safety-alert-title {
+  color: var(--color-incident-red);
+}
+
+.night-jobs-running {
+  margin-top: 12px;
+  font-weight: 600;
+}

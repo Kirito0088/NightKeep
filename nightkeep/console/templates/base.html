@@ -64,6 +64,9 @@
         <a href="{{ url_for('nightkeep_home') }}" class="nav-link {% if active_page == 'safety' %}active{% endif %}" {% if active_page == 'safety' %}aria-current="page"{% endif %}>Data Safety</a>
       </li>
       <li class="nav-item">
+        <a href="{{ url_for('night_jobs') }}" class="nav-link {% if active_page == 'night_jobs' %}active{% endif %}" {% if active_page == 'night_jobs' %}aria-current="page"{% endif %}>Night Jobs</a>
+      </li>
+      <li class="nav-item">
         <a href="{{ url_for('showcase_page') }}" class="nav-link {% if active_page == 'showcase' %}active{% endif %}" {% if active_page == 'showcase' %}aria-current="page"{% endif %}>Full MVP Demo</a>
       </li>
     </ul>

@@ -12,7 +12,9 @@
 {% block content %}
 <div class="safety-screen-layout">
   <!-- Calm Status Banner (Parity with Screen 3 incident banner) -->
-  <div class="safety-alert-banner" role="status" aria-live="polite">
+  {% set badge = safety.status_badge %}
+  {% if 'ATTACK' in badge %}{% set tone = 'incident' %}{% elif badge in ('STATUS: NORMAL', 'STATUS: RECOVERED') %}{% set tone = 'safe' %}{% else %}{% set tone = 'review' %}{% endif %}
+  <div class="safety-alert-banner state-banner-{{ tone }}" role="status" aria-live="polite">
     <div class="safety-alert-content">
       <div class="safety-alert-badge">{{ safety.status_badge }}</div>
       <h2 class="safety-alert-title">{{ safety.protection_status }}</h2>
