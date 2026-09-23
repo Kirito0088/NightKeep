@@ -18,7 +18,6 @@ it records that a file changed, how big it now is, and who was running. What
 is *inside* a file is judge's question, asked of the file on disk.
 """
 
-import os
 import threading
 import time
 from datetime import datetime, timezone
@@ -53,12 +52,14 @@ def event_log_for(root: Path) -> EventLog:
 # this a hard rail, and tests/test_rails.py holds it.
 _TRUTH_FOLDER = "_truth"
 
-# Reconciliation default: on Windows, ReadDirectoryChangesW drops file
-# events when a ransomware burst changes dozens of files faster than the
-# kernel buffer drains, so the deterministic enumeration backstop runs
-# every 0.2s. Elsewhere the native stream is reliable and the backstop
-# stays off unless explicitly requested.
-DEFAULT_RECONCILE_SECONDS = 0.2 if os.name == "nt" else 0.0
+# Reconciliation default: opt-in. Reconciliation is a backstop for native
+# file events dropped under burst load (on Windows, ReadDirectoryChangesW
+# can drop events when a ransomware burst changes dozens of files faster
+# than the kernel buffer drains), but it starts a background enumeration
+# thread, so callers that need it must ask for it explicitly. The
+# production watcher agent (nightkeep/watcher/__main__.py) enables it on
+# Windows via its own CLI default.
+DEFAULT_RECONCILE_SECONDS = 0.0
 
 # The native-recorded (kind, relative path) hint cache is only a dedupe
 # aid; bounding it keeps a long-lived watcher from growing it without
