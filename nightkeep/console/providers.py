@@ -53,6 +53,7 @@ from nightkeep.habit import Habit, open_habit
 from nightkeep.mock_pds import conventions as c
 from nightkeep.types import (
     CLEAN,
+    Check,
     INCIDENT,
     NORMAL,
     ODD,
@@ -196,9 +197,12 @@ def first_attention(
 
 def load_report(district_dir: Path) -> Mapping:
     """The orchestrator's report, or {} when there is none or it is broken."""
-    path = Path(district_dir) / "reports" / DEMO_REPORT_NAME
+    return _read_report(Path(district_dir) / "reports" / DEMO_REPORT_NAME)
+
+
+def _read_report(path: Path) -> Mapping:
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return json.loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return {}
 
@@ -563,6 +567,7 @@ def safety_home(
     vault: Vault,
     district_figures: dict[str, str],
     verdicts: tuple[VerdictRecord, ...] = (),
+    restore: Mapping | None = None,
 ) -> SafetyHomePresentation:
     """The Data Safety screen from the real habit cards and vault state.
 
@@ -578,7 +583,26 @@ def safety_home(
     protect_mode = bool(getattr(vault, "protect_mode", False))
     has_suspicious = any(record.level == SUSPICIOUS for record in verdicts)
 
-    if protect_mode:
+    incident = first_incident(verdicts)
+    restored = restore is not None and bool(restore.get("ok"))
+
+    if incident is not None and restored:
+        status_badge = "STATUS: RECOVERED"
+        protection_status = "Your records are back"
+        protection_detail = (
+            "Someone tried to lock your files. It was stopped, and every "
+            f"one of the {restore.get('records_verified', 0):,} ration cards "
+            "was restored from the clean copy and checked."
+        )
+    elif incident is not None:
+        status_badge = "STATUS: ATTACK STOPPED"
+        protection_status = "Someone tried to lock your files. It was stopped."
+        protection_detail = (
+            "The program was paused and the records are locked so nothing "
+            "else can change them. The clean copy on the Vault is ready: "
+            "open Restore to get the records back."
+        )
+    elif protect_mode:
         status_badge = "STATUS: PROTECTING"
         protection_status = (
             "Attention needed: Nightkeep is protecting your records"
@@ -754,6 +778,26 @@ def restore_result_wizard(
         steps=steps,
         checks=checks,
     )
+
+
+def restore_report_wizard(
+    restore: Mapping, pds: PdsProvider | None
+) -> RestoreWizardPresentation:
+    """The restore screen for a restore the report already records."""
+    checks = restore.get("checks") if isinstance(restore.get("checks"), list) else []
+    result = RestoreResult(
+        snapshot_id=str(restore.get("snapshot_id", "?")),
+        ok=bool(restore.get("ok")),
+        checks=tuple(
+            Check(statement=str(c.get("statement", "")),
+                  passed=bool(c.get("passed")))
+            for c in checks if isinstance(c, Mapping)
+        ),
+        records_verified=int(restore.get("records_verified") or 0),
+        records_expected=int(restore.get("records_expected") or 0),
+        restored_to=str(restore.get("restored_to", "")),
+    )
+    return restore_result_wizard(result, pds)
 
 
 def _loss_window(
@@ -1009,6 +1053,9 @@ class ConsoleRuntime:
     vault: Vault | None
     verdicts: tuple[VerdictRecord, ...]
     supervisor_pin: str
+    # The restore the report records, when one ran: the Full MVP Demo's own,
+    # or the supervisor's from this console.
+    restore_report: Mapping | None = None
 
     @property
     def incident(self) -> VerdictRecord | None:
@@ -1024,6 +1071,7 @@ def build_runtime(
     district_dir: Path,
     vault_dir: Path | None,
     config,
+    report_path: Path | None = None,
 ) -> ConsoleRuntime | None:
     """Read the real runtime state, or None when it is not there.
 
@@ -1062,7 +1110,12 @@ def build_runtime(
             restore_folder_name=config.vault.restore_folder_name,
         )
 
-    verdicts = verdicts_from_report(load_report(district_dir))
+    report = (
+        _read_report(Path(report_path)) if report_path is not None
+        else load_report(district_dir)
+    )
+    verdicts = verdicts_from_report(report)
+    restore = report.get("restore") if isinstance(report, Mapping) else None
 
     return ConsoleRuntime(
         district_dir=district_dir,
@@ -1071,6 +1124,7 @@ def build_runtime(
         vault=vault,
         verdicts=verdicts,
         supervisor_pin=config.console.supervisor_pin,
+        restore_report=restore if isinstance(restore, Mapping) else None,
     )
 
 
@@ -1106,7 +1160,8 @@ def presentation_for(runtime: ConsoleRuntime) -> dict:
 
     if runtime.habit is not None and runtime.vault is not None:
         kwargs["safety_home_data"] = safety_home(
-            runtime.habit, runtime.vault, district_figures, runtime.verdicts
+            runtime.habit, runtime.vault, district_figures, runtime.verdicts,
+            restore=runtime.restore_report,
         )
 
     incident = runtime.incident
@@ -1120,7 +1175,11 @@ def presentation_for(runtime: ConsoleRuntime) -> dict:
     else:
         kwargs["alert_data"] = calm_alert()
 
-    if runtime.vault is not None:
+    if runtime.restore_report is not None:
+        kwargs["restore_wizard_data"] = restore_report_wizard(
+            runtime.restore_report, runtime.pds
+        )
+    elif runtime.vault is not None:
         kwargs["restore_wizard_data"] = restore_wizard(
             runtime.vault, incident, runtime.pds
         )

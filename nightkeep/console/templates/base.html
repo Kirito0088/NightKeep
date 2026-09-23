@@ -6,7 +6,8 @@
   <title>{% block title %}Ration Card Search{% endblock %} - District Supply Office, Thane</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
+{% set page_scope = live_scope|default('day') %}
+<body{% if live is not none and live_poll|default(true) %} data-live-url="{{ url_for('live_status_json', scope=page_scope) }}" data-live-every="{{ live_refresh_ms }}" data-live-stamp="{{ live_stamp(page_scope) }}"{% endif %}>
   <!-- Accessibility Skip Link -->
   <a href="#main-content" class="skip-link">Skip to main content</a>
 
@@ -20,6 +21,15 @@
         <button type="button" aria-label="Increase text size">A+</button>
       </div>
       <span class="language-indicator">English / मराठी</span>
+      {% if live is not none %}
+      <form method="post" action="{{ url_for('live_harvest_surge') }}" class="surge-toggle">
+        <input type="hidden" name="next" value="{{ here }}">
+        <input type="hidden" name="on" value="{{ '0' if live.surge_requested else '1' }}">
+        <button type="submit" aria-pressed="{{ 'true' if live.surge_requested else 'false' }}">
+          Harvest surge: <strong>{{ 'On' if live.surge_requested else 'Off' }}</strong>
+        </button>
+      </form>
+      {% endif %}
     </div>
     <div class="utility-strip-right">
       <span class="utility-disclaimer">Prototype on invented data. Not a live government system.</span>
@@ -81,8 +91,37 @@
   </div>
 
   <!-- Main Semantic Content -->
-  <main id="main-content" class="main-content">
+  <main id="main-content" class="main-content{% if live is not none %} has-demo-dock{% endif %}">
     {% block content %}{% endblock %}
   </main>
+
+  {% if live is not none %}
+  <!-- Demo controls: the judge's menu (MVP.md section 6), not part of Nightkeep -->
+  <aside class="demo-dock" aria-label="Demo controls">
+    <details class="demo-dock-details" open>
+    <summary class="demo-dock-title">Demo controls</summary>
+    <div class="demo-dock-body">
+    <p class="demo-dock-line" data-dock="line" aria-live="polite">{{ live.line }}</p>
+    <p class="demo-dock-line" data-dock="surge">{{ live.surge_line }}</p>
+    <form method="post" action="{{ url_for('live_attack') }}" class="demo-dock-form">
+      <input type="hidden" name="next" value="{{ here }}">
+      <label for="demo-variant" class="demo-dock-label">Simulated attack</label>
+      <select id="demo-variant" name="variant" class="form-control demo-dock-select">
+        {% for value, label in live.variants %}
+        <option value="{{ value }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-primary demo-dock-attack" data-dock="attack" {% if not live.can_attack %}disabled{% endif %}>Run simulated attack</button>
+    </form>
+    <p class="demo-dock-hint" data-dock="reason">{{ live.attack_reason }}</p>
+    <form method="post" action="{{ url_for('live_reset') }}" class="demo-dock-form" onsubmit="return confirm('Start a fresh run? The district is rebuilt and Nightkeep learns the night jobs again.');">
+      <input type="hidden" name="next" value="{{ here }}">
+      <button type="submit" class="btn btn-secondary demo-dock-reset">Start a fresh run</button>
+    </form>
+    </div>
+    </details>
+  </aside>
+  <script src="{{ url_for('static', filename='live.js') }}"></script>
+  {% endif %}
 </body>
 </html>

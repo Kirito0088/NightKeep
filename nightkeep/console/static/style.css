@@ -1911,3 +1911,105 @@ html, body {
   color: var(--color-body-text);
   margin: 0;
 }
+
+/* Demo controls: the judge's menu, fixed bottom left on every page.
+   Square, navy, bordered. Not part of Nightkeep itself, so it says so. */
+.demo-dock {
+  position: fixed;
+  left: 12px;
+  bottom: 12px;
+  width: 260px;
+  z-index: 50;
+  background-color: #ffffff;
+  border: 2px solid var(--color-primary-navy);
+  border-radius: 0;
+  padding: 8px 10px;
+}
+
+.demo-dock-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.demo-dock-details summary {
+  cursor: pointer;
+}
+
+.demo-dock-title {
+  font-size: var(--font-size-caption);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--color-primary-navy);
+}
+
+.demo-dock-line,
+.demo-dock-hint {
+  font-size: var(--font-size-caption);
+  color: var(--color-secondary-text);
+  line-height: 1.35;
+}
+
+.demo-dock-line[data-dock="line"] {
+  color: var(--color-body-text);
+  font-weight: 600;
+}
+
+.demo-dock-form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.demo-dock-label {
+  font-size: var(--font-size-caption);
+  font-weight: 600;
+}
+
+.demo-dock-select {
+  height: 32px;
+}
+
+.demo-dock .btn {
+  width: 100%;
+}
+
+.demo-dock .btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Keeps page content clear of the fixed demo controls. */
+.main-content.has-demo-dock {
+  padding-bottom: 260px;
+}
+
+/* Harvest surge switch, beside the language control in the utility strip. */
+.surge-toggle {
+  display: inline-flex;
+}
+
+.surge-toggle button {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  color: #ffffff;
+  font-size: var(--font-size-utility);
+  padding: 1px 8px;
+  cursor: pointer;
+  border-radius: 0;
+}
+
+.surge-toggle button[aria-pressed="true"] {
+  background: #ffffff;
+  color: var(--color-primary-navy);
+}
+
+.surge-toggle button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.surge-toggle button[aria-pressed="true"]:hover {
+  background: #e8eef8;
+}

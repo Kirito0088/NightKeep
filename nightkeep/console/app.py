@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from flask import Flask, redirect, render_template, request, url_for
+from flask import Flask, g, jsonify, redirect, render_template, request, url_for
 
 from nightkeep.mock_pds import conventions as c
 
@@ -554,6 +554,8 @@ def create_app(
     locked_data: LockedScreenPresentation | None = None,
     runtime_factory=None,
     showcase_controller: ShowcaseController | None = None,
+    session=None,
+    console_settings=None,
 ) -> Flask:
     """Create and configure the Nightkeep console Flask application.
 
@@ -573,6 +575,11 @@ def create_app(
     started is visible on those screens. Without it every route behaves
     exactly as before. `showcase_controller` owns the one-click demo;
     a default one is created when none is given.
+
+    `session` is the live session (console/session.py): when present, every
+    page carries the demo controls, search shows the lock screen while an
+    incident holds the records, and a supervisor restore is reported back
+    to the session. `console_settings` is config.console.
     """
     app = Flask(__name__)
     records_pool = sample_records if sample_records is not None else DEFAULT_SAMPLE_RECORDS
@@ -602,15 +609,90 @@ def create_app(
         """
         if runtime_factory is None:
             return default
-        try:
-            runtime = runtime_factory()
-        except Exception:
-            return default
-        if runtime is None:
-            return default
-        from nightkeep.console.providers import presentation_for
+        # One rebuild per request, however many pools a route asks for.
+        if "presentation" not in g:
+            g.presentation = None
+            try:
+                runtime = runtime_factory()
+                if runtime is not None:
+                    from nightkeep.console.providers import presentation_for
 
-        return presentation_for(runtime).get(name, default)
+                    g.presentation = presentation_for(runtime)
+            except Exception:
+                g.presentation = None
+        if g.presentation is None:
+            return default
+        return g.presentation.get(name, default)
+
+    variants = (
+        tuple(console_settings.attack_variants)
+        if console_settings is not None else ("fast",)
+    )
+    refresh_seconds = (
+        console_settings.status_refresh_seconds
+        if console_settings is not None else 2.0
+    )
+
+    def live_status() -> dict:
+        if session is None:
+            return {}
+        if "live_status" not in g:
+            g.live_status = session.status()
+        return g.live_status
+
+    def local_next(default: str = "/") -> str:
+        """Where a demo control returns to: a path on this console only."""
+        target = request.form.get("next", "") or request.args.get("next", "")
+        if target.startswith("/") and not target.startswith("//"):
+            return target
+        return default
+
+    @app.context_processor
+    def chrome_context() -> dict:
+        from nightkeep.console.live_view import live_controls, stamp
+
+        return {
+            "live_stamp": lambda scope: stamp(live_status(), scope),
+            "live": (
+                live_controls(live_status(), variants)
+                if session is not None else None
+            ),
+            "live_refresh_ms": int(refresh_seconds * 1000),
+            "here": request.full_path.rstrip("?"),
+        }
+
+    @app.route("/live/status.json", methods=["GET"])
+    def live_status_json():
+        from nightkeep.console.live_view import live_controls, stamp
+
+        status = live_status()
+        controls = live_controls(status, variants)
+        return jsonify({
+            "stamp": stamp(status, request.args.get("scope", "day")),
+            "line": controls.line,
+            "can_attack": controls.can_attack,
+            "attack_reason": controls.attack_reason,
+            "surge_line": controls.surge_line,
+        })
+
+    @app.route("/live/attack", methods=["POST"])
+    def live_attack():
+        variant = request.form.get("variant", variants[0])
+        if session is not None and variant in variants:
+            session.request_attack(variant)
+        return redirect(local_next())
+
+    @app.route("/live/harvest-surge", methods=["POST"])
+    def live_harvest_surge():
+        if session is not None:
+            session.set_harvest_surge(request.form.get("on") == "1")
+        return redirect(local_next())
+
+    @app.route("/live/reset", methods=["POST"])
+    def live_reset():
+        if session is not None:
+            session.start()
+        return redirect(local_next())
 
     @app.route("/", methods=["GET"])
     @app.route("/search", methods=["GET"])
@@ -651,8 +733,23 @@ def create_app(
             "status": status,
         }
 
-        if pds is not None:
-            records = pds.search(
+        from nightkeep.console.live_view import is_locked
+
+        if session is not None and is_locked(live_status()):
+            return render_template(
+                "locked.html",
+                locked=REAL_LOCKED_DATA,
+                district_figures=refreshed_pool("district_figures", figures),
+                talukas=c.TALUKAS,
+                schemes=c.SCHEMES,
+                statuses=c.CARD_STATUSES,
+                active_page="search",
+                live_scope="calm",
+            )
+
+        current_pds = refreshed_pool("pds", pds)
+        if current_pds is not None:
+            records = current_pds.search(
                 card_no=card_no,
                 head_of_family=head_of_family,
                 taluka=taluka,
@@ -660,7 +757,7 @@ def create_app(
                 scheme=scheme,
                 status=status,
             )
-            page_figures = pds.district_figures()
+            page_figures = current_pds.district_figures()
         else:
             records = filtered
             page_figures = figures
@@ -674,13 +771,15 @@ def create_app(
             schemes=c.SCHEMES,
             statuses=c.CARD_STATUSES,
             active_page="search",
+            live_scope="calm",
         )
 
     @app.route("/card/<card_no>", methods=["GET"])
     def card_detail(card_no: str) -> tuple[str, int] | str:
         detail = card_details_pool.get(card_no)
-        if detail is None and pds is not None:
-            detail = pds.card_detail(card_no)
+        current_pds = refreshed_pool("pds", pds)
+        if detail is None and current_pds is not None:
+            detail = current_pds.card_detail(card_no)
         if detail is None:
             return render_template("card_not_found.html", card_no=card_no), 404
         total_entitlement_kg = round(
@@ -691,6 +790,7 @@ def create_app(
             card=detail,
             total_entitlement_kg=total_entitlement_kg,
             active_page="search",
+            live_scope="calm",
         )
 
     @app.route("/locked", methods=["GET"])
@@ -775,11 +875,16 @@ def create_app(
                 restore_error=f"The restore could not finish: {exc}",
                 active_page="safety",
             )
+        if session is not None:
+            session.record_restore(result)
         return render_template(
             "restore.html",
-            restore=restore_result_wizard(result, pds),
+            restore=restore_result_wizard(result, refreshed_pool("pds", pds)),
             restore_success=True,
             active_page="safety",
+            # A POST result page must never reload itself: the browser
+            # would offer to send the restore again.
+            live_poll=False,
         )
 
     @app.route("/server-alert", methods=["GET"])

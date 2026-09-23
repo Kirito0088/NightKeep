@@ -97,7 +97,7 @@ def main(arguments: list[str]) -> int:
         )
 
     if args.console:
-        return _console(config, args, args.out_dir or ERRATIC_DIR)
+        return _console(config, args, args.out_dir or LIVE_DIR)
 
     if args.demo_run:
         return _demo_run(config, DEMO_RUN_DIR, args.variant)
@@ -121,15 +121,31 @@ def main(arguments: list[str]) -> int:
 
 
 def _console(config: Config, args: argparse.Namespace, out_dir: Path) -> int:
-    from nightkeep.console.__main__ import create_console_app
+    """The Vault's console, with a live session running beside it.
 
-    app = create_console_app(
-        config,
-        district_dir=out_dir / "district",
-        vault_dir=out_dir / "vault",
-    )
+    The engine is this same entrypoint run again with --live-engine, so it
+    reads the same config file with the same overrides, and it is still
+    this file alone that loads the config.
+    """
+    from nightkeep.console.__main__ import create_console_app
+    from nightkeep.console.session import LiveSession
+    from nightkeep.live_protocol import SessionPaths
+
+    engine_cmd = [sys.executable, "-m", "nightkeep", str(args.config),
+                  "--live-engine", "--out-dir", str(out_dir.resolve())]
+    if args.seed is not None:
+        engine_cmd += ["--seed", str(args.seed)]
+    if args.day_seconds is not None:
+        engine_cmd += ["--day-seconds", str(args.day_seconds)]
+    session = LiveSession(SessionPaths(out_dir.resolve()), engine_cmd)
+    app = create_console_app(config, session=session)
+    session.start()
     print("Nightkeep console on http://127.0.0.1:5000 (loopback only)")
-    app.run(host="127.0.0.1", port=5000, debug=False)
+    print(f"Live session: the district's night jobs are running in {out_dir}")
+    try:
+        app.run(host="127.0.0.1", port=5000, debug=False)
+    finally:
+        session.stop()
     return 0
 
 

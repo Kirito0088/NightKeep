@@ -29,8 +29,14 @@ def create_console_app(
     config: Config | None = None,
     district_dir: Path | None = None,
     vault_dir: Path | None = None,
+    session=None,
 ):
     """The console app: real runtime state when given a config, else demo.
+
+    With a live session (console/session.py), the district, Vault and
+    report all come from the session's folder, every page carries the demo
+    controls, and nothing is bound at startup: the session wipes and
+    rebuilds its folder, so every request reads it fresh.
 
     The showcase controller is always attached: the one-click demo does
     not need a wired console to run. The runtime factory lets the
@@ -42,7 +48,18 @@ def create_console_app(
     the routes keep their calm, honest defaults until the demo creates
     the runtime.
     """
+    report_path = None
+    if session is not None:
+        # The live session owns where the district, the Vault and the
+        # report live; every screen reads that one run.
+        district_dir = session.paths.district
+        vault_dir = session.paths.vault
+        report_path = session.paths.report
     controller = ShowcaseController()
+    live_kwargs = {
+        "session": session,
+        "console_settings": config.console if config is not None else None,
+    }
 
     runtime_factory = None
     if config is not None and district_dir is not None:
@@ -54,26 +71,29 @@ def create_console_app(
                 district_dir=district_path,
                 vault_dir=vault_path,
                 config=config,
+                report_path=report_path,
             )
 
     if runtime_factory is None:
-        return create_app(showcase_controller=controller)
+        return create_app(showcase_controller=controller, **live_kwargs)
 
     # Install the factory even when the runtime is not there yet. Each
     # request rebuilds from disk, so a demo launched from /showcase shows
     # up on every screen without restarting the console. Before the demo
     # exists, build_runtime returns None and refreshed_pool falls back
     # to the bound calm defaults.
-    runtime = runtime_factory()
+    runtime = None if session is not None else runtime_factory()
     if runtime is not None:
         return create_app(
             showcase_controller=controller,
             runtime_factory=runtime_factory,
+            **live_kwargs,
             **presentation_for(runtime),
         )
     return create_app(
         showcase_controller=controller,
         runtime_factory=runtime_factory,
+        **live_kwargs,
     )
 
 
