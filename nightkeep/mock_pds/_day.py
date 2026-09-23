@@ -99,16 +99,23 @@ def _bat_command(path: Path, arguments: list) -> str:
     # (its "old behavior" rule), leaving the individually quoted pieces
     # from list2cmdline intact so spaced script/district paths survive.
     inner = subprocess.list2cmdline([str(path), *map(str, arguments)])
-    return f'cmd.exe /c "{inner}"'
+    return f'{_EXECUTABLES[".bat"]} /c "{inner}"'
 
 
 # Job identity is executable + script path + hash (SOLUTION_DESIGN.md), so
 # the two script-language jobs run through their real interpreters rather
-# than being reduced to Python for convenience.
+# than being reduced to Python for convenience. The identity reads the
+# executable from this table too, so it can never drift from what ran.
+_EXECUTABLES = {
+    ".py": sys.executable,
+    ".bat": "cmd.exe",
+    ".vbs": "cscript.exe",
+}
+
 _INTERPRETERS = {
-    ".py": lambda path, arguments: [sys.executable, "-I", str(path), *arguments],
+    ".py": lambda path, arguments: [_EXECUTABLES[".py"], "-I", str(path), *arguments],
     ".bat": lambda path, arguments: _bat_command(path, arguments),
-    ".vbs": lambda path, arguments: ["cscript.exe", "//nologo", str(path), *arguments],
+    ".vbs": lambda path, arguments: [_EXECUTABLES[".vbs"], "//nologo", str(path), *arguments],
 }
 
 

@@ -659,7 +659,7 @@ def _job_identity(job: str) -> str:
     never drift from what actually ran.
     """
     path = _day._job_path(job)
-    exe = Path(_day._INTERPRETERS[path.suffix](path)[0]).name
+    exe = Path(_day._EXECUTABLES[path.suffix]).name
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
     return f"{exe}|jobs/{path.name}|{digest}"
 
