@@ -124,21 +124,24 @@ def _utcnow() -> str:
 def _pid_alive(pid: int) -> bool:
     """True if a process with this PID exists (no signal is sent).
 
-    A zombie child still answers os.kill, so our own children are
-    reaped with waitpid(WNOHANG) first; anything reaped was dead.
+    Asked of psutil, never os.kill(pid, 0): on Windows os.kill calls
+    TerminateProcess for any signal but the two console ones, so that
+    "probe" would end whatever process now holds a stale PID.
+
+    A zombie child still exists as far as the OS is concerned, so our own
+    children are reaped with waitpid(WNOHANG) first; anything reaped was
+    dead.
     """
+    import psutil
 
     def alive() -> bool:
         try:
-            os.kill(pid, 0)
-        except ProcessLookupError:
+            return psutil.Process(pid).status() != psutil.STATUS_ZOMBIE
+        except psutil.NoSuchProcess:
             return False
-        except PermissionError:
+        except psutil.AccessDenied:
             # The process exists but belongs to another user.
             return True
-        except OSError:
-            return False
-        return True
 
     wnohang = getattr(os, "WNOHANG", None)
     if wnohang is None:

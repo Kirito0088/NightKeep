@@ -374,3 +374,24 @@ def test_dead_it_buttons_are_real_links(showcase_dirs):
         assert "IT View unavailable" not in html
         assert 'href="/it-view"' in html
         assert '<a href="#"' not in html
+
+
+def test_checking_a_stale_pid_never_ends_the_process_holding_it():
+    """A fresh controller checks the PID from its status file. On Windows,
+    os.kill(pid, 0) is TerminateProcess, so a probe built on it would end
+    whatever process now holds that PID. The check must only look."""
+    import subprocess
+
+    from nightkeep.console.showcase import _pid_alive
+
+    bystander = subprocess.Popen(
+        [sys.executable, "-c", "import time; time.sleep(60)"])
+    try:
+        assert _pid_alive(bystander.pid) is True
+        time.sleep(0.2)
+        assert bystander.poll() is None, "the liveness check ended the process"
+        assert _pid_alive(bystander.pid) is True
+    finally:
+        bystander.kill()
+        bystander.wait(timeout=10)
+    assert _pid_alive(bystander.pid) is False
