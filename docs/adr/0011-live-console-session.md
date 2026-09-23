@@ -71,8 +71,8 @@ one by one during learning.
 
 ## Consequences
 
-- A fresh session learns for about 3.5 minutes at 30 s a day before the
-  guard days start. `--day-seconds` shortens it for rehearsals.
+- A fresh session learns for about 70 s at 10 s a day (ADR-0012) before
+  the guard days start. `--day-seconds` changes the pace.
 - After an attack the night jobs stay stopped; "Start a fresh run" rebuilds
   the district and learns again.
 - The restore lands in the Vault's restore folder (F8), not over the damaged

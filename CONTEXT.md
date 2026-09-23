@@ -48,7 +48,7 @@ A third register, **counter-clerk language**, is what appears on the main path o
 | **Erratic** | Timing and volume that change from day to day and are still legitimate. The thing Nightkeep must learn to ignore. Not a synonym for "suspicious". |
 | **Undocumented script** | `fix_dat.vbs`. Nobody remembers what it does. It renames `.tmp` to `.dat` and rewrites allocation files in place, some nights only. It is the hardest legitimate job to tell from a file-locking threat, which is why it exists. |
 | **Harvest surge** | A switch that doubles volumes on chosen days. Peak season. Legitimate, and must not alarm. |
-| **Simulated clock** | One simulated day takes about 30 s of real time. Seeded, so a judge can pick a seed and the run replays exactly. |
+| **Simulated clock** | One simulated day takes 10 s of real time (ADR-0012). Seeded, so a judge can pick a seed and the run replays exactly. |
 | **Learning days** | The first 7 simulated days. `habit` builds one habit card per job. Canary signals are already live. |
 | **Guard days** | The 3 simulated days after learning. Proves Nightkeep stays quiet on erratic-but-normal behaviour. Zero INCIDENT verdicts is the pass condition. |
 | **Ground truth** | What a job really did, written by the job itself to `logs/_truth/<job>.jsonl`. **Nothing under `watcher/`, `habit/`, `judge/` or `vault/` may read it.** It exists to prove, after the fact, that learning was correct. |

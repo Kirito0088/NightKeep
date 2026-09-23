@@ -81,9 +81,9 @@ def test_unreadable_or_malformed_yaml_fails_at_startup(tmp_path):
 def test_repo_config_gives_the_clock_and_seed_f2_needs():
     config = load_config(REPO_CONFIG)
 
-    # CONTEXT.md: one simulated day is about 30 s, 7 learning days then 3 guard
-    # days. The seed is what lets a judge replay a run exactly.
-    assert config.clock.simulated_day_seconds == 30
+    # CONTEXT.md and ADR-0012: one simulated day is 10 s, 7 learning days
+    # then 3 guard days. The seed is what lets a judge replay a run exactly.
+    assert config.clock.simulated_day_seconds == 10
     assert config.clock.learning_days == 7
     assert config.clock.guard_days == 3
     assert isinstance(config.seed, int)

@@ -78,10 +78,10 @@ python -m nightkeep --console
 
 Then visit <http://127.0.0.1:5000>. This starts a **live session**: the Thane
 district is built fresh in `demo/live/`, its six night jobs start running on
-the simulated clock, and Nightkeep learns them for 7 days (about 3.5 minutes at
-30 s a day) and then checks every run. Every screen reads that one run and
-refreshes itself when what it shows changes. For a quicker rehearsal, shorten
-the day: `python -m nightkeep --console --day-seconds 10`.
+the simulated clock, and Nightkeep learns them for 7 days (about 70 seconds at
+10 s a day) and then checks every run. Every screen reads that one run and
+refreshes itself when what it shows changes. For a slower walkthrough,
+lengthen the day: `python -m nightkeep --console --day-seconds 30`.
 
 What you can click, on every page:
 

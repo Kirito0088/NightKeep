@@ -78,8 +78,8 @@ What the runner does, in order (`nightkeep/demo_run.py`):
 6. The report lands at `demo/demo_run/reports/demo_run.json`, and the
    console's verdicts are read from it.
 
-One simulated day takes `clock.simulated_day_seconds` (30 s in
-`nightkeep/config.yaml`); `--day-seconds` overrides it.
+One simulated day takes `clock.simulated_day_seconds` (10 s in
+`nightkeep/config.yaml`, ADR-0012); `--day-seconds` overrides it.
 
 ### Step 2 — the pop-up
 
