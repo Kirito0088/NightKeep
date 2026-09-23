@@ -177,7 +177,11 @@ def run_demo(
         guard_days=config.clock.guard_days,
     )
 
-    with Watcher(pds, config.watcher.poll_seconds, config.watcher.settle_seconds) as watcher:
+    with Watcher(
+        pds,
+        config.watcher.poll_seconds,
+        config.watcher.settle_seconds,
+    ) as watcher:
         last_runs = _learn_and_guard(
             watcher, habit, judge, vault, config, pds, result, say
         )

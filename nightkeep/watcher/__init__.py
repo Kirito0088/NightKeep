@@ -1,7 +1,7 @@
 """Notices file changes on the PDS server and which process caused them.
 
 Public interface:
-    Watcher(root, poll_seconds, settle_seconds)
+    Watcher(root, poll_seconds, settle_seconds, reconcile_seconds=None)
     events_since(t) -> [Event]
     is_alive()
 
@@ -36,6 +36,7 @@ from nightkeep.types import (
 )
 from nightkeep.watcher._log import LOG_NAME, EventLog
 from nightkeep.watcher._processes import ProcessPoll
+from nightkeep.watcher._reconcile import OFF_LIMITS_TOP_LEVELS, TreeReconciler
 
 
 def event_log_for(root: Path) -> EventLog:
@@ -50,6 +51,20 @@ def event_log_for(root: Path) -> EventLog:
 # must never be able to see them, not even as a filename. CLAUDE.md makes
 # this a hard rail, and tests/test_rails.py holds it.
 _TRUTH_FOLDER = "_truth"
+
+# Reconciliation default: opt-in. Reconciliation is a backstop for native
+# file events dropped under burst load (on Windows, ReadDirectoryChangesW
+# can drop events when a ransomware burst changes dozens of files faster
+# than the kernel buffer drains), but it starts a background enumeration
+# thread, so callers that need it must ask for it explicitly. The
+# production watcher agent (nightkeep/watcher/__main__.py) enables it on
+# Windows via its own CLI default.
+DEFAULT_RECONCILE_SECONDS = 0.0
+
+# The native-recorded (kind, relative path) hint cache is only a dedupe
+# aid; bounding it keeps a long-lived watcher from growing it without
+# limit when reconciliation is off.
+_SEEN_HINT_CAP = 50000
 
 _WATCHDOG_KINDS = {
     "created": CREATED,
@@ -93,9 +108,13 @@ class Watcher:
         root: Path,
         poll_seconds: float = 2.0,
         settle_seconds: float = 1.0,
+        reconcile_seconds: float | None = None,
     ) -> None:
         self.root = Path(root).resolve()
         self.settle_seconds = settle_seconds
+        if reconcile_seconds is None:
+            reconcile_seconds = DEFAULT_RECONCILE_SECONDS
+        self.reconcile_seconds = reconcile_seconds
         self._events: list[Event] = []
         self._lock = threading.Lock()
         self._log = event_log_for(self.root)
@@ -104,6 +123,12 @@ class Watcher:
         self._observer.schedule(_Handler(self), str(self.root), recursive=True)
         self._started = False
         self._last_fallback_poll = 0.0
+        self._reconciler: TreeReconciler | None = None
+        self._reconcile_thread: threading.Thread | None = None
+        self._reconcile_stop = threading.Event()
+        # Native (kind, relative path) pairs recorded since the last
+        # reconciliation sweep: the dedupe hint for synthesized events.
+        self._seen_since_sweep: set[tuple[str, str]] = set()
 
     # --- lifecycle --------------------------------------------------------
 
@@ -113,12 +138,28 @@ class Watcher:
         # somebody to attribute it to.
         self._poll.poll_once()
         self._observer.start()
+        if self.reconcile_seconds > 0:
+            # The reconciliation baseline: everything already on disk is "seen",
+            # so the first sweep only reports what changes from here on.
+            self._reconciler = TreeReconciler(self.root, self._reconcile_ignored)
+            self._reconcile_stop.clear()
+            self._reconcile_thread = threading.Thread(
+                target=self._reconcile_loop,
+                name="watcher-reconcile",
+                daemon=True,
+            )
+            self._reconcile_thread.start()
         self._started = True
         return self
 
     def stop(self) -> None:
         if not self._started:
             return
+        self._reconcile_stop.set()
+        if self._reconcile_thread is not None:
+            self._reconcile_thread.join(timeout=5)
+            self._reconcile_thread = None
+        self._reconciler = None
         self._observer.stop()
         self._observer.join(timeout=5)
         self._poll.stop()
@@ -162,6 +203,56 @@ class Watcher:
         """
         return self._started and self._observer.is_alive() and self._poll.is_alive()
 
+    # --- reconciliation ---------------------------------------------------
+
+    def _reconcile_ignored(self, path: Path) -> bool:
+        """What the enumeration backstop must never report.
+
+        Everything the native handler ignores, plus the top-level folders
+        the simulator can never enter (logs, data, .nightkeep-sim): the
+        reconciler only fills gaps in attack evidence, so bookkeeping
+        trees it cannot see an attack in are pruned, not walked.
+        """
+        if self._ignored(path):
+            return True
+        try:
+            relative = path.relative_to(self.root)
+        except ValueError:
+            return True
+        return bool(relative.parts) and relative.parts[0] in OFF_LIMITS_TOP_LEVELS
+
+    def _reconcile_loop(self) -> None:
+        while not self._reconcile_stop.wait(self.reconcile_seconds):
+            try:
+                self._reconcile_once()
+            except Exception:
+                # The reconciler is a backstop: a failed sweep must never
+                # take the watcher down with it. The next sweep retries.
+                continue
+
+    def _reconcile_once(self) -> list[Event]:
+        """One enumeration sweep: synthesize what native events missed.
+
+        Diffs the tree against the previous sweep and records each change
+        the native handler has not already reported since that sweep, so a
+        change is never recorded twice for the same window. Returns the
+        synthesized events.
+        """
+        if self._reconciler is None:
+            return []
+        changes = self._reconciler.sweep()
+        with self._lock:
+            seen = self._seen_since_sweep
+            self._seen_since_sweep = set()
+        synthesized: list[Event] = []
+        for change in changes:
+            if (change.kind, self._relative(change.path)) in seen:
+                continue
+            event = self._record(change.kind, change.path, change.old_path)
+            if event is not None:
+                synthesized.append(event)
+        return synthesized
+
     # --- internals --------------------------------------------------------
 
     def _ignored(self, path: Path) -> bool:
@@ -178,9 +269,9 @@ class Watcher:
             return True
         return _TRUTH_FOLDER in path.parts
 
-    def _record(self, kind: str, path: Path, old: Path | None) -> None:
+    def _record(self, kind: str, path: Path, old: Path | None) -> Event | None:
         if self._ignored(path):
-            return
+            return None
         at = datetime.now(timezone.utc)
         writer = self._poll.writer_at(at)
         if writer is None:
@@ -202,8 +293,9 @@ class Watcher:
             size = path.stat().st_size if kind != DELETED else 0
         except OSError:
             size = 0
+        relative = self._relative(path)
         event = Event(
-            path=self._relative(path),
+            path=relative,
             kind=kind,
             at=at,
             pid=writer.pid if writer else None,
@@ -213,7 +305,15 @@ class Watcher:
         )
         with self._lock:
             self._events.append(event)
+            # Dedupe hint for the reconciler: a change the native handler
+            # already reported must not be synthesized again. Attribution
+            # stays independent -- a missing pid never blocks this.
+            if self._reconciler is not None:
+                if len(self._seen_since_sweep) >= _SEEN_HINT_CAP:
+                    self._seen_since_sweep.clear()
+                self._seen_since_sweep.add((kind, relative))
         self._log.append(event)
+        return event
 
     def _relative(self, path: Path) -> str:
         try:

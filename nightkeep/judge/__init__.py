@@ -110,7 +110,8 @@ class Judge:
 
     # --- the public interface ---------------------------------------------
 
-    def verdict(self, run: JobRun, events: list[Event] | None = None) -> Verdict:
+    def verdict(self, run: JobRun, events: list[Event] | None = None,
+                suspect_pid: int | None = None) -> Verdict:
         """Judge one run. The only place a level is decided.
 
         Pass `events` to judge a window or slice of the run instead of the
@@ -118,6 +119,12 @@ class Judge:
         baseline: a slice is never "a quiet night", so judging one teaches
         Nightkeep nothing. Live attack windows are always judged this way,
         which keeps partial attack observations out of the baseline.
+
+        `suspect_pid` is a containment fallback, not evidence: when the
+        verdict is INCIDENT but no event carried a process id (a fast
+        burst can outrun attribution), the Judge pauses the suspect
+        instead of leaving the attacker running. The verdict itself is
+        decided from events alone; a missing pid never changes it.
         """
         whole_run = events is None
         events = list(run.events if whole_run else events)
@@ -134,7 +141,7 @@ class Judge:
         # dismissing a dialog.
         decided_at = datetime.now(timezone.utc)
         verdict = self._act(run, events, level, signals, habit_score,
-                            decided_at)
+                            decided_at, suspect_pid)
 
         if whole_run and level in (NORMAL, ODD):
             # Only a quiet night updates what "normal" looks like. Folding an
@@ -275,6 +282,7 @@ class Judge:
         signals: tuple[Signal, ...] | list[Signal],
         habit_score: HabitScore,
         decided_at: datetime,
+        suspect_pid: int | None = None,
     ) -> Verdict:
         signals = tuple(signals)
         reasons = tuple(signal.reason for signal in signals) + habit_score.reasons
@@ -283,6 +291,13 @@ class Judge:
         if level == INCIDENT:
             taken = self._taken
             pid = self._busiest_pid(events)
+            if pid is None:
+                # Attribution is best-effort: a burst that outruns the
+                # process poll leaves pid-less evidence, and the verdict
+                # is still INCIDENT. The orchestrator's suspect pid is
+                # the fallback so containment does not silently skip the
+                # pause while the attacker is still running.
+                pid = suspect_pid
             if pid is not None:
                 _actions.suspend_process(pid, taken)
             _actions.make_read_only(self.root / "data", taken)

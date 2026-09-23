@@ -83,18 +83,45 @@ def main(argv: list[str] | None = None) -> int:
         default=1.0,
         help="seconds a run's events may trail its end",
     )
+    parser.add_argument(
+        "--reconcile-seconds",
+        type=float,
+        default=None,
+        help=(
+            "seconds between filesystem reconciliation sweeps, the "
+            "deterministic backstop for native file events dropped "
+            "under burst load; 0 disables. Default: 0.2 on Windows, "
+            "disabled elsewhere."
+        ),
+    )
     args = parser.parse_args(argv)
 
     if args.interval <= 0:
         print("refused: --interval must be positive", file=sys.stderr)
         return 2
+    if args.reconcile_seconds is not None and args.reconcile_seconds < 0:
+        print("refused: --reconcile-seconds must not be negative",
+              file=sys.stderr)
+        return 2
 
     target = heartbeat_path(args.root)
     target.parent.mkdir(parents=True, exist_ok=True)
+    # The watcher agent is the production/live path that needs the
+    # deterministic reconciliation backstop on Windows (ReadDirectoryChangesW
+    # can drop native events under ransomware-burst load), so its CLI default
+    # explicitly selects 0.2s there and 0.0 elsewhere. --reconcile-seconds
+    # overrides either way; this does not rely on Watcher's own default,
+    # which is opt-in (disabled).
+    reconcile_seconds = (
+        args.reconcile_seconds
+        if args.reconcile_seconds is not None
+        else (0.2 if os.name == "nt" else 0.0)
+    )
     watcher = Watcher(
         Path(args.root),
         poll_seconds=args.poll_seconds,
         settle_seconds=args.settle_seconds,
+        reconcile_seconds=reconcile_seconds,
     )
     watcher.start()
     try:

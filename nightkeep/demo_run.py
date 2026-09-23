@@ -84,6 +84,7 @@ def _start_watcher_agent(
     interval_seconds: float,
     poll_seconds: float,
     settle_seconds: float,
+    reconcile_seconds: float = 0.2,
 ) -> subprocess.Popen:
     """Launch the Watcher agent as its own process.
 
@@ -108,6 +109,12 @@ def _start_watcher_agent(
             str(poll_seconds),
             "--settle-seconds",
             str(settle_seconds),
+            # The deterministic backstop for native file events dropped
+            # under burst load (Windows ReadDirectoryChangesW): without
+            # it a fast simulator's whole attack can collapse to a single
+            # observed event and read as NORMAL.
+            "--reconcile-seconds",
+            str(reconcile_seconds),
         ]
     )
     # The agent stamps the heartbeat before its first sleep, but importing
@@ -455,7 +462,12 @@ def _judge_attack_live(
     def judge_prefix():
         nonlocal verdicts_judged
         verdicts_judged += 1
-        return judge.verdict(attack_run, events=list(prefix))
+        # The demo launched the attacker, so its pid is ground truth for
+        # containment. The verdict is still decided from events alone;
+        # suspect_pid is only the fallback the Judge pauses when no event
+        # carried a process id.
+        return judge.verdict(attack_run, events=list(prefix),
+                             suspect_pid=sim_pid)
 
     evidence: dict = {
         "variant": variant,
