@@ -41,3 +41,32 @@ def test_a_broken_config_stops_nightkeep_at_startup(tmp_path):
 
     assert finished.returncode != 0
     assert "clock.simulated_day_seconds" in finished.stderr
+
+
+def test_console_starts_a_live_session_on_loopback(tmp_path, monkeypatch):
+    """python -m nightkeep --console: one command starts the live session
+    beside Flask, on 127.0.0.1 only, and stops the session on the way out."""
+    from flask import Flask
+
+    from nightkeep import __main__ as entry
+    from nightkeep.console.session import LiveSession
+
+    calls = []
+    monkeypatch.setattr(Flask, "run", lambda self, **kw: calls.append(("run", kw)))
+    monkeypatch.setattr(LiveSession, "start",
+                        lambda self, **kw: calls.append(("start", self._engine_cmd)))
+    monkeypatch.setattr(LiveSession, "stop", lambda self: calls.append(("stop",)))
+
+    out_dir = tmp_path / "live"
+    assert entry.main(["--console", "--out-dir", str(out_dir),
+                       "--day-seconds", "12"]) == 0
+
+    start, run, stop = calls
+    assert start[0] == "start"
+    engine_cmd = start[1]
+    assert engine_cmd[1:4] == ["-m", "nightkeep", str(REPO_CONFIG)]
+    assert "--live-engine" in engine_cmd
+    assert engine_cmd[engine_cmd.index("--out-dir") + 1] == str(out_dir.resolve())
+    assert engine_cmd[engine_cmd.index("--day-seconds") + 1] == "12"
+    assert run == ("run", {"host": "127.0.0.1", "port": 5000, "debug": False})
+    assert stop == ("stop",)
