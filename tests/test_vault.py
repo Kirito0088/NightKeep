@@ -194,6 +194,9 @@ def test_encrypted_share_marks_suspect_and_keeps_the_pin(tmp_path):
     assert bad.health == "SUSPECT"
     assert bad.is_clean_point is False
     assert any("scrambled" in reason for reason in bad.reasons)
+    # One file, said in the singular.
+    assert any("1 changed file looks randomly scrambled" in reason
+               for reason in bad.reasons)
     assert any("own type" in reason for reason in bad.reasons)
     # The pin still points at the last clean snapshot.
     assert (tmp_path / "vault" / "clean_point").read_text().strip() == (

@@ -157,7 +157,8 @@ def scrambled_in_place(
             title="Files overwritten with scrambled content",
             reason=(
                 f"{len(fired):,} existing file{'' if len(fired) == 1 else 's'} "
-                f"were overwritten and can no longer be read ({first}{more})"
+                f"{'was' if len(fired) == 1 else 'were'} overwritten and can "
+                f"no longer be read ({first}{more})"
             ),
             is_canary=True,
         ),

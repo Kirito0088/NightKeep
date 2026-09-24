@@ -168,7 +168,9 @@ def assess(
         shown = ", ".join(sorted(scrambled)[:3])
         extra = f" and {len(scrambled) - 3} more" if len(scrambled) > 3 else ""
         reasons.append(
-            f"{len(scrambled)} changed files look randomly scrambled: "
+            f"{len(scrambled)} changed "
+            f"{'file looks' if len(scrambled) == 1 else 'files look'} "
+            f"randomly scrambled: "
             f"{shown}{extra}"
         )
     # A file from the clean copy that reappears with a new extension added

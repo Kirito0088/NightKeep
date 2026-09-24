@@ -338,6 +338,21 @@ def test_scrambling_existing_files_on_an_unusual_night_is_an_incident(
     assert "S3" in {s.code for s in verdict.signals}
 
 
+def test_one_scrambled_file_is_reported_in_the_singular(judge, habit, root):
+    teach_quiet_nights(habit)
+    path = root / "share" / "exports" / "real_0.csv"
+    path.write_bytes(os.urandom(6000))
+    judge._baseline.remember("share/exports/real_0.csv", 4.2, AT)
+    events = [Event(path="share/exports/real_0.csv", kind=MODIFIED, at=AT,
+                    size=6000, pid=4242)]
+
+    verdict = judge.verdict(job_run(events))
+
+    s3 = [s for s in verdict.signals if s.code == "S3"]
+    assert s3, verdict.signals
+    assert s3[0].reason.startswith("1 existing file was overwritten")
+
+
 def test_the_archive_job_writing_a_fresh_zip_stays_normal(judge, habit, root):
     """The trap this whole design exists to avoid: a ZIP is noise on purpose."""
     teach_quiet_nights(habit)
