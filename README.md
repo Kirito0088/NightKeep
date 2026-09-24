@@ -1,116 +1,192 @@
+<div align="center">
+
 # Nightkeep
 
-**Learns the chaos. Catches the crime.**
+### Learns the chaos. Catches the crime.
+
+Ransomware defence for a district ration office server whose night jobs look like ransomware.
 
 [![CI](https://github.com/Kirito0088/NightKeep/actions/workflows/ci.yml/badge.svg)](https://github.com/Kirito0088/NightKeep/actions/workflows/ci.yml)
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/release/python-3110/)
+[![Platform: Windows](https://img.shields.io/badge/demo%20platform-Windows-0078d4.svg)](docs/demo-runbook.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-A district Public Distribution System (PDS) server runs messy, undocumented
-jobs every night. Those jobs touch thousands of files in seconds, at 2 am,
-zipping, renaming and deleting. To an ordinary security tool they look exactly
-like a file-locking threat. Nightkeep **learns** each job's habits, ignores the
-weirdness, catches a safe threat simulator within seconds, pauses it, and
-restores all 5,000 ration cards from a backup the infected machine could never
-reach.
+**MUSA CodeX 2026** · Problem statement **CX0204 "Threat at the Ration Shop"** · **Team CodeRed**
 
-Prototype for **MUSA CodeX 2026**, problem statement **CX0204 "Threat at the
-Ration Shop"**, by **Team CodeRed**. Everything runs offline on ordinary
-laptops, on invented data, with no cloud, no GPU and no deep learning.
+[Quickstart](#quickstart) · [Live Demo](#run-the-live-demo) · [How it works](#how-it-works) · [Proofs](#what-it-proves) · [Docs](#documentation)
 
-> Prototype on invented data. Not a live government system. No real personal
-> data appears anywhere, and no Aadhaar-shaped numbers are ever generated.
+<img src="docs/images/live-demo.png" alt="The Live Demo page after a full run: learn, guard, attack, contain, protect and recover all ticked, with 5,000 of 5,000 records recovered" width="860">
+
+</div>
+
+> **Prototype on invented data. Not a live government system.** No real
+> personal data appears anywhere, and no Aadhaar-shaped numbers are ever
+> generated.
 
 ---
 
-## Repository
+## The problem
 
-https://github.com/Kirito0088/NightKeep
+A district Public Distribution System (PDS) server runs old, undocumented jobs
+every night. At 2 am they zip, rename and delete thousands of files in
+seconds. To an ordinary security tool that looks exactly like ransomware, so
+it either cries wolf every night or gets switched off.
 
----
+**Nightkeep learns what each night job normally does, ignores the weirdness,
+and still catches a real attack within seconds.** It pauses the attacker,
+locks the records, keeps the backups safe on a machine the attacker can't
+reach, and restores all 5,000 ration cards with proof that every one is
+readable.
+
+Everything runs offline on an ordinary laptop. No cloud, no GPU, no deep
+learning.
+
+## Highlights
+
+- **Learns the office's habits.** Seven days of watching the six real,
+  messy night jobs. After that, an odd night is noted, never blocked.
+- **Fixed tripwires catch the attack.** Decoy files, scrambled content,
+  mass renames to a new file type, and recovery-killing commands. These
+  are hard-coded rules that learning can never loosen.
+- **Stops it in about a second.** The attacking program is paused and the
+  records folder is made read-only. The office computer shows a native
+  Windows warning pop-up.
+- **A backup the attacker can't reach.** The Vault pulls from the server,
+  never the other way round. The server holds no path, password or address
+  for it.
+- **Recovery with proof.** Five checks run on every restore, ending with
+  "all 5,000 ration cards are present and readable".
+- **Written for the counter clerk.** Screens use plain words like "Your
+  records are safe", and every technical detail sits behind a
+  "For the IT person" link. English and Marathi.
 
 ## What it proves
 
-The whole design exists to answer one question a judge will ask: *does this
-actually tell a file-locking threat apart from normal legacy weirdness, and can
-it get the data back?* Four proofs, each **measured on a real run**, not
-claimed. The numbers below come from one seeded 5,000-card run
-(`python -m nightkeep --demo-run`):
+Four proofs, each measured on a real run, not claimed. The numbers below
+come from one seeded 5,000-card run on the Windows demo machine
+(`python -m nightkeep --demo-run`). Your run prints its own.
 
 | # | Proof | Result on the reference run |
 |---|---|---|
-| **P1** | Weird legacy jobs raise **no** false alarms, and the odd night is shrugged off | 6 erratic jobs over 7 learning + 3 guard nights → **0** INCIDENT verdicts, and one deliberately unusual night (a big catch-up upload) reads as a harmless **ODD** |
-| **P2** | A file-locking threat **is** caught fast, and stopped | INCIDENT after **13** files, in **2.1 s**, and the scramble is halted there (target: < 50 files, < 10 s) |
-| **P3** | The backup **survives** | The scrambled copy is quarantined **SUSPECT**; the last clean copy stays **pinned** |
+| **P1** | Messy legacy jobs raise **no** false alarms | 6 erratic jobs over 7 learning + 3 guard nights: **0** incidents. One deliberately unusual night reads as a harmless **ODD** |
+| **P2** | A ransomware attack **is** caught fast and stopped | Incident after **13** files, in **2.1 s** (target: under 50 files, under 10 s) |
+| **P3** | The backup **survives** | The scrambled copy is marked **SUSPECT**. The last clean copy stays **pinned** |
 | **P4** | Recovery is **proven**, not assumed | **5,000 / 5,000** ration cards verified from the clean copy, all five checks passed |
 
-Run it yourself and the numbers land in `demo/demo_run/district/reports/demo_run.json`, which is
-exactly what the console then renders. No screen shows an invented figure.
+## Screenshots
 
----
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/incident-report.png" alt="Incident Report: Someone tried to lock your files. It was stopped."></td>
+    <td width="50%"><img src="docs/images/restore.png" alt="Restore screen: Your records are back, five of five checks passed"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Incident Report</b>, in ration-office units</td>
+    <td align="center"><b>Get my records back</b>, three steps and five checks</td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/images/search.png" alt="Ration card search screen of the invented Thane district PDS"></td>
+    <td width="50%"><img src="docs/images/popup.png" alt="The warning shown on the office computer"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Ration card search</b>, the PDS system being protected</td>
+    <td align="center"><b>The office pop-up</b>, what happened and three steps</td>
+  </tr>
+</table>
 
 ## Quickstart
 
-Requires **Python 3.11** (`python` on the build machine; note `py` is 3.14 and
-is not the target).
+### Requirements
+
+- **Windows 10 or 11.** Two of the six night jobs are a `.bat` and a `.vbs`
+  script that run under `cmd.exe` and `cscript.exe`, exactly like the real
+  legacy jobs. On Linux or macOS the console opens, but the night jobs
+  can't run.
+- **Python 3.11** (3.12+ is not supported).
+
+### Install
 
 ```bash
+git clone https://github.com/Kirito0088/NightKeep.git
+cd NightKeep
 python -m pip install -e ".[dev]"
 ```
 
-**Live the whole story once** — build the district, learn the week, guard three
-nights, run the threat simulator, pull and restore:
-
-```bash
-python -m nightkeep --demo-run --variant fast
-```
-
-Variants a judge can pick: `fast` (a fast scrambler), `impersonator` (scrambles
-in place under a known job's guise), `recovery-killer` (also writes
-system-restore-deletion command text, which is only ever text, never run).
-
-**Run the whole prototype from one command** (binds to loopback only, never
-the LAN):
+### Run the live demo
 
 ```bash
 python -m nightkeep --console
 ```
 
-Then visit <http://127.0.0.1:5000>. This starts a **live session**: the Thane
-district is built fresh in `demo/live/`, its six night jobs start running on
-the simulated clock, and Nightkeep learns them for 7 days (about 70 seconds at
-10 s a day) and then checks every run. Every screen reads that one run and
-refreshes itself when what it shows changes. For a slower walkthrough,
-lengthen the day: `python -m nightkeep --console --day-seconds 30`.
+Open <http://127.0.0.1:5000>, click the **Live Demo** tab, then
+**Start guided demo**.
 
-What you can click:
+The whole story then plays by itself in about two minutes: 7 learning days
+and 3 guard days at 10 seconds each, then a safe simulated attack, the pop-up,
+the lock, the Vault check and the restore. Every screen follows the same run.
 
-- **Live Demo** tab, **Start guided demo**: restarts the live session on
-  autopilot. It learns, guards, attacks with the recovery-killer, restores
-  and prints the same proof lines as `--demo-run`, all on the same screens.
-- **Live Demo** tab, **Step-by-step controls**: pick a safe simulator variant
-  (fast scrambler, impersonator, recovery-killer) and **Launch simulated
-  attack**. It unlocks after day 1, once the Vault holds a clean copy.
-  Nightkeep stops the attack, the office pop-up appears (a warning only,
-  nothing waits on it), the records are locked, and the Vault marks the
-  damaged copy SUSPECT. **Harvest surge** switches peak-season volumes on
-  from the next simulated day (days 4 and 9 are surge days anyway, as seeded
-  in config). **Restart from day 1** rebuilds the district and learns again.
-- **A-, A, A+** and **English / मराठी** (top strip): text size and language
-  (Marathi covers the chrome and headings).
-- **Night Jobs** tab: each job's learning status, what it usually does, its
-  last run and how that run was judged.
-- After an attack, **Data Safety** offers **Get my records back**: the
-  supervisor PIN (`console.supervisor_pin` in `nightkeep/config.yaml`, 246810
-  in the demo) runs the five checks and verifies 5,000 of 5,000 cards, then
-  releases the lock.
+The console listens on `127.0.0.1` only, never on the network.
 
-`python -m nightkeep.console` with no config is the isolated UI mode for
-screen work only: it starts with sample records and calm, honest screens
-and is never wired to a real run.
+### Run the one-shot proof
 
-**Reset a demo district** after a run (puts every scrambled file back with the
-known key, `simulator.key` in `nightkeep/config.yaml`):
+```bash
+python -m nightkeep --demo-run --variant fast
+```
+
+This prints the four proofs in the terminal and writes the full report to
+`demo/demo_run/district/reports/demo_run.json`. Variants:
+
+| Variant | What the safe simulator does |
+|---|---|
+| `fast` | Locks files as fast as it can |
+| `impersonator` | Scrambles files in place while posing as a known night job |
+| `recovery-killer` | Also shows backup-deleting command text (only ever echoed, never run) |
+
+## Using the console
+
+| Where | What you can do |
+|---|---|
+| **Live Demo** → **Start guided demo** | Restarts the session and runs the full story on autopilot |
+| **Live Demo** → **Step-by-step controls** | Pick a simulator variant and **Launch simulated attack** (unlocks after day 1). Switch **Harvest surge** on. **Restart from day 1** |
+| **Data Safety** → **Get my records back** | Restore after an attack. Supervisor PIN `246810` in the demo (`console.supervisor_pin` in `nightkeep/config.yaml`) |
+| **Night Jobs** | Each job's learning status, its usual pattern, its last run and how that run was judged |
+| **A-, A, A+** and **English / मराठी** | Text size and language, in the top strip |
+
+**Supervisor PIN for the demo: `246810`.** The Vault asks for it before a
+restore. It is set as `supervisor_pin` in `nightkeep/config.yaml` and is read
+once at startup, so restart the console after changing it.
+
+Want more time on each day? `python -m nightkeep --console --day-seconds 30`
+
+<details>
+<summary><b>All console routes</b></summary>
+
+| Route | Screen |
+|---|---|
+| `/` or `/search` | Ration card search (the PDS system) |
+| `/card/<card_no>` | Card detail: members, entitlements, ePoS history |
+| `/locked` | The search screen during an incident (labelled "DEMONSTRATION DRILL" until a real one) |
+| `/safety` | Data Safety home: "am I okay?" and the six night tasks |
+| `/night-jobs` | Night Jobs: learning status, usual pattern and last check for each job |
+| `/alert` | The Incident Report ("STATUS: ALL CLEAR" when nothing happened) |
+| `/restore` | The three-step restore wizard with its five checks |
+| `/server-alert` | The pop-up shown on the office computer |
+| `/showcase` | Live Demo: the guided demo plus the step-by-step controls |
+| `/it-view` | Read-only IT diagnostics (incident, watcher, habits, Vault) |
+
+</details>
+
+<details>
+<summary><b>More commands</b></summary>
+
+**Prove the night jobs really are erratic** (a standalone report):
+
+```bash
+python -m nightkeep --prove-erratic
+```
+
+**Put a scrambled demo district back** with the known key (`simulator.key`
+in `nightkeep/config.yaml`):
 
 ```bash
 python -m nightkeep.simulator.decrypt --root demo/demo_run/district \
@@ -118,153 +194,120 @@ python -m nightkeep.simulator.decrypt --root demo/demo_run/district \
     --ransom-note-name HOW_TO_GET_YOUR_FILES_BACK.txt
 ```
 
-**Run the tests:**
+**UI-only mode**, with sample records and no live session:
 
 ```bash
-python -m pytest              # everything
-python -m pytest -m "not slow"  # skip filesystem, subprocess and clock tests
+python -m nightkeep.console
 ```
 
-**Prove the jobs really are erratic** (a standalone report):
-
-```bash
-python -m nightkeep --prove-erratic
-```
-
-### Console screens
-
-| Route | Screen |
-|---|---|
-| `/` or `/search` | Ration card search (the PDS system) |
-| `/card/<card_no>` | Card detail: members, entitlements, ePoS history |
-| `/locked` | The search screen during the incident (labelled "DEMONSTRATION DRILL" until a real INCIDENT) |
-| `/safety` | Data Safety home: "am I okay?", the six night tasks |
-| `/night-jobs` | Night Jobs: learning status, usual pattern and last check for each job |
-| `/alert` | The Incident Report, in ration-office units ("STATUS: ALL CLEAR" when unwired) |
-| `/restore` | The three-step restore wizard with its five checks |
-| `/server-alert` | The pop-up shown on the office computer |
-| `/showcase` | Live Demo: the guided demo on autopilot, plus the step-by-step controls |
-| `/it-view` | Read-only IT diagnostics (incident, watcher, habit, Vault) |
-
-> The live session keeps everything in `demo/live/` (`--out-dir` changes it).
-> `--demo-run` still writes its one-shot proof to `demo/demo_run/`.
-
-### Operator notes
-
-**Supervisor PIN for the demo: `246810`.** The Vault asks for it before a
-restore, a delete or a settings change. It is set as `supervisor_pin` in
-`nightkeep/config.yaml` and is read once at startup, so restart the console
-after changing it.
-
-**S5 (recovery-command text) is machine-wide by design.** The judge scans
-command lines of all shell / script-host / recovery-tool processes for
-configured needles (`vssadmin delete shadows`, `wbadmin delete catalog`,
-`bcdedit /set recoveryenabled no`). During a demo, keep unrelated terminals
-closed and avoid typing these strings in active command lines.
-
-**F14 naming collision.** F14 in the authoritative `docs/MVP.md` is the Loss
-Window Report. An older branch reused F14 for heartbeat containment
-(PR #16's branch `fix/f14-heartbeat-survives-containment`); that is a naming
-collision in history, not the feature ID.
-
----
+</details>
 
 ## How it works
 
-Nightkeep is built as a few **deep modules** joined by shallow glue, split
-across two machines that share no stateful code and no credentials.
+Nightkeep is split across two machines that share no stateful code and no
+credentials.
 
 ```
  PDS server (Laptop A)                         Vault (Laptop B or a VM)
  ┌───────────────────────────────┐  read-only  ┌──────────────────────────────┐
- │ mock_pds: 5,000 cards, 6 jobs │◀─── PULL ───│ vault: content-addressed      │
- │        │                      │             │  blobs, hash-chained          │
- │        ▼                      │             │  manifests, health check,     │
- │ watcher ─▶ habit ─▶ judge     │── status ──▶│  pinned clean points, verify  │
- │ pause / read-only, reversible │  (pulled)   │ console: the 7 screens        │
+ │ mock_pds: 5,000 cards, 6 jobs │◀─── PULL ───│ vault: content-addressed     │
+ │        │                      │             │  blobs, hash-chained         │
+ │        ▼                      │             │  manifests, health check,    │
+ │ watcher ─▶ habit ─▶ judge     │── status ──▶│  pinned clean points, verify │
+ │ pause / read-only, reversible │  (pulled)   │ console: the screens         │
  └───────────────────────────────┘             └──────────────────────────────┘
    The Vault always opens the connection. The PDS server holds no path,
-   credential or address for it, so a threat on the server has nothing to follow.
+   credential or address for it, so an attacker on the server has nothing to follow.
 ```
 
-| Module | It hides |
-|---|---|
-| `mock_pds` | 5,000 records, 6 erratic jobs, a simulated clock, hidden ground-truth logs |
-| `watcher` | watchdog wiring, psutil attribution, an append-only event log |
-| `habit` | feature extraction, median/MAD ranges, novelty flags, SQLite storage |
-| `judge` | six detection signals, the verdict table, reversible suspend / read-only actions |
-| `vault` | the read-only pull, content-addressed blobs, manifests, the hash chain, health, clean points, verified restore |
-| `console` | Flask routes and templates, and nothing else |
-| `simulator` | the safe, reversible threat simulator and its recovery function |
+1. **Watcher** records every file change on the server and which program made it.
+2. **Habit** learns each night job's normal pattern (start time, files
+   touched, file types) using medians and spreads, then scores each new run.
+3. **Judge** combines the habit score with six fixed signals. The habit
+   score alone can only say ODD. An INCIDENT always needs a fixed tripwire.
+   On INCIDENT it pauses the program and makes the records read-only, and
+   both steps can be undone.
+4. **Vault** pulls a copy every night, checks its health, pins the last
+   clean copy, and watches the watcher's heartbeat. If the watcher goes
+   silent, the Vault protects the backups by itself.
+5. **Console** shows all of this in plain language on the Vault's screen.
 
-### The three rules the whole codebase obeys
+### The three rules the code obeys
 
 1. **The learned habit score never pauses, locks or deletes anything on its
-   own.** Every INCIDENT verdict needs at least one fixed canary or recovery
-   signal.
-2. **Canary signals are never learned.** Signals S2–S7 are hard-coded rules,
+   own.** Every INCIDENT needs at least one fixed tripwire or recovery signal.
+2. **Tripwires are never learned.** Signals S2 to S7 are hard-coded rules,
    live from minute one. No learning path may widen them.
 3. **The PDS server never gets a path, credential or address for the Vault.**
-   The Vault always opens the connection.
 
-Each rule is enforced by a test that fails if the rule is broken, and each was
-confirmed by mutation, not just by passing once.
+Each rule has a test that fails if the rule is broken.
 
-### The threat simulator is safe by construction
+### The attack simulator is safe by design
 
-- It refuses to run outside a real demo district (checked against the district
-  database's own schema, not a folder name).
-- It is fully reversible: files are XORed against a stream from a **known key**,
-  and a matching recovery function puts every one back byte for byte.
-- It never executes a destructive command. Its "recovery-killer" variant puts
-  system-restore-deletion text into a shell command line as echoed text —
-  never run as a real command — because that text is what signal S5 reads.
-  The simulator package does use `subprocess` (the live attack is launched
-  via `Popen`, and the echo shells are spawned the same way), but the
-  recovery commands themselves are simulated text only and are never
-  executed.
-- It does not spread, and it holds no path to the Vault.
+- It refuses to run outside the repo's `demo/` folder and outside a real
+  demo district.
+- It is fully reversible. Files are XORed with a **known key**, and a
+  matching script puts every byte back.
+- It never runs a destructive command. The recovery-killer variant only
+  **echoes** text like `vssadmin delete shadows` so signal S5 has something
+  to read.
+- It does not spread, and it has no path to the Vault.
 
----
+## Tests
 
-## Repository layout
+```bash
+python -m pytest                 # everything (about 15 min, Windows)
+python -m pytest -m "not slow"   # skip filesystem, subprocess and clock tests
+```
+
+## Project structure
 
 ```
 nightkeep/
-  mock_pds/     invented district, 6 erratic jobs, simulated clock, ground-truth logs
-  watcher/      what changed on the PDS server, and who caused it
-  habit/        what each job normally does (learned)
+  mock_pds/     invented Thane district, 6 erratic night jobs, simulated clock
+  watcher/      what changed on the PDS server, and which program did it
+  habit/        what each night job normally does (learned)
   judge/        the six signals, the verdict table, reversible actions
   vault/        snapshots, hash chain, health check, verified restore
-  console/      Flask app: 7 screens + pop-up, hand-written CSS
-  simulator/    the safe threat simulator and its recovery function
-  demo.py       one seeded end-to-end run, writes reports/run.json
-  demo_run.py   multi-process integration harness (--demo-run)
-  types.py      plain dataclasses shared across the two-machine boundary
-  config.py     the one loader; config.yaml holds every tunable number
-  __main__.py   the entrypoint: reads config once, passes values in
-docs/
-  MVP.md, SOLUTION_DESIGN.md, adr/   the settled decisions
-  demo-runbook.md                    Windows demo operator procedure
-CLAUDE.md       the rules the codebase obeys
-CONTEXT.md      the vocabulary. Use these words
+  console/      Flask app, Jinja templates, hand-written CSS
+  simulator/    the safe ransomware simulator and its decrypt script
+  live.py       the live session engine behind --console
+  demo_run.py   the one-shot proof behind --demo-run
+  config.yaml   every tunable number
+  __main__.py   the entrypoint
+docs/           MVP, solution design, ADRs, demo runbook
+tests/          pytest suite
 ```
-
-## Documentation
-
-- [`docs/MVP.md`](docs/MVP.md) — the plan, the four proofs, the success metrics.
-- [`docs/demo-runbook.md`](docs/demo-runbook.md) — the Windows demo operator procedure.
-- [`docs/adr/`](docs/adr) — every settled decision, with its reasoning.
-- [`CLAUDE.md`](CLAUDE.md) — the architecture, the three rules, the stack.
-- [`CONTEXT.md`](CONTEXT.md) — the domain and system vocabulary.
-- [`CONTRIBUTING.md`](CONTRIBUTING.md) — how to work in this repo.
 
 ## Tech stack
 
-Python 3.11, standard library first: `watchdog`, `psutil`, `numpy`/`pandas`,
-`sqlite3`, `hashlib`, `PyYAML`, and **Flask + Jinja + hand-written CSS** for the
-console (no Streamlit, no React, no build step). Tests with `pytest`.
+Python 3.11 · `watchdog` · `psutil` · `numpy` / `pandas` · `sqlite3` ·
+`PyYAML` · **Flask + Jinja + hand-written CSS** (no JavaScript framework, no
+build step) · `pytest`
+
+## Documentation
+
+| Document | What's in it |
+|---|---|
+| [`docs/MVP.md`](docs/MVP.md) | The plan, the four proofs, the success metrics |
+| [`docs/demo-runbook.md`](docs/demo-runbook.md) | Step-by-step Windows demo procedure |
+| [`docs/adr/`](docs/adr) | Every settled design decision and why |
+| [`CONTEXT.md`](CONTEXT.md) | The domain vocabulary |
+| [`CLAUDE.md`](CLAUDE.md) | Architecture, the three rules, the stack |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | How to work in this repo |
+
+### Operator notes
+
+- **Signal S5 reads every shell on the machine.** It looks for text like
+  `vssadmin delete shadows` in the command lines of shells and script hosts.
+  During a demo, close unrelated terminals and don't type those strings.
+- **Don't point `--console --out-dir` at `demo/demo_run/`.** The console
+  wipes its own folder on start.
+
+## Team
+
+**Team CodeRed**, for MUSA CodeX 2026.
 
 ## License
 
-[MIT](LICENSE) © Team CodeRed. Built for MUSA CodeX 2026 on invented data.
+[MIT](LICENSE) © Team CodeRed. Built on invented data.
