@@ -10,6 +10,9 @@ Ransomware defence for a district ration office server whose night jobs look lik
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/release/python-3110/)
 [![Platform: Windows](https://img.shields.io/badge/demo%20platform-Windows-0078d4.svg)](docs/demo-runbook.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Tests: 579](https://img.shields.io/badge/tests-579-informational.svg)](tests)
+[![Console: Flask](https://img.shields.io/badge/console-Flask%20%2B%20Jinja-000000.svg)](docs/adr/0002-flask-console.md)
+[![Runs offline](https://img.shields.io/badge/runs-100%25%20offline-2ea44f.svg)](#tech-stack)
 
 **MUSA CodeX 2026** · Problem statement **CX0204 "Threat at the Ration Shop"** · **Team CodeRed**
 
@@ -24,6 +27,26 @@ Ransomware defence for a district ration office server whose night jobs look lik
 > generated.
 
 ---
+
+<details open>
+<summary><b>Table of contents</b></summary>
+
+- [The problem](#the-problem)
+- [Highlights](#highlights)
+- [What it proves](#what-it-proves)
+- [Screenshots](#screenshots)
+- [Quickstart](#quickstart)
+- [Using the console](#using-the-console)
+- [How it works](#how-it-works)
+- [Why not an ordinary antivirus?](#why-not-an-ordinary-antivirus)
+- [Tests](#tests)
+- [Project structure](#project-structure)
+- [FAQ](#faq)
+- [Documentation](#documentation)
+- [Team](#team)
+- [License](#license)
+
+</details>
 
 ## The problem
 
@@ -202,6 +225,8 @@ python -m nightkeep.console
 
 </details>
 
+<p align="right"><a href="#nightkeep">Back to top</a></p>
+
 ## How it works
 
 Nightkeep is split across two machines that share no stateful code and no
@@ -232,6 +257,26 @@ credentials.
    silent, the Vault protects the backups by itself.
 5. **Console** shows all of this in plain language on the Vault's screen.
 
+### What happens during an attack
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant S as Simulator (safe)
+    participant W as Watcher
+    participant J as Judge
+    participant V as Vault
+    participant C as Console
+    S->>W: renames and scrambles files
+    W->>J: file events + which program did it
+    J->>J: fixed tripwire fires (decoy, scramble, mass rename)
+    J->>S: pause the program
+    J->>J: make records read-only, raise office pop-up
+    V->>V: next pull: copy marked SUSPECT, clean copy stays pinned
+    C->>V: supervisor enters PIN
+    V->>C: restore + five checks, 5,000 / 5,000 cards readable
+```
+
 ### The three rules the code obeys
 
 1. **The learned habit score never pauses, locks or deletes anything on its
@@ -253,12 +298,27 @@ Each rule has a test that fails if the rule is broken.
   to read.
 - It does not spread, and it has no path to the Vault.
 
+## Why not an ordinary antivirus?
+
+| | Signature antivirus | Generic behaviour alarm | **Nightkeep** |
+|---|---|---|---|
+| Knows the office's own night jobs | No | No | **Yes, learned over 7 nights** |
+| Mass rename at 2 am by a legit job | Ignored or blocked | False alarm | **Recognised as normal** |
+| New, unknown ransomware | Missed | Caught, with noise | **Caught by fixed tripwires** |
+| Can tuning or learning quiet the core alarms? | n/a | Depends on the tool | **Never. Tripwires are hard-coded** |
+| Backup out of the attacker's reach | Depends on setup | Depends on setup | **Yes. The Vault pulls, the server can't push** |
+| Proves the restore worked | No | No | **Five checks, card by card** |
+
+<p align="right"><a href="#nightkeep">Back to top</a></p>
+
 ## Tests
 
 ```bash
 python -m pytest                 # everything (about 15 min, Windows)
 python -m pytest -m "not slow"   # skip filesystem, subprocess and clock tests
 ```
+
+<p align="right"><a href="#nightkeep">Back to top</a></p>
 
 ## Project structure
 
@@ -278,6 +338,47 @@ nightkeep/
 docs/           MVP, solution design, ADRs, demo runbook
 tests/          pytest suite
 ```
+
+## FAQ
+
+<details>
+<summary><b>Is the ransomware real?</b></summary>
+
+No. The simulator XORs files with a known key, refuses to run outside the
+repo's `demo/` folder, never spreads, and only echoes backup-deleting
+commands as text. A decrypt script puts every byte back.
+</details>
+
+<details>
+<summary><b>Is any real citizen data used?</b></summary>
+
+No. Thane district and its talukas are real, but every ration card, member,
+shop and transaction is invented. There are no Aadhaar numbers, only a yes/no
+flag per member.
+</details>
+
+<details>
+<summary><b>Why does it need Windows?</b></summary>
+
+Two of the six night jobs are a `.bat` and a `.vbs` script, like the real
+legacy jobs on a district server. They run under `cmd.exe` and `cscript.exe`.
+</details>
+
+<details>
+<summary><b>Can the learned model be tricked into ignoring an attack?</b></summary>
+
+The learned habit score can only ever say ODD. Every INCIDENT needs a fixed
+tripwire (S2 to S7), and no learning path can widen those rules. Each of the
+three core rules has its own test.
+</details>
+
+<details>
+<summary><b>Does the console go on the network?</b></summary>
+
+No. It binds to `127.0.0.1` only and is viewed on the Vault's own screen.
+</details>
+
+<p align="right"><a href="#nightkeep">Back to top</a></p>
 
 ## Tech stack
 
@@ -311,3 +412,11 @@ build step) · `pytest`
 ## License
 
 [MIT](LICENSE) © Team CodeRed. Built on invented data.
+
+<div align="center">
+
+**Nightkeep** · Learns the chaos. Catches the crime.
+
+<a href="#nightkeep">Back to top</a>
+
+</div>
