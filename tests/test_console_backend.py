@@ -35,6 +35,7 @@ from nightkeep.console.providers import (
     first_incident,
     habit_tasks,
     newest_clean_before,
+    restore_report_wizard,
     restore_result_wizard,
     restore_service_for,
     restore_wizard,
@@ -578,6 +579,31 @@ def test_restore_post_correct_pin_restores_and_reports_checks(tmp_path):
     assert "Restore complete" in html
     assert "5 of 5 verified" in html
     assert calls and len(calls) == 1
+
+
+def test_restore_get_after_a_recorded_restore_shows_the_result_not_the_pin(tmp_path):
+    # After the guided demo (or a supervisor restore) the screen is rebuilt
+    # from the recorded restore. Reopening it must not offer to restore again.
+    app, vault, _ = _wired_app(tmp_path)
+    clean = [s for s in vault.snapshots() if s.is_clean_point][-1]
+    result = vault.restore(clean.snapshot_id)
+    assert result.ok
+    report = {
+        "snapshot_id": result.snapshot_id,
+        "ok": True,
+        "checks": [{"statement": c.statement, "passed": c.passed}
+                   for c in result.checks],
+        "records_verified": result.records_verified,
+        "records_expected": result.records_expected,
+        "restored_to": str(result.restored_to),
+    }
+    app = create_app(restore_wizard_data=restore_report_wizard(report, None))
+
+    html = app.test_client().get("/restore").get_data(as_text=True)
+
+    assert "Your records are back" in html
+    assert "Restore complete" in html
+    assert 'name="restore_pin"' not in html
 
 
 def test_alert_route_renders_the_real_incident(tmp_path):

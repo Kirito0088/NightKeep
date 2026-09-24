@@ -183,6 +183,9 @@ class RestoreWizardPresentation:
     # False when nothing has gone wrong: the screen then says there is
     # nothing to restore instead of talking about an attack.
     has_incident: bool = True
+    # True once a verified restore has run, so reopening the screen shows
+    # the result instead of offering the PIN form again.
+    restored: bool = False
 
 
 @dataclass(frozen=True)

@@ -820,6 +820,7 @@ def restore_result_wizard(
         ),
         steps=steps,
         checks=checks,
+        restored=result.ok,
     )
 
 

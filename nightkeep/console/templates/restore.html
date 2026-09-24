@@ -18,7 +18,7 @@
     <div class="restore-summary-content">
       <div class="restore-summary-badge">RESTORE WIZARD</div>
       <h2 class="restore-summary-title">{{ t(restore.headline) }}</h2>
-      {% if restore_success %}
+      {% if restore_success or restore.restored %}
       <p class="restore-summary-description">
         Restored <strong>{{ restore.records_count }} ration cards</strong> for District Supply Office, Thane from the verified clean backup <strong>{{ restore.clean_point }}</strong> on the Vault.
       </p>
@@ -114,7 +114,7 @@
       <h2 id="restore-confirm-heading">{{ t("Step 3: Authorisation and Confirmation") }}</h2>
     </div>
     <div class="panel-body">
-      {% if restore_success %}
+      {% if restore_success or restore.restored %}
         <div class="restore-result-box restore-result-success" role="status">
           <p><strong>Restore complete.</strong> The clean backup was verified and the records were restored to the office computer.</p>
         </div>
@@ -124,7 +124,7 @@
           <p><strong>Restore did not run.</strong> {{ restore_error }}</p>
         </div>
       {% endif %}
-      {% if restore_success %}
+      {% if restore_success or restore.restored %}
       <div class="restore-actions-bar">
         <a href="{{ url_for('nightkeep_home') }}" class="btn btn-primary">{{ t("Back to Data Safety") }}</a>
         <a href="{{ url_for('search_cards') }}" class="btn btn-secondary">{{ t("Open Ration Card Search") }}</a>
