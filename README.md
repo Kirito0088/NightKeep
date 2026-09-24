@@ -6,7 +6,6 @@
 
 Ransomware defence for a district ration office server whose night jobs look like ransomware.
 
-[![CI](https://github.com/Kirito0088/NightKeep/actions/workflows/ci.yml/badge.svg)](https://github.com/Kirito0088/NightKeep/actions/workflows/ci.yml)
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/release/python-3110/)
 [![Platform: Windows](https://img.shields.io/badge/demo%20platform-Windows-0078d4.svg)](docs/demo-runbook.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
