@@ -151,6 +151,11 @@ python -m nightkeep --prove-erratic
 
 ### Operator notes
 
+**Supervisor PIN for the demo: `246810`.** The Vault asks for it before a
+restore, a delete or a settings change. It is set as `supervisor_pin` in
+`nightkeep/config.yaml` and is read once at startup, so restart the console
+after changing it.
+
 **S5 (recovery-command text) is machine-wide by design.** The judge scans
 command lines of all shell / script-host / recovery-tool processes for
 configured needles (`vssadmin delete shadows`, `wbadmin delete catalog`,
