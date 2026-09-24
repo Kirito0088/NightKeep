@@ -33,6 +33,10 @@ _AGE_ABSOLUTE_RANGE = {
 }
 
 _NON_SELF_RELATIONS = tuple(r for r in c.RELATIONS_TO_HEAD if r != "Self")
+# A household has at most one of each of these.
+_ONLY_ONE = frozenset({"Spouse", "Father", "Mother"})
+# How many times a member's name is redrawn to avoid a duplicate in the house.
+_NAME_REDRAWS = 20
 
 
 def generate(conn: sqlite3.Connection, seed: int, district: District) -> None:
@@ -131,6 +135,47 @@ def _draw_age(rng: random.Random, relation: str, head_age: int) -> int:
     return min(max(candidate, low), high)
 
 
+def _member_name(
+    rng: random.Random,
+    relation: str,
+    sex: str,
+    surname: str,
+    head_given: str,
+    head_sex: str,
+    head_father: str,
+    husband: str,
+    children_middle: str,
+) -> str:
+    """One member's full name, consistent with the rest of the household."""
+    if relation == "Self":
+        middle = head_father if head_sex == "Male" else husband
+        return f"{head_given} {middle} {surname}"
+    if relation == "Spouse":
+        if head_sex == "Male":
+            return c.draw_name(rng, sex, head_given, surname)
+        # A female head's husband: his own father's name in the middle.
+        father = c.draw_given_name(rng, "Male", avoid=(husband,))
+        return f"{husband} {father} {surname}"
+    if relation in ("Son", "Daughter"):
+        return c.draw_name(rng, sex, children_middle, surname)
+    if relation in ("Brother", "Sister"):
+        return c.draw_name(rng, sex, head_father, surname)
+    if relation == "Father":
+        grandfather = c.draw_given_name(rng, "Male", avoid=(head_father,))
+        return f"{head_father} {grandfather} {surname}"
+    if relation == "Mother":
+        return c.draw_name(rng, sex, head_father, surname)
+    if relation == "Son-in-law":
+        # He married into the family, so he keeps his own family's surname.
+        return c.draw_name(
+            rng, sex, rng.choice(c.MALE_FIRST_NAMES), rng.choice(c.SURNAMES)
+        )
+    # Daughter-in-law, Grandson, Granddaughter: a son of the house is the
+    # husband or the father, so his given name is the middle name.
+    son = c.draw_given_name(rng, "Male", avoid=(children_middle,))
+    return c.draw_name(rng, sex, son, surname)
+
+
 def _generate_members(
     rng: random.Random,
     conn: sqlite3.Connection,
@@ -141,21 +186,49 @@ def _generate_members(
     count = max(1, rng.randint(span.low, span.high))
     head_sex = rng.choice(("Male", "Female"))
     head_age = rng.randint(*_AGE_ABSOLUTE_RANGE["Self"])
-    father_or_husband = rng.choice(c.MALE_FIRST_NAMES)
+    # One family: one surname, and middle names that follow the Maharashtra
+    # convention (a man and his children carry his father's or his own given
+    # name; a married woman carries her husband's).
+    surname = rng.choice(c.SURNAMES)
+    head_father = rng.choice(c.MALE_FIRST_NAMES)
+    husband = rng.choice(c.MALE_FIRST_NAMES)  # a female head's husband
+    head_given = c.draw_given_name(
+        rng, head_sex, avoid=(head_father if head_sex == "Male" else husband,)
+    )
+    # The name the head's children carry as their middle name.
+    children_middle = head_given if head_sex == "Male" else husband
 
     rows = []
+    taken: set[str] = set()
+    names: set[str] = set()
     for index in range(count):
         if index == 0:
             relation = "Self"
             sex = head_sex
         else:
-            relation = rng.choice(_NON_SELF_RELATIONS)
+            relation = rng.choice(
+                [r for r in _NON_SELF_RELATIONS if r not in taken]
+            )
+            if relation in _ONLY_ONE:
+                taken.add(relation)
             if relation == "Spouse":
                 sex = "Female" if head_sex == "Male" else "Male"
             else:
                 sex = _RELATION_SEX.get(relation, rng.choice(("Male", "Female")))
         age = _draw_age(rng, relation, head_age)
-        name = c.draw_name(rng, sex, father_or_husband)
+        name = _member_name(
+            rng, relation, sex, surname, head_given, head_sex, head_father,
+            husband, children_middle,
+        )
+        # Two brothers are never both "Eknath Balaji Sawant".
+        for _ in range(_NAME_REDRAWS):
+            if name not in names:
+                break
+            name = _member_name(
+                rng, relation, sex, surname, head_given, head_sex,
+                head_father, husband, children_middle,
+            )
+        names.add(name)
         ekyc_status = c.draw_ekyc_status(rng)
         aadhaar_seeded = int(c.draw_aadhaar_seeded(rng))
         rows.append(

@@ -56,11 +56,20 @@ SHOP_NAME_PREFIXES = (
 SHOP_NAME_SUFFIX = "Swasta Dhanya Dukan"
 
 
-def draw_name(rng: random.Random, sex: str, father_or_husband: str) -> str:
-    """A Marathi name with a middle name: given, father's/husband's given, surname."""
+def draw_given_name(rng: random.Random, sex: str, avoid: tuple[str, ...] = ()) -> str:
+    """A given name for this sex, never one of `avoid` (no "Anil Anil")."""
     pool = MALE_FIRST_NAMES if sex == "Male" else FEMALE_FIRST_NAMES
-    given = rng.choice(pool)
-    surname = rng.choice(SURNAMES)
+    return rng.choice([name for name in pool if name not in avoid])
+
+
+def draw_name(
+    rng: random.Random, sex: str, father_or_husband: str, surname: str
+) -> str:
+    """A Marathi name with a middle name: given, father's/husband's given, surname.
+
+    The surname is the household's, so a family reads as one family.
+    """
+    given = draw_given_name(rng, sex, avoid=(father_or_husband,))
     return f"{given} {father_or_husband} {surname}"
 
 

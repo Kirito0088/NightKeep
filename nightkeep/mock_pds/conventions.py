@@ -22,6 +22,7 @@ from nightkeep.mock_pds._names import (  # noqa: F401  (re-exported)
     SURNAMES,
     VILLAGES_BY_TALUKA,
     draw_address,
+    draw_given_name,
     draw_name,
     draw_shop_name,
     draw_village,
