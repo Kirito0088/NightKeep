@@ -12,15 +12,23 @@
 {% block content %}
 <div class="safety-screen-layout">
   <!-- Calm Status Banner (Parity with Screen 3 incident banner) -->
-  {% set badge = safety.status_badge %}
-  {% if 'ATTACK' in badge %}{% set tone = 'incident' %}{% elif badge in ('STATUS: NORMAL', 'STATUS: RECOVERED') %}{% set tone = 'safe' %}{% else %}{% set tone = 'review' %}{% endif %}
-  <div class="safety-alert-banner state-banner-{{ tone }}" role="status" aria-live="polite">
+  <div class="safety-alert-banner state-banner-{{ safety.tone }}" role="status" aria-live="polite">
     <div class="safety-alert-content">
       <div class="safety-alert-badge">{{ safety.status_badge }}</div>
       <h2 class="safety-alert-title">{{ t(safety.protection_status) }}</h2>
       <p class="safety-alert-description">
         {{ safety.protection_detail }}
       </p>
+      {% if safety.tone == 'incident' %}
+      <div class="banner-actions">
+        <a href="{{ url_for('restore_wizard') }}" class="btn btn-primary">{{ t("Get my records back") }}</a>
+        <a href="{{ url_for('nightkeep_alert') }}" class="btn btn-secondary">{{ t("See what happened") }}</a>
+      </div>
+      {% elif safety.status_badge in ('STATUS: RECOVERED', 'STATUS: UNDER REVIEW') %}
+      <div class="banner-actions">
+        <a href="{{ url_for('nightkeep_alert') }}" class="btn btn-secondary">{{ t("See what happened") }}</a>
+      </div>
+      {% endif %}
     </div>
   </div>
 
@@ -41,7 +49,7 @@
         </div>
         <div class="safety-stat-card">
           <span class="safety-stat-value tabular-number">{{ safety.safe_copies_count }}</span>
-          <span class="safety-stat-label">safe copies on Vault</span>
+          <span class="safety-stat-label">{{ "safe copy" if safety.safe_copies_count == "1" else "safe copies" }} on the Vault</span>
         </div>
         <div class="safety-stat-card">
           <span class="safety-stat-value tabular-number">{{ safety.clean_point }}</span>
@@ -73,10 +81,14 @@
               <tr>
                 <td><strong>{{ task.task_name }}</strong></td>
                 <td>{{ task.usually }}</td>
-                <td class="tabular-number">{{ task.last_night }}</td>
+                <td>{{ task.last_night }}</td>
                 <td>
                   {% if task.status == 'Normal' %}
                     <span class="status-badge status-badge-active">{{ task.status }}</span>
+                  {% elif task.status == 'Incident' %}
+                    <span class="status-badge status-badge-incident">{{ task.status }}</span>
+                  {% elif task.status == 'Learning' %}
+                    <span class="status-badge status-badge-neutral">{{ task.status }}</span>
                   {% else %}
                     <span class="status-badge status-badge-suspended">{{ task.status }}</span>
                   {% endif %}

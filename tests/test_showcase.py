@@ -121,8 +121,8 @@ def test_showcase_route_returns_200(showcase_dirs):
     base, script, district = showcase_dirs
     controller = make_controller(base, script, district, FAKE_PASSED_SCRIPT)
     html = make_client(controller).get("/showcase").get_data(as_text=True)
-    assert "Run Full MVP Demo" in html
-    assert "READY" in html
+    assert "Start guided demo" in html
+    assert "Ready" in html
 
 
 def test_start_launches_exactly_one_process(showcase_dirs):
@@ -146,7 +146,7 @@ def test_start_launches_exactly_one_process(showcase_dirs):
         assert controller.read_status()["pid"] == first_pid
 
         html = client.get("/showcase").get_data(as_text=True)
-        assert "Demo already running" in html
+        assert "Guided demo running" in html
     finally:
         kill_pid(first_pid)
 
@@ -163,8 +163,8 @@ def test_status_progresses_from_running_to_complete(showcase_dirs):
     assert controller.phase() == "complete"
 
     html = client.get("/showcase").get_data(as_text=True)
-    assert "DEMO COMPLETE" in html
-    assert "MVP proof complete." in html
+    assert "Demo complete" in html
+    assert "End-to-end proof complete." in html
 
 
 def test_completion_uses_actual_report_data(showcase_dirs):
@@ -177,7 +177,7 @@ def test_completion_uses_actual_report_data(showcase_dirs):
 
     html = client.get("/showcase").get_data(as_text=True)
     # The figures on the page are the report's own figures.
-    assert "5000 / 5000" in html
+    assert "5,000 / 5,000" in html
     assert "4.2s" in html
     assert "37" in html
     # ... and nothing invented: no placeholder figures anywhere.
@@ -194,7 +194,7 @@ def test_failed_demo_is_shown_as_failed(showcase_dirs):
     wait_for_state(controller, "failed")
 
     html = client.get("/showcase").get_data(as_text=True)
-    assert "DEMO FAILED" in html
+    assert "Demo failed" in html
     assert "did not complete" in html
 
 

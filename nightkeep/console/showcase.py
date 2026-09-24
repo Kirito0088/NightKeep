@@ -55,51 +55,52 @@ _CANNOT_RUN_MARKER = "Nightkeep cannot run the proof here."
 # come from the run's own report (see report_figures()).
 _PHASE_COPY: dict[str, tuple[str, str]] = {
     "ready": (
-        "READY",
-        "Nightkeep is ready to demonstrate the full MVP.",
+        "Ready",
+        "Nothing is running on autopilot. Start the guided demo to watch "
+        "the whole story from start to finish.",
     ),
     "starting": (
-        "STARTING",
+        "Starting",
         "Preparing the district and starting the demonstration.",
     ),
     "learning": (
-        "LEARN",
+        "Learn",
         "Nightkeep is learning what normal night work looks like on the "
         "district server.",
     ),
     "guard": (
-        "GUARD",
+        "Guard",
         "Nightkeep checks the district's normal night work against what "
         "it learned.",
     ),
     "attack": (
-        "ATTACK",
+        "Attack",
         "A safe simulated ransomware attack is running. Nightkeep watches "
         "the files and only declares an incident when the evidence is "
         "clear.",
     ),
     "containment": (
-        "CONTAIN",
+        "Contain",
         "Nightkeep detected the attack and stopped it. The office "
         "computer is isolated.",
     ),
     "vault": (
-        "PROTECT",
+        "Protect",
         "The Vault keeps the safe copies protected while the attack is "
         "being handled.",
     ),
     "recovery": (
-        "RECOVER",
+        "Recover",
         "Records are being restored from the last clean copy and every "
         "record is checked.",
     ),
     "complete": (
-        "DEMO COMPLETE",
-        "MVP proof complete. Every figure below came from this run's own "
-        "report.",
+        "Demo complete",
+        "End-to-end proof complete. Every figure below came from this "
+        "run's own report.",
     ),
     "failed": (
-        "DEMO FAILED",
+        "Demo failed",
         "The demonstration did not complete. The reason is shown below, "
         "with the run log.",
     ),
@@ -413,10 +414,10 @@ _LIVE_PHASE_STEP = {
 
 
 class LiveShowcase:
-    """The Full MVP Demo, driven through the console's live session.
+    """The Live Demo page, driven through the console's live session.
 
-    "Run Full MVP Demo" restarts the live session on autopilot: the same
-    engine the demo controls steer, so every screen shows this one run. The
+    "Start guided demo" restarts the live session on autopilot: the same
+    engine the step-by-step controls steer, so every screen shows this one run. The
     engine learns, guards, attacks with the configured variant, restores and
     writes the same proof lines demo_run prints. This class only words its
     status: the phase, the figures and the log all come from the engine.

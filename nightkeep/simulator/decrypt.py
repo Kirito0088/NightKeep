@@ -21,7 +21,7 @@ from nightkeep import simulator
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Reverse the NightKeep ransomware simulator."
+        description="Reverse the Nightkeep ransomware simulator."
     )
     parser.add_argument("--root", required=True, help="demo folder to restore")
     parser.add_argument("--key", required=True, help="known reversible key")

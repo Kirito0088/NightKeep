@@ -93,13 +93,13 @@ def wait_for_state(controller, want, timeout=20.0):
 # --- discoverability ---------------------------------------------------------
 
 
-def test_primary_nav_exposes_full_mvp_demo_on_every_primary_page():
+def test_primary_nav_exposes_live_demo_on_every_primary_page():
     """A judge can find the one-click demo from /, /safety, and /showcase."""
     client = make_client()
     for route in ("/", "/safety", "/showcase"):
         html = client.get(route).get_data(as_text=True)
         assert 'href="/showcase"' in html, route
-        assert "Full MVP Demo" in html, route
+        assert "Live Demo" in html, route
 
 
 def test_showcase_active_only_on_showcase_page():
@@ -108,7 +108,7 @@ def test_showcase_active_only_on_showcase_page():
     for route, label in (
         ("/", "Ration Card Search"),
         ("/safety", "Data Safety"),
-        ("/showcase", "Full MVP Demo"),
+        ("/showcase", "Live Demo"),
     ):
         html = client.get(route).get_data(as_text=True)
         active_links = re.findall(r'class="nav-link active"', html)
@@ -125,25 +125,25 @@ def test_showcase_reachable_from_unconfigured_console():
     resp = client.get("/showcase")
     assert resp.status_code == 200
     html = resp.get_data(as_text=True)
-    assert "Run Full MVP Demo" in html
+    assert "Start guided demo" in html
 
 
 def test_showcase_fabricates_nothing_before_a_run(showcase_dirs):
     """/showcase with no run must never claim an incident happened.
 
     The static step list names the demo's planned phases (that is the
-    plan, not a claim); the status banner itself must stay at READY
+    plan, not a claim); the status banner itself must stay at Ready
     with no incident figures. The controller points at an empty folder:
     the real demo/ folder may hold a finished run from an earlier session.
     """
     base, script, district = showcase_dirs
     client = make_client(make_controller(base, script, district))
     html = client.get("/showcase").get_data(as_text=True)
-    assert "READY" in html
+    assert "Ready" in html
     # No completed-state figures or failure verdicts before any run exists.
-    # (The static step plan legitimately names "DEMO COMPLETE" as the final
+    # (The static step plan legitimately names "Demo complete" as the final
     # planned step; the check below ensures it is not marked done.)
-    for forged in ("5000 / 5000", "DEMO FAILED", "Measured on this run",
+    for forged in ("5,000 / 5,000", "Demo failed", "Measured on this run",
                    "records recovered and verified"):
         assert forged not in html
     assert "demo-step-done" not in html
@@ -166,7 +166,7 @@ def test_completed_showcase_links_resolve(showcase_dirs):
     wait_for_state(controller, "complete")
 
     html = client.get("/showcase").get_data(as_text=True)
-    assert "DEMO COMPLETE" in html
+    assert "Demo complete" in html
     for route in ("/alert", "/restore", "/locked", "/it-view"):
         resp = client.get(route)
         assert resp.status_code == 200, route

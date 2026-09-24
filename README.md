@@ -83,27 +83,27 @@ the simulated clock, and Nightkeep learns them for 7 days (about 70 seconds at
 refreshes itself when what it shows changes. For a slower walkthrough,
 lengthen the day: `python -m nightkeep --console --day-seconds 30`.
 
-What you can click, on every page:
+What you can click:
 
-- **Demo controls** (bottom left): pick a safe simulator variant (fast
-  scrambler, impersonator, recovery-killer) and **Run simulated attack**. It
-  unlocks after day 1, once the Vault holds a clean copy. Nightkeep stops the
-  attack, the office pop-up appears (a warning only, nothing waits on it), the
-  records are locked, and the Vault marks the damaged copy SUSPECT. **Start a
-  fresh run** rebuilds the district and learns again.
-- **Harvest surge** (top strip): switches peak-season volumes on from the next
-  simulated day. Days 4 and 9 are surge days anyway, as seeded in config.
+- **Live Demo** tab, **Start guided demo**: restarts the live session on
+  autopilot. It learns, guards, attacks with the recovery-killer, restores
+  and prints the same proof lines as `--demo-run`, all on the same screens.
+- **Live Demo** tab, **Step-by-step controls**: pick a safe simulator variant
+  (fast scrambler, impersonator, recovery-killer) and **Launch simulated
+  attack**. It unlocks after day 1, once the Vault holds a clean copy.
+  Nightkeep stops the attack, the office pop-up appears (a warning only,
+  nothing waits on it), the records are locked, and the Vault marks the
+  damaged copy SUSPECT. **Harvest surge** switches peak-season volumes on
+  from the next simulated day (days 4 and 9 are surge days anyway, as seeded
+  in config). **Restart from day 1** rebuilds the district and learns again.
 - **A-, A, A+** and **English / मराठी** (top strip): text size and language
   (Marathi covers the chrome and headings).
 - **Night Jobs** tab: each job's learning status, what it usually does, its
   last run and how that run was judged.
-- After an attack, **Restore** with the supervisor PIN (`console.supervisor_pin`
-  in `nightkeep/config.yaml`, 246810 in the demo) runs the five checks and
-  verifies 5,000 of 5,000 cards, then releases the lock.
-
-**Full MVP Demo** tab: **Run Full MVP Demo** restarts the live session on
-autopilot. It learns, guards, attacks with the recovery-killer, restores and
-prints the same proof lines as `--demo-run`, all on the same screens.
+- After an attack, **Data Safety** offers **Get my records back**: the
+  supervisor PIN (`console.supervisor_pin` in `nightkeep/config.yaml`, 246810
+  in the demo) runs the five checks and verifies 5,000 of 5,000 cards, then
+  releases the lock.
 
 `python -m nightkeep.console` with no config is the isolated UI mode for
 screen work only: it starts with sample records and calm, honest screens
@@ -140,10 +140,10 @@ python -m nightkeep --prove-erratic
 | `/locked` | The search screen during the incident (labelled "DEMONSTRATION DRILL" until a real INCIDENT) |
 | `/safety` | Data Safety home: "am I okay?", the six night tasks |
 | `/night-jobs` | Night Jobs: learning status, usual pattern and last check for each job |
-| `/alert` | The incident report, in ration-office units ("STATUS: ALL CLEAR" when unwired) |
+| `/alert` | The Incident Report, in ration-office units ("STATUS: ALL CLEAR" when unwired) |
 | `/restore` | The three-step restore wizard with its five checks |
 | `/server-alert` | The pop-up shown on the office computer |
-| `/showcase` | Full MVP Demo: runs the live session on autopilot and tracks it |
+| `/showcase` | Live Demo: the guided demo on autopilot, plus the step-by-step controls |
 | `/it-view` | Read-only IT diagnostics (incident, watcher, habit, Vault) |
 
 > The live session keeps everything in `demo/live/` (`--out-dir` changes it).

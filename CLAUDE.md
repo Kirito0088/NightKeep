@@ -148,7 +148,7 @@ history and the reasoning behind every decision recorded at
 read the matching artboard(s) from that canvas and the relevant section of
 the log. This section is a summary for orientation, not a substitute.
 
-Seven screens, plus the Night Jobs tab and the Full MVP Demo page (ADR-0011), and only these. Anything else (architecture write-up, research, demo video, threat model) goes on the separate project website, not in the console.
+Seven screens, plus the Night Jobs tab and the Live Demo page (ADR-0011, ADR-0013), and only these. Anything else (architecture write-up, research, demo video, threat model) goes on the separate project website, not in the console.
 
 **Three screens of the PDS system itself**, which is what gets attacked and what makes the demo legible: ration card search with results, ration card detail with members and ePoS history, and the same search screen during the attack. GIGW house style: blue utility strip, tri-colour hairline, district seal, bilingual header, navy nav with one orange active tab, dense bordered tables, labels above inputs, square corners everywhere.
 
@@ -193,6 +193,7 @@ Recorded as ADRs in `docs/adr/`. These beat the plain document precedence order.
 | 0010 | S6 liveness is Vault-owned; the Vault's public interface widens to carry it, in three documented tiers |
 | 0011 | `--console` runs a live session (engine process + demo controls); Night Jobs nav tab; Full MVP Demo drives the same session on autopilot; pop-up never waits on OK |
 | 0012 | One simulated day takes 10 s everywhere (live console, `--demo-run`, CI), not 30 s |
+| 0013 | Demo controls live only on the Live Demo page (no floating dock, no surge switch in the utility strip); "Full MVP Demo" renamed "Live Demo" |
 
 Resolved without an ADR, because the newer document already says so: the product is **Nightkeep** (not QuirkGuard); the console binds to `127.0.0.1` only (MVP.md section 8 reverses SOLUTION_DESIGN's LAN web page); there are **6** erratic jobs (not 3); learning is **7** simulated days plus **3** guard days (not 5 nights); one simulated day is **10 s** (ADR-0012 overrides the earlier 30 s).
 

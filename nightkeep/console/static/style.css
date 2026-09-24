@@ -162,20 +162,12 @@ html, body {
   border-bottom: 1px solid var(--color-border);
 }
 
-.dept-seal-placeholder {
+.dept-seal {
   width: 52px;
   height: 52px;
-  border: 1px solid var(--color-border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--font-size-utility);
-  font-weight: 700;
-  color: var(--color-secondary-text);
-  background-color: var(--color-bg-surface);
-  text-align: center;
-  line-height: 1.1;
-  border-radius: 0;
+  flex-shrink: 0;
+  color: var(--color-primary-navy);
+  font-family: var(--font-family);
 }
 
 .header-title-block {
@@ -235,6 +227,16 @@ html, body {
 
 .nav-link:hover {
   background-color: rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 480px) {
+  .nav-link {
+    padding: 10px 10px;
+  }
+
+  .nav-item:first-child .nav-link {
+    margin-left: 0;
+  }
 }
 
 .nav-link.active {
@@ -606,7 +608,6 @@ html, body {
   font-weight: 700;
   border-radius: 0;
   border: 1px solid;
-  text-transform: capitalize;
 }
 
 .status-badge-active {
@@ -625,6 +626,20 @@ html, body {
   background-color: #fdf2f2;
   color: var(--color-incident-red);
   border-color: var(--color-incident-red);
+}
+
+/* Not a verdict, just where things stand: learning, waiting. */
+.status-badge-neutral {
+  background-color: var(--color-bg-surface);
+  color: var(--color-secondary-text);
+  border-color: var(--color-border);
+}
+
+/* The step the person is on now: navy, the one accent. */
+.status-badge-current {
+  background-color: #eef2fa;
+  color: var(--color-primary-navy);
+  border-color: var(--color-primary-navy);
 }
 
 .empty-results-cell {
@@ -1215,6 +1230,10 @@ html, body {
   text-wrap: pretty;
 }
 
+.restore-summary-calm {
+  color: var(--color-secondary-text);
+}
+
 .restore-steps-list {
   list-style: none;
   display: flex;
@@ -1260,6 +1279,15 @@ html, body {
 .restore-step-active .restore-step-indicator {
   background-color: var(--color-primary-navy);
   color: #ffffff;
+}
+
+.restore-step-waiting .restore-step-indicator {
+  border: 1px solid var(--color-border);
+  color: var(--color-secondary-text);
+}
+
+.restore-step-waiting .restore-step-title {
+  color: var(--color-secondary-text);
 }
 
 .restore-step-body {
@@ -1815,7 +1843,7 @@ html, body {
   font-weight: 700;
 }
 
-/* Alert: event lines in "What happened" / "What NightKeep did" */
+/* Alert: event lines in "What happened" / "What Nightkeep did" */
 .alert-event-line {
   display: flex;
   align-items: baseline;
@@ -1912,108 +1940,6 @@ html, body {
   margin: 0;
 }
 
-/* Demo controls: the judge's menu, fixed bottom left on every page.
-   Square, navy, bordered. Not part of Nightkeep itself, so it says so. */
-.demo-dock {
-  position: fixed;
-  left: 12px;
-  bottom: 12px;
-  width: 260px;
-  z-index: 50;
-  background-color: #ffffff;
-  border: 2px solid var(--color-primary-navy);
-  border-radius: 0;
-  padding: 8px 10px;
-}
-
-.demo-dock-body {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 6px;
-}
-
-.demo-dock-details summary {
-  cursor: pointer;
-}
-
-.demo-dock-title {
-  font-size: var(--font-size-caption);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  color: var(--color-primary-navy);
-}
-
-.demo-dock-line,
-.demo-dock-hint {
-  font-size: var(--font-size-caption);
-  color: var(--color-secondary-text);
-  line-height: 1.35;
-}
-
-.demo-dock-line[data-dock="line"] {
-  color: var(--color-body-text);
-  font-weight: 600;
-}
-
-.demo-dock-form {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.demo-dock-label {
-  font-size: var(--font-size-caption);
-  font-weight: 600;
-}
-
-.demo-dock-select {
-  height: 32px;
-}
-
-.demo-dock .btn {
-  width: 100%;
-}
-
-.demo-dock .btn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-/* Keeps page content clear of the fixed demo controls. */
-.main-content.has-demo-dock {
-  padding-bottom: 260px;
-}
-
-/* Harvest surge switch, beside the language control in the utility strip. */
-.surge-toggle {
-  display: inline-flex;
-}
-
-.surge-toggle button {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  color: #ffffff;
-  font-size: var(--font-size-utility);
-  padding: 1px 8px;
-  cursor: pointer;
-  border-radius: 0;
-}
-
-.surge-toggle button[aria-pressed="true"] {
-  background: #ffffff;
-  color: var(--color-primary-navy);
-}
-
-.surge-toggle button:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.surge-toggle button[aria-pressed="true"]:hover {
-  background: #e8eef8;
-}
-
 /* One banner, three real states: safe (green), review (amber), incident (red). */
 .state-banner-review {
   border-color: var(--color-review-amber);
@@ -2074,4 +2000,100 @@ html, body {
 .text-resize-controls button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+/* Primary actions under a status banner: what to do about it. */
+.banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+/* Ration card search: one page of results at a time. */
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 12px 0 0 0;
+}
+
+.pager .btn[aria-disabled="true"] {
+  background-color: var(--color-bg-subtle);
+  border-color: var(--color-border);
+  color: var(--color-secondary-text);
+  cursor: not-allowed;
+}
+
+.pager-status {
+  font-size: var(--font-size-table);
+  color: var(--color-secondary-text);
+}
+
+/* Live Demo: the guided run and the step-by-step controls, side by side. */
+.showcase-run-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.showcase-run-grid-two {
+  grid-template-columns: 1fr 1fr;
+}
+
+@media (max-width: 900px) {
+  .showcase-run-grid-two {
+    grid-template-columns: 1fr;
+  }
+}
+
+.showcase-panel-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.session-line {
+  font-weight: 700;
+  color: var(--color-body-text);
+}
+
+.session-row,
+.session-attack,
+.session-reset {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.session-attack-controls {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.session-attack-controls .form-control {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.session-attack-controls .btn {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 480px) {
+  .session-attack-controls {
+    flex-direction: column;
+  }
+}
+
+.surge-switch[aria-pressed="true"] {
+  background-color: #eef2fa;
 }

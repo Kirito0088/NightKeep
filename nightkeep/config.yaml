@@ -193,11 +193,13 @@ console:
   # The safe simulator variants the demo controls offer (MVP.md F10, the
   # three Round 2 variants). The first one is selected by default.
   attack_variants: ["fast", "impersonator", "recovery-killer"]
-  # The variant the Full MVP Demo launches by itself after the guard days.
+  # The variant the Live Demo's guided demo launches by itself after the guard days.
   full_demo_variant: "recovery-killer"
   # A-, A and A+ in the top strip step through these text sizes. 1.0 is the
   # normal size the A button returns to.
   text_scale_steps: [0.875, 1.0, 1.125, 1.25]
+  # Ration card search shows this many cards per page.
+  search_page_size: 25
 
 live:
   # The live session engine plays the district PDS server while the console

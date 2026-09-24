@@ -56,7 +56,7 @@ def write_heartbeat(path: str | Path) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="NightKeep watcher agent: watches and heartbeats (F11)."
+        description="Nightkeep watcher agent: watches and heartbeats (F11)."
     )
     parser.add_argument(
         "--run",

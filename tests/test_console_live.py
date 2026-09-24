@@ -86,38 +86,57 @@ def make_client(tmp_path):
     return make
 
 
-# --- the demo controls are on every page ---------------------------------------
+# --- the session controls live on the Live Demo page, nowhere else ------------
 
 
-@pytest.mark.parametrize("path", ["/", "/safety", "/alert", "/restore", "/it-view", "/showcase"])
-def test_every_page_carries_the_demo_controls(make_client, path):
+@pytest.mark.parametrize("path", ["/", "/safety", "/night-jobs", "/alert",
+                                  "/restore", "/it-view"])
+def test_no_page_carries_a_floating_demo_window(make_client, path):
+    """The office screens are the office's: no demo pop-up or dock over them,
+    and no demo switch in the government utility strip."""
     client, _ = make_client(learning_status())
     html = client.get(path).get_data(as_text=True)
-    assert 'aria-label="Demo controls"' in html
-    assert "Run simulated attack" in html
-    assert "Harvest surge" in html
+    assert 'aria-label="Demo controls"' not in html
+    assert "demo-dock" not in html
+    assert "Launch simulated attack" not in html
+    assert "Harvest surge" not in html
     assert DISCLAIMER in html
+    # The page still follows the live session.
+    assert "data-live-url" in html
+
+
+def test_live_demo_page_carries_the_session_controls(make_client):
+    client, _ = make_client(learning_status())
+    html = client.get("/showcase").get_data(as_text=True)
+    assert "Step-by-step controls" in html
+    assert "Launch simulated attack" in html
+    assert "Harvest surge" in html
+    assert "Restart from day 1" in html
     assert "Learning the night jobs. Day 2 of 7." in html
+    assert DISCLAIMER in html
 
 
 def test_a_console_without_a_session_has_no_demo_controls():
     app = create_console_app(None)
-    html = app.test_client().get("/").get_data(as_text=True)
-    assert 'aria-label="Demo controls"' not in html
+    client = app.test_client()
+    html = client.get("/").get_data(as_text=True)
     assert "data-live-url" not in html
+    showcase = client.get("/showcase").get_data(as_text=True)
+    assert "Step-by-step controls" not in showcase
+    assert "Launch simulated attack" not in showcase
 
 
 def test_attack_button_is_disabled_until_there_is_a_clean_copy(make_client):
     client, _ = make_client(learning_status(
         attack_readiness=lp.ATTACK_WAIT_FOR_CLEAN_COPY))
-    html = client.get("/safety").get_data(as_text=True)
-    assert 'data-dock="attack" disabled' in html
+    html = client.get("/showcase").get_data(as_text=True)
+    assert 'data-live="attack" disabled' in html
     assert "Available after day 1" in html
 
 
 def test_variant_picker_offers_the_three_round_two_variants(make_client):
     client, _ = make_client(learning_status())
-    html = client.get("/").get_data(as_text=True)
+    html = client.get("/showcase").get_data(as_text=True)
     for label in ("Fast scrambler", "Impersonator", "Recovery-killer"):
         assert label in html
 
@@ -157,7 +176,7 @@ def test_harvest_surge_switch_flips_the_session(make_client):
 
 def test_surge_switch_shows_its_state(make_client):
     client, _ = make_client(learning_status(harvest_surge_requested=True))
-    html = client.get("/").get_data(as_text=True)
+    html = client.get("/showcase").get_data(as_text=True)
     assert 'aria-pressed="true"' in html
     assert "Harvest surge: <strong>On</strong>" in html
 

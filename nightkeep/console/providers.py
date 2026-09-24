@@ -24,7 +24,7 @@ import hmac
 import json
 import sqlite3
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Mapping
 
@@ -102,6 +102,18 @@ class VerdictRecord:
     actions: tuple[str, ...] = ()
     started_at: datetime | None = None
     finished_at: datetime | None = None
+    # Files the attack had touched when the Judge called INCIDENT, when known.
+    files_affected: int | None = None
+
+
+def _report_time(value) -> datetime | None:
+    """An ISO timestamp from the report, or None when it is missing or bad."""
+    if not isinstance(value, str):
+        return None
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        return None
 
 
 def verdict_record_from_live(run: JobRun, verdict: Verdict) -> VerdictRecord:
@@ -157,6 +169,7 @@ def verdicts_from_report(report: Mapping) -> tuple[VerdictRecord, ...]:
         signals = attack.get("signals")
         reasons = attack.get("reasons")
         actions = attack.get("actions")
+        affected = attack.get("affected_files_at_incident")
         records.append(
             VerdictRecord(
                 job="simulator",
@@ -165,6 +178,14 @@ def verdicts_from_report(report: Mapping) -> tuple[VerdictRecord, ...]:
                 signals=tuple(signals) if isinstance(signals, list) else (),
                 reasons=tuple(reasons) if isinstance(reasons, list) else (),
                 actions=tuple(actions) if isinstance(actions, list) else (),
+                # The run's own clocks: the first write the watcher saw, and
+                # the moment containment finished.
+                started_at=_report_time(attack.get("first_event_at")),
+                finished_at=_report_time(
+                    attack.get("containment_completed_at")
+                    or attack.get("incident_decision_at")
+                ),
+                files_affected=affected if isinstance(affected, int) else None,
             )
         )
     return tuple(records)
@@ -464,7 +485,8 @@ def habit_tasks(
 
     The "usually" ranges are the habit card's own medians and spreads,
     phrased plainly. The latest state is the job's most recent verdict, or
-    "Normal" when the job has only ever been seen on quiet learning days.
+    "Learning" when the job has only been seen on learning days, which are
+    never judged.
     """
     cards = habit.cards()
     latest: dict[str, VerdictRecord] = {}
@@ -492,7 +514,7 @@ def _usually(card: dict[str, tuple[float, float]]) -> str:
     if start:
         median, spread = start
         parts.append(
-            f"around {_hhmm(median)} (give or take {spread:.0f} min)"
+            f"around {_hhmm(median)} (give or take {_duration(spread)})"
         )
     files = sum(
         card.get(feature, (0.0, 0.0))[0]
@@ -505,14 +527,14 @@ def _usually(card: dict[str, tuple[float, float]]) -> str:
 
 def _last_night(record: VerdictRecord | None) -> str:
     if record is None:
-        return "only seen on quiet learning days"
+        return "Seen on learning days only, not judged yet"
     day = f"day {record.day_no}" if record.day_no is not None else "recently"
     return f"{day}: {record.level.title()}"
 
 
 def _task_status(record: VerdictRecord | None) -> str:
     if record is None:
-        return "Normal"
+        return "Learning"
     return {
         NORMAL: "Normal",
         ODD: "Odd, not blocked",
@@ -524,6 +546,24 @@ def _task_status(record: VerdictRecord | None) -> str:
 def _hhmm(minutes: float) -> str:
     total = int(minutes) % (24 * 60)
     return f"{total // 60:02d}:{total % 60:02d}"
+
+
+def _duration(minutes: float) -> str:
+    """A spread in minutes as a clerk would say it: "45 min", "5 h 36 min"."""
+    total = int(round(minutes))
+    if total < 60:
+        return f"{total} min"
+    hours, rest = divmod(total, 60)
+    return f"{hours} h {rest} min" if rest else f"{hours} h"
+
+
+def _local(moment: datetime) -> datetime:
+    """A stored UTC moment in the office's own time zone, for display.
+
+    The Vault and the Judge stamp everything in UTC; the clerk reads the
+    clock on the office wall. Naive datetimes are shown as they are.
+    """
+    return moment.astimezone() if moment.tzinfo is not None else moment
 
 
 # --- the vault -----------------------------------------------------------------
@@ -630,7 +670,7 @@ def safety_home(
         )
         protection_detail = (
             "Nightkeep flagged unusual activity for review. Nothing is "
-            "blocked; the Incident Alert screen shows what was flagged."
+            "blocked; the Incident Report screen shows what was flagged."
         )
     elif latest_clean:
         status_badge = "STATUS: NORMAL"
@@ -653,7 +693,7 @@ def safety_home(
         protection_detail=protection_detail,
         protected_cards_count=district_figures.get("ration_cards", "?"),
         fps_count=district_figures.get("fps_count", "?"),
-        safe_copies_count=str(len(snapshots)),
+        safe_copies_count=str(sum(1 for s in snapshots if s.health == CLEAN)),
         clean_point=clean_point,
         tasks=habit_tasks(habit, verdicts),
     )
@@ -692,18 +732,18 @@ def restore_wizard(
             step_number=2,
             title="Verify records",
             description=(
-                "The five automated integrity and safety checks run "
-                "with the restore."
+                "Five safety checks run by themselves as soon as the "
+                "restore is confirmed."
                 if target
                 else "Waiting for a clean backup."
             ),
-            status="active",
+            status="waiting",
         ),
         RestoreStepPresentation(
             step_number=3,
             title="Confirm and restore",
-            description="Enter supervisor PIN to restore records to the office computer.",
-            status="active",
+            description="Enter the supervisor PIN to restore the records to the office computer.",
+            status="active" if target else "waiting",
         ),
     )
     checks = tuple(
@@ -722,6 +762,7 @@ def restore_wizard(
         loss_window_detail=loss_detail,
         steps=steps,
         checks=checks,
+        has_incident=incident_at is not None,
     )
 
 
@@ -767,7 +808,9 @@ def restore_result_wizard(
         for index, check in enumerate(result.checks, start=1)
     )
     return RestoreWizardPresentation(
-        headline="Get my records back",
+        headline=(
+            "Your records are back" if result.ok else "Get my records back"
+        ),
         clean_point=result.snapshot_id,
         records_count=records,
         loss_window_entries="0",
@@ -811,9 +854,10 @@ def _loss_window(
         return "?", "The loss window cannot be measured without a clean copy."
     end = _incident_time(vault, incident) or datetime.now(target.taken_at.tzinfo)
     count = pds.counter_entries_between(target.taken_at, end)
+    until = "the incident" if incident is not None else "now"
     detail = (
         f"{count} counter entries recorded between the clean backup "
-        f"({_snapshot_label(target)}) and the incident must be re-checked "
+        f"({_snapshot_label(target)}) and {until} must be re-checked "
         "after restoration."
     )
     return str(count), detail
@@ -830,7 +874,7 @@ def _incident_time(
 
 
 def _snapshot_label(snapshot) -> str:
-    return snapshot.taken_at.strftime("%d %b, %H:%M")
+    return _local(snapshot.taken_at).strftime("%d %b, %H:%M")
 
 
 # --- the incident screens -------------------------------------------------------
@@ -856,15 +900,25 @@ def alert_presentation(
         headline = "Something unusual is happening to your files."
         status_badge = "STATUS: UNDER REVIEW"
 
-    signals = " + ".join(incident.signals) if incident.signals else "none"
-    figures = [
+    # Counts a clerk can use. The signal codes stay in the IT view.
+    figures = []
+    if incident.files_affected is not None:
+        figures.append(
+            IncidentFigurePresentation(
+                value=f"{incident.files_affected:,}",
+                label="files touched before it was stopped",
+            )
+        )
+    figures.append(
         IncidentFigurePresentation(
-            value=signals, label="tripwire signals fired"
-        ),
-        IncidentFigurePresentation(
-            value=clean_label, label="clean copy ready"
-        ),
-    ]
+            value=str(len(incident.signals)),
+            label="alarms went off" if len(incident.signals) != 1
+            else "alarm went off",
+        )
+    )
+    figures.append(
+        IncidentFigurePresentation(value=clean_label, label="clean copy ready")
+    )
     loss_entries = "?"
     if pds is not None and target is not None:
         end = _incident_time(vault, incident) or datetime.now(
@@ -876,25 +930,21 @@ def alert_presentation(
             value=loss_entries, label="counter entries to re-check"
         )
     )
-    if incident.reasons:
-        figures.append(
-            IncidentFigurePresentation(
-                value=str(len(incident.reasons)),
-                label="reasons recorded",
-            )
-        )
 
-    timeline: list[TimelineEventPresentation] = []
+    # (when, event) pairs, sorted below so the timeline reads in the order
+    # things happened: the clean copy was taken before the attack began.
+    timed: list[tuple[datetime, TimelineEventPresentation]] = []
     if incident.started_at is not None:
-        timeline.append(
+        timed.append((
+            incident.started_at,
             TimelineEventPresentation(
-                time=incident.started_at.strftime("%H:%M:%S"),
+                time=_local(incident.started_at).strftime("%H:%M:%S"),
                 title="Suspicious activity began",
                 detail=incident.reasons[0]
                 if incident.reasons
                 else "An abnormal program began modifying office files.",
-            )
-        )
+            ),
+        ))
     if incident.finished_at is not None:
         # INCIDENT means the attack was stopped; SUSPICIOUS only means it
         # was flagged, so the timeline must not claim a stop happened.
@@ -912,35 +962,40 @@ def alert_presentation(
                 else "Nightkeep flagged this activity for review."
             )
         )
-        timeline.append(
+        timed.append((
+            incident.finished_at,
             TimelineEventPresentation(
-                time=incident.finished_at.strftime("%H:%M:%S"),
+                time=_local(incident.finished_at).strftime("%H:%M:%S"),
                 title=decision_title,
                 detail=decision_detail,
-            )
-        )
+            ),
+        ))
     if suspect is not None:
-        timeline.append(
+        timed.append((
+            suspect.taken_at,
             TimelineEventPresentation(
-                time=suspect.taken_at.strftime("%H:%M:%S"),
+                time=_local(suspect.taken_at).strftime("%H:%M:%S"),
                 title="Latest safe copy flagged",
                 detail=suspect.reasons[0]
                 if suspect.reasons
                 else "The Vault's health check marked this pull SUSPECT.",
-            )
-        )
+            ),
+        ))
     if clean is not None:
-        timeline.append(
+        timed.append((
+            clean.taken_at,
             TimelineEventPresentation(
-                time=clean.taken_at.strftime("%H:%M:%S"),
+                time=_local(clean.taken_at).strftime("%H:%M:%S"),
                 title=f"Clean copy from {clean_label} ready",
                 detail="Safe backup preserved on the Vault remains uncorrupted "
                 "and ready.",
-            )
-        )
+            ),
+        ))
+    timed.sort(key=lambda pair: _as_utc(pair[0]))
+    timeline = [event for _, event in timed]
     timeline.append(
         TimelineEventPresentation(
-            time="--:--:--",
+            time="Next",
             title="Office follow-up required",
             detail=f"{loss_entries} counter entries recorded after the clean "
             "copy need to be re-checked.",
@@ -977,6 +1032,13 @@ def alert_presentation(
         timeline=tuple(timeline),
         actions=actions,
     )
+
+
+def _as_utc(moment: datetime) -> datetime:
+    """A sort key that never compares naive with aware datetimes."""
+    if moment.tzinfo is None:
+        return moment.replace(tzinfo=timezone.utc)
+    return moment.astimezone(timezone.utc)
 
 
 def server_alert(incident: VerdictRecord | None) -> ServerAlertPresentation:
@@ -1053,7 +1115,7 @@ class ConsoleRuntime:
     vault: Vault | None
     verdicts: tuple[VerdictRecord, ...]
     supervisor_pin: str
-    # The restore the report records, when one ran: the Full MVP Demo's own,
+    # The restore the report records, when one ran: the Live Demo's guided run's own,
     # or the supervisor's from this console.
     restore_report: Mapping | None = None
 

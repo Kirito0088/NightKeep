@@ -111,7 +111,7 @@ def test_night_jobs_is_in_the_nav_on_every_page(tmp_path):
     for path in ("/", "/safety", "/showcase"):
         html = client.get(path).get_data(as_text=True)
         assert 'href="/night-jobs"' in html
-        assert "Full MVP Demo" in html
+        assert "Live Demo" in html
 
 
 def test_night_jobs_without_a_session_is_honest():

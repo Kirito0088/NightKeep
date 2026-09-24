@@ -83,8 +83,8 @@ def test_showcase_hides_cli_command_surface(client):
 
 def test_showcase_keeps_title_and_primary_action(client):
     html = client.get("/showcase").get_data(as_text=True)
-    assert "Full MVP Demo" in html
-    assert "Run Full MVP Demo" in html
+    assert "Live Demo" in html
+    assert "Start guided demo" in html
 
 
 def test_showcase_keeps_plain_language_story(client):
@@ -103,7 +103,7 @@ def test_primary_nav_survives_on_all_primary_pages(client):
     for route in ("/", "/safety", "/showcase", "/alert"):
         html = client.get(route).get_data(as_text=True)
         assert 'href="/showcase"' in html, f"nav lost /showcase link on {route}"
-        assert "Full MVP Demo" in html
+        assert "Live Demo" in html
 
 
 def test_exact_disclaimer_survives_on_all_primary_pages(client):

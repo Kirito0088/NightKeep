@@ -18,9 +18,20 @@
     <div class="restore-summary-content">
       <div class="restore-summary-badge">RESTORE WIZARD</div>
       <h2 class="restore-summary-title">{{ t(restore.headline) }}</h2>
+      {% if restore_success %}
+      <p class="restore-summary-description">
+        Restored <strong>{{ restore.records_count }} ration cards</strong> for District Supply Office, Thane from the verified clean backup <strong>{{ restore.clean_point }}</strong> on the Vault.
+      </p>
+      {% else %}
       <p class="restore-summary-description">
         Restoring <strong>{{ restore.records_count }} ration cards</strong> for District Supply Office, Thane from the verified clean backup at <strong>{{ restore.clean_point }}</strong> preserved on the Vault.
       </p>
+      {% if not restore.has_incident %}
+      <p class="restore-summary-description restore-summary-calm">
+        No attack has been detected, so nothing needs restoring right now. This screen is used after an incident.
+      </p>
+      {% endif %}
+      {% endif %}
     </div>
   </div>
 
@@ -32,7 +43,7 @@
     <div class="panel-body">
       <ol class="restore-steps-list">
         {% for step in restore.steps %}
-          <li class="restore-step-item {% if step.status == 'completed' %}restore-step-completed{% elif step.status == 'active' %}restore-step-active{% endif %}">
+          <li class="restore-step-item {% if step.status == 'completed' %}restore-step-completed{% elif step.status == 'active' %}restore-step-active{% else %}restore-step-waiting{% endif %}">
             <div class="restore-step-indicator">
               {% if step.status == 'completed' %}
                 <span class="restore-step-check" aria-hidden="true">Done</span>
@@ -48,7 +59,9 @@
               {% if step.status == 'completed' %}
                 <span class="status-badge status-badge-active">Completed</span>
               {% elif step.status == 'active' %}
-                <span class="status-badge status-badge-incident">Current Step</span>
+                <span class="status-badge status-badge-current">Current Step</span>
+              {% else %}
+                <span class="status-badge status-badge-neutral">Waiting</span>
               {% endif %}
             </div>
           </li>
@@ -62,14 +75,15 @@
     <div class="panel-header">
       <h2 id="verification-heading">{{ t("Safety Verification (Five Checks)") }}</h2>
       {% set passed = restore.checks | selectattr("status", "equalto", "Passed") | list | length %}
-      <span class="status-badge {% if passed == 5 %}status-badge-active{% else %}status-badge-suspended{% endif %}">{{ passed }} of 5 Verified</span>
+      {% set failed = restore.checks | selectattr("status", "equalto", "Failed") | list | length %}
+      <span class="status-badge {% if passed == 5 %}status-badge-active{% elif failed %}status-badge-incident{% else %}status-badge-neutral{% endif %}">{{ passed }} of 5 verified</span>
     </div>
     <div class="panel-body">
       <ul class="verification-checks-list">
         {% for check in restore.checks %}
           <li class="verification-check-item">
-            <span class="verification-check-badge status-badge {% if check.status == 'Passed' %}status-badge-active{% else %}status-badge-suspended{% endif %}">{{ check.status }}</span>
-            <span class="verification-check-text">{{ check.statement }}</span>
+            <span class="verification-check-badge status-badge {% if check.status == 'Passed' %}status-badge-active{% elif check.status == 'Pending' %}status-badge-neutral{% else %}status-badge-incident{% endif %}">{{ check.status }}</span>
+            <span class="verification-check-text">{{ (check.statement[:1]|upper) ~ check.statement[1:] }}</span>
           </li>
         {% endfor %}
       </ul>
@@ -80,12 +94,12 @@
   <section class="panel-block loss-window-section" aria-labelledby="loss-window-heading">
     <div class="panel-header">
       <h2 id="loss-window-heading">{{ t("Loss Window Advisory") }}</h2>
-      <span class="status-badge status-badge-suspended">{{ restore.loss_window_entries }} entries to re-check</span>
+      <span class="status-badge {% if restore.loss_window_entries == '0' %}status-badge-neutral{% else %}status-badge-suspended{% endif %}">{{ restore.loss_window_entries }} {{ 'entry' if restore.loss_window_entries == '1' else 'entries' }} to re-check</span>
     </div>
     <div class="panel-body">
       <div class="loss-window-box">
         <p class="loss-window-headline">
-          <strong>{{ restore.loss_window_entries }} counter entries</strong> were recorded between the clean backup ({{ restore.clean_point }}) and the attack stop.
+          <strong>{{ restore.loss_window_entries }} counter {{ 'entry' if restore.loss_window_entries == '1' else 'entries' }}</strong> {{ 'was' if restore.loss_window_entries == '1' else 'were' }} recorded between the clean backup ({{ restore.clean_point }}) and {% if restore.has_incident %}the moment the attack was stopped{% else %}now{% endif %}.
         </p>
         <p class="loss-window-detail">
           {{ restore.loss_window_detail }}
@@ -110,7 +124,13 @@
           <p><strong>Restore did not run.</strong> {{ restore_error }}</p>
         </div>
       {% endif %}
-      <form class="restore-form-block" method="post" action="{{ url_for('restore_wizard') }}">
+      {% if restore_success %}
+      <div class="restore-actions-bar">
+        <a href="{{ url_for('nightkeep_home') }}" class="btn btn-primary">{{ t("Back to Data Safety") }}</a>
+        <a href="{{ url_for('search_cards') }}" class="btn btn-secondary">{{ t("Open Ration Card Search") }}</a>
+      </div>
+      {% else %}
+      <form class="restore-form-block" method="post" action="{{ url_for('restore_wizard') }}#restore-confirm-heading">
         <div class="form-group pin-form-group">
           <label for="restore_pin" class="form-label">{{ t("Supervisor authorisation PIN") }}</label>
           <input
@@ -121,6 +141,8 @@
             maxlength="6"
             placeholder="Enter supervisor PIN"
             autocomplete="off"
+            inputmode="numeric"
+            required
           >
           <span class="form-help-text">
             Authorisation from the District Supply Officer or inspector is required before restoring records to the office computer.
@@ -131,11 +153,18 @@
           <button type="submit" class="btn btn-primary btn-restore-confirm" id="restore-confirm-btn">
             {{ t("Restore records to office computer") }}
           </button>
+          {% if restore.has_incident %}
           <a href="{{ url_for('nightkeep_alert') }}" class="btn btn-secondary btn-cancel-restore">
-            {{ t("Return to Incident Alert") }}
+            {{ t("Back to incident report") }}
           </a>
+          {% else %}
+          <a href="{{ url_for('nightkeep_home') }}" class="btn btn-secondary btn-cancel-restore">
+            {{ t("Back to Data Safety") }}
+          </a>
+          {% endif %}
         </div>
       </form>
+      {% endif %}
     </div>
   </section>
 </div>

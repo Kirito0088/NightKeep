@@ -56,7 +56,7 @@ def create_console_app(
         vault_dir = session.paths.vault
         report_path = session.paths.report
     if session is not None and config is not None:
-        # The Full MVP Demo drives the same live session, on autopilot.
+        # The Live Demo page's guided demo drives the same live session, on autopilot.
         controller = LiveShowcase(session, config.console.full_demo_variant)
     else:
         controller = ShowcaseController()

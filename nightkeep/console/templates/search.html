@@ -43,8 +43,8 @@
             <label for="taluka" class="form-label">{{ t("Taluka") }}</label>
             <select id="taluka" name="taluka" class="form-control">
               <option value="">{{ t("All Talukas") }}</option>
-              {% for t in talukas %}
-                <option value="{{ t }}" {% if query.taluka == t %}selected{% endif %}>{{ t }}</option>
+              {% for tk in talukas %}
+                <option value="{{ tk }}" {% if query.taluka == tk %}selected{% endif %}>{{ tk }}</option>
               {% endfor %}
             </select>
           </div>
@@ -119,10 +119,19 @@
       </div>
       <div class="panel-body">
         <div class="data-safety-status-box">
-          <span class="data-safety-badge">Protected</span>
-          <p class="data-safety-description">
-            All {{ district_figures.ration_cards }} records protected. Continuous monitoring active.
-          </p>
+          {% if safety.tone == 'incident' %}
+          <span class="status-badge status-badge-incident">Incident</span>
+          <p class="data-safety-description">{{ safety.protection_status.rstrip('.') }}.</p>
+          {% elif safety.tone == 'review' %}
+          <span class="status-badge status-badge-suspended">Needs review</span>
+          <p class="data-safety-description">{{ safety.protection_status.rstrip('.') }}.</p>
+          {% elif safety.clean_point == 'No clean copy yet' %}
+          <span class="status-badge status-badge-neutral">Getting ready</span>
+          <p class="data-safety-description">No safe copy yet. The Vault has not taken its first backup of the {{ district_figures.ration_cards }} records.</p>
+          {% else %}
+          <span class="status-badge status-badge-active">Protected</span>
+          <p class="data-safety-description">All {{ district_figures.ration_cards }} records protected. Continuous monitoring active.</p>
+          {% endif %}
           <a href="{{ url_for('nightkeep_home') }}" class="btn btn-secondary">{{ t("Open Data Safety") }}</a>
         </div>
       </div>
@@ -134,7 +143,7 @@
 <section class="results-section" aria-labelledby="results-heading">
   <div class="results-header">
     <h2 id="results-heading">{{ t("Search Results") }}</h2>
-    <span class="results-count">{{ records|length }} records found</span>
+    <span class="results-count">{{ '{:,}'.format(total) }} {{ 'record' if total == 1 else 'records' }} found{% if pages > 1 %}, showing {{ first_shown }} to {{ last_shown }}{% endif %}</span>
   </div>
 
   <div class="table-responsive">
@@ -179,5 +188,21 @@
       </tbody>
     </table>
   </div>
+
+  {% if pages > 1 %}
+  <nav class="pager" aria-label="Search results pages">
+    {% if page > 1 %}
+    <a href="{{ page_url(page - 1) }}" class="btn btn-secondary" rel="prev">{{ t("Previous") }}</a>
+    {% else %}
+    <span class="btn btn-secondary" aria-disabled="true">{{ t("Previous") }}</span>
+    {% endif %}
+    <span class="pager-status tabular-number">Page {{ page }} of {{ pages }}</span>
+    {% if page < pages %}
+    <a href="{{ page_url(page + 1) }}" class="btn btn-secondary" rel="next">{{ t("Next") }}</a>
+    {% else %}
+    <span class="btn btn-secondary" aria-disabled="true">{{ t("Next") }}</span>
+    {% endif %}
+  </nav>
+  {% endif %}
 </section>
 {% endblock %}

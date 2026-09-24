@@ -184,7 +184,7 @@ def test_search_filter_changes_result_set(client):
     # Filter by status=Suspended gives 1 row
     suspended_resp = client.get("/search?status=Suspended")
     suspended_html = suspended_resp.get_data(as_text=True)
-    assert "1 records found" in suspended_html
+    assert "1 record found" in suspended_html
     suspended_tbody = suspended_html.split("<tbody>")[1].split("</tbody>")[0]
     assert "Anil Eknath More" in suspended_tbody
     assert "Sunita Ramesh Kadam" not in suspended_tbody
@@ -192,7 +192,7 @@ def test_search_filter_changes_result_set(client):
     # Filter by scheme=AAY gives 1 row
     aay_resp = client.get("/search?scheme=AAY")
     aay_html = aay_resp.get_data(as_text=True)
-    assert "1 records found" in aay_html
+    assert "1 record found" in aay_html
     aay_tbody = aay_html.split("<tbody>")[1].split("</tbody>")[0]
     assert "Rajesh Vithal Shinde" in aay_tbody
     assert "Anil Eknath More" not in aay_tbody
@@ -598,7 +598,7 @@ def test_alert_route_returns_200(client):
     response = client.get("/alert")
     assert response.status_code == 200
     html = response.get_data(as_text=True)
-    assert "Incident Alert" in html
+    assert "Incident Report" in html
 
 
 def test_alert_exact_headline_present(client):
@@ -753,8 +753,8 @@ def test_restore_five_verification_checks_rendered(client):
     html = response.get_data(as_text=True)
 
     assert "Safety Verification (Five Checks)" in html
-    assert "0 of 5 Verified" in html
-    assert "5 of 5 Verified" not in html
+    assert "0 of 5 verified" in html
+    assert "5 of 5 verified" not in html
     assert html.count(">Pending<") == 5
     # The apostrophe renders HTML-escaped; assert the unescaped remainder.
     assert "Every restored file" in html
@@ -797,7 +797,10 @@ def test_restore_primary_action_present(client):
     assert "Restore records to office computer" in html
     assert "btn-restore-confirm" in html
     assert '<a href="#"' not in html, "Found dead anchor href='#' in restore template"
-    assert 'href="/alert"' in html
+    # No incident behind the unwired console: the way back is Data Safety,
+    # not an incident report that has nothing to report.
+    assert 'href="/safety"' in html
+    assert "No attack has been detected" in html
 
 
 def test_restore_retains_government_chrome(client):

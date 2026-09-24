@@ -1,6 +1,6 @@
 """English and Marathi for the console's chrome and headings.
 
-Scope, by decision: navigation, the utility strip, the demo controls,
+Scope, by decision: navigation, the utility strip, the Live Demo controls,
 breadcrumbs, page and panel headings, the main status headlines, table
 column headers, form labels and buttons. Body sentences and every record
 (names, card numbers, verdict reasons) stay as they are.
@@ -29,17 +29,19 @@ _MARATHI: dict[str, str] = {
     "Ration Card Search": "रेशन कार्ड शोधा",
     "Data Safety": "डेटा सुरक्षा",
     "Night Jobs": "रात्रीची कामे",
-    "Full MVP Demo": "पूर्ण MVP डेमो",
+    "Live Demo": "लाइव्ह डेमो",
     "Home": "होम",
     "Skip to main content": "मुख्य माहितीवर जा",
     "Screen Reader Access": "स्क्रीन रीडर",
     "Harvest surge": "हंगामाची गर्दी",
     "On": "चालू",
     "Off": "बंद",
-    "Demo controls": "डेमो कंट्रोल्स",
+    "Guided demo": "आपोआप चालणारा डेमो",
+    "Guided demo status": "डेमो कुठपर्यंत आला",
+    "Step-by-step controls": "टप्प्याटप्प्याने कंट्रोल",
     "Simulated attack": "डेमो हल्ला",
-    "Run simulated attack": "डेमो हल्ला सुरू करा",
-    "Start a fresh run": "पुन्हा नव्याने सुरू करा",
+    "Launch simulated attack": "डेमो हल्ला सुरू करा",
+    "Restart from day 1": "पहिल्या दिवसापासून पुन्हा सुरू करा",
     "IT View": "IT व्ह्यू",
     "For the IT person": "IT टीमसाठी",
 
@@ -62,14 +64,12 @@ _MARATHI: dict[str, str] = {
     "Learning Progress": "शिकण्याची प्रगती",
     "The Night Jobs": "रात्रीची कामे",
     "Recent Checks": "अलीकडच्या तपासण्या",
-    "Data Safety Alert": "डेटा सुरक्षा अलर्ट",
-    "Incident Alert": "धोक्याचा अलर्ट",
     "Incident Report": "घटनेचा रिपोर्ट",
     "Incident Timeline": "घटना कशी घडली",
     "Incident figures": "घटनेची आकडेवारी",
     "Incident": "घटना",
     "What happened": "काय झाले",
-    "What NightKeep did": "NightKeep ने काय केले",
+    "What Nightkeep did": "Nightkeep ने काय केले",
     "What to do now": "आता काय करायचे",
     "What the office does next": "ऑफिसने पुढे काय करायचे",
     "Actions taken": "केलेली कारवाई",
@@ -82,7 +82,6 @@ _MARATHI: dict[str, str] = {
     "Step 3: Authorisation and Confirmation": "पायरी 3: परवानगी आणि खात्री",
     "IT diagnostics": "IT तपासणी",
     "Vault alert records": "व्हॉल्ट अलर्टच्या नोंदी",
-    "Run the demonstration": "डेमो चालवा",
     "What this demonstrates": "हा डेमो काय दाखवतो",
     "Demonstration progress": "डेमो कुठपर्यंत आला",
     "Measured on this run": "या डेमोमध्ये मोजलेले",
@@ -133,17 +132,17 @@ _MARATHI: dict[str, str] = {
     "The live session stopped with a problem.": "लाइव्ह सेशन एका अडचणीमुळे थांबले.",
     "The live session has stopped.": "लाइव्ह सेशन थांबले आहे.",
 
-    # --- the Full MVP Demo's phases ---------------------------------------
-    "READY": "तयार",
-    "STARTING": "सुरू होत आहे",
-    "LEARN": "शिकणे",
-    "GUARD": "लक्ष ठेवणे",
-    "ATTACK": "हल्ला",
-    "CONTAIN": "हल्ला थांबवणे",
-    "PROTECT": "डेटा सुरक्षित",
-    "RECOVER": "डेटा परत",
-    "DEMO COMPLETE": "डेमो पूर्ण",
-    "DEMO FAILED": "डेमो अयशस्वी",
+    # --- the Live Demo's phases ------------------------------------------
+    "Ready": "तयार",
+    "Starting": "सुरू होत आहे",
+    "Learn": "शिकणे",
+    "Guard": "लक्ष ठेवणे",
+    "Attack": "हल्ला",
+    "Contain": "हल्ला थांबवणे",
+    "Protect": "डेटा सुरक्षित",
+    "Recover": "डेटा परत",
+    "Demo complete": "डेमो पूर्ण",
+    "Demo failed": "डेमो अयशस्वी",
 
     # --- table column headers -------------------------------------------------
     "Card Number": "कार्ड नंबर",
@@ -209,9 +208,15 @@ _MARATHI: dict[str, str] = {
     "Open Vault Console (Simulation)": "व्हॉल्ट कन्सोल उघडा (डेमो)",
     "Supervisor authorisation PIN": "सुपरवायझर PIN",
     "Restore records to office computer": "डेटा ऑफिसच्या कॉम्प्युटरवर रिस्टोर करा",
-    "Return to Incident Alert": "अलर्टकडे परत जा",
+    "Back to incident report": "घटनेच्या रिपोर्टकडे परत",
+    "Back to Data Safety": "डेटा सुरक्षाकडे परत",
+    "Open Ration Card Search": "रेशन कार्ड शोधा उघडा",
+    "See what happened": "काय झाले ते पाहा",
+    "Previous": "मागे",
+    "Next": "पुढे",
     "Acknowledge": "ठीक आहे",
-    "Run Full MVP Demo": "पूर्ण MVP डेमो चालवा",
+    "Start guided demo": "आपोआप डेमो सुरू करा",
+    "Guided demo running": "डेमो सुरू आहे",
 }
 
 

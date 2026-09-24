@@ -278,8 +278,9 @@ def test_habit_tasks_render_learned_jobs(tmp_path):
     task = tasks[0]
     assert task.task_name == "Day-end upload"
     assert "02:14" in task.usually
-    assert task.status == "Normal"
-    assert "quiet learning days" in task.last_night
+    # Learning days are never judged, so the row must not claim "Normal".
+    assert task.status == "Learning"
+    assert "learning days only" in task.last_night
 
 
 def test_habit_tasks_carry_the_latest_verdict(tmp_path):
@@ -332,7 +333,12 @@ def test_alert_presentation_names_the_real_signals(tmp_path):
 
     assert "stopped" in alert.headline
     assert alert.status_badge == "STATUS: ATTACK STOPPED"
-    assert any("S2" in figure.value for figure in alert.figures)
+    # The clerk sees how many alarms went off; the codes are for the IT view.
+    assert any(
+        figure.value == str(len(record.signals)) and "alarm" in figure.label
+        for figure in alert.figures
+    )
+    assert not any("S2" in figure.value for figure in alert.figures)
     assert any(event.title == "Attack stopped" for event in alert.timeline)
     assert alert.actions[0].is_highlighted
 
@@ -402,7 +408,8 @@ def test_safety_home_reads_real_snapshots_and_cards(tmp_path):
     safety = safety_home(habit, vault, pds.district_figures(), (record,))
 
     assert safety.protected_cards_count == "200"
-    assert safety.safe_copies_count == "4"
+    # Four pulls, one of them SUSPECT: only the three clean ones are "safe".
+    assert safety.safe_copies_count == "3"
     assert len(safety.tasks) == 1
     assert safety.tasks[0].task_name == "Day-end upload"
 
@@ -413,7 +420,10 @@ def test_restore_wizard_checks_are_pending_before_the_restore(tmp_path):
 
     wizard = restore_wizard(vault, record, pds)
 
-    assert wizard.clean_point == "21 Sep, 02:14"
+    # Shown in the office's own time zone, not the Vault's UTC stamp.
+    assert wizard.clean_point == (
+        (DAY + timedelta(days=1)).astimezone().strftime("%d %b, %H:%M")
+    )
     assert all(check.status == "Pending" for check in wizard.checks)
     assert len(wizard.checks) == 5
     assert wizard.steps[0].status == "completed"
@@ -508,7 +518,8 @@ def test_search_serves_the_real_district(tmp_path):
     assert response.status_code == 200
     html = response.get_data(as_text=True)
     assert "200" in html
-    assert "All 200 records protected" in html
+    # No Vault copy exists in this fixture, so the panel must not claim one.
+    assert "No safe copy yet. The Vault has not taken its first backup of the 200 records." in html
 
 
 def test_search_filter_and_card_detail_use_real_rows(tmp_path):
@@ -537,7 +548,7 @@ def test_restore_get_shows_pending_checks(tmp_path):
     html = client.get("/restore").get_data(as_text=True)
 
     assert "Pending" in html
-    assert "0 of 5 Verified" in html
+    assert "0 of 5 verified" in html
     assert 'name="restore_pin"' in html
 
 
@@ -565,7 +576,7 @@ def test_restore_post_correct_pin_restores_and_reports_checks(tmp_path):
     assert response.status_code == 200
     html = response.get_data(as_text=True)
     assert "Restore complete" in html
-    assert "5 of 5 Verified" in html
+    assert "5 of 5 verified" in html
     assert calls and len(calls) == 1
 
 
@@ -576,7 +587,10 @@ def test_alert_route_renders_the_real_incident(tmp_path):
     html = client.get("/alert").get_data(as_text=True)
 
     assert "ATTACK STOPPED" in html
-    assert "S2" in html
+    # The real verdict's alarm count, in words; the signal codes themselves
+    # are demoted to the IT view.
+    assert "went off" in html
+    assert "tripwire signals fired" not in html
 
 
 # --- the entrypoint wiring: create_console_app over a real config ------------------
@@ -623,7 +637,9 @@ def test_create_console_app_reads_real_runtime_from_disk(tmp_path):
     client = app.test_client()
 
     search = client.get("/search").get_data(as_text=True)
-    assert "All 200 records protected" in search
+    # The report records an INCIDENT: the side panel must not say "Protected".
+    assert "Someone tried to lock your files. It was stopped." in search
+    assert "status-badge-incident" in search
 
     safety = client.get("/safety").get_data(as_text=True)
     assert "Day-end upload" in safety

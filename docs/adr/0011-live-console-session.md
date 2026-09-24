@@ -1,7 +1,8 @@
 # ADR-0011: The console runs a live session, with demo controls and a Night Jobs tab
 
 **Date:** 23 Sept 2026
-**Status:** Accepted
+**Status:** Accepted. Amended by ADR-0013 (demo controls moved to the Live
+Demo page; "Full MVP Demo" renamed "Live Demo").
 
 ## Context
 

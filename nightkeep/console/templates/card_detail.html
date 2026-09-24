@@ -69,7 +69,7 @@
         </div>
         <div class="kv-item">
           <dt class="kv-label">Total Registered Members</dt>
-          <dd class="kv-value tabular-number">{{ card.member_count }} members</dd>
+          <dd class="kv-value tabular-number">{{ card.member_count }} {{ 'member' if card.member_count == 1 else 'members' }}</dd>
         </div>
       </dl>
     </div>
@@ -110,7 +110,7 @@
               <th scope="row">{{ t("Total Monthly Grain") }}</th>
               <td class="tabular-number"><strong>{{ "%.3f"|format(total_entitlement_kg) }} kg</strong></td>
               <td>Free under PMGKAY</td>
-              <td>{{ card.member_count }} registered family members</td>
+              <td>{{ card.member_count }} registered family {{ 'member' if card.member_count == 1 else 'members' }}</td>
             </tr>
           </tfoot>
         </table>
@@ -122,7 +122,7 @@
   <section class="panel-block members-section" aria-labelledby="members-heading">
     <div class="panel-header detail-panel-header">
       <h2 id="members-heading">{{ t("Family Members") }}</h2>
-      <span class="results-count">{{ card.member_count }} members registered</span>
+      <span class="results-count">{{ card.member_count }} {{ 'member' if card.member_count == 1 else 'members' }} registered</span>
     </div>
     <div class="panel-body">
       <div class="table-responsive">

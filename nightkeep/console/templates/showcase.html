@@ -1,14 +1,12 @@
 {% extends "base.html" %}
 
-{% block title %}{{ t("Full MVP Demo") }}{% endblock %}
-{% block page_heading %}{{ t("Full MVP Demo") }}{% endblock %}
+{% block title %}{{ t("Live Demo") }}{% endblock %}
+{% block page_heading %}{{ t("Live Demo") }}{% endblock %}
 
 {% block breadcrumb_items %}
 <li><a href="/">{{ t("Home") }}</a></li>
 <li class="breadcrumb-separator" aria-hidden="true">/</li>
-<li><a href="{{ url_for('nightkeep_home') }}">{{ t("Data Safety") }}</a></li>
-<li class="breadcrumb-separator" aria-hidden="true">/</li>
-<li aria-current="page">{{ t("Full MVP Demo") }}</li>
+<li aria-current="page">{{ t("Live Demo") }}</li>
 {% endblock %}
 
 {% block content %}
@@ -17,9 +15,9 @@
   <meta http-equiv="refresh" content="5">
   {% endif %}
 
-  <!-- Live demonstration status -->
+  <!-- Guided demo status -->
   <div class="showcase-banner showcase-banner-{{ state }}" role="status" aria-live="polite">
-    <p class="showcase-banner-kicker">Demonstration status</p>
+    <p class="showcase-banner-kicker">{{ t("Guided demo status") }}</p>
     <h2 class="showcase-banner-title">{{ t(phase_title) }}</h2>
     <p class="showcase-banner-description">{{ phase_description }}</p>
     {% if failure_note %}
@@ -27,38 +25,103 @@
     {% endif %}
   </div>
 
-  <!-- One-click entry point -->
-  <section class="panel-block" aria-labelledby="demo-start-heading">
+  <div class="showcase-run-grid{% if live is not none %} showcase-run-grid-two{% endif %}">
+    <!-- One click: the whole story on autopilot -->
+    <section class="panel-block" aria-labelledby="demo-start-heading">
+      <div class="panel-header">
+        <h2 id="demo-start-heading">{{ t("Guided demo") }}</h2>
+      </div>
+      <div class="panel-body showcase-panel-body">
+        <p class="it-panel-text">
+          Runs the whole story by itself: Nightkeep learns seven days of the
+          office's normal night work, checks three more, stops a safe
+          simulated ransomware attack, keeps the backups safe and restores
+          every ration card.
+        </p>
+        {% if restarts_live_session %}
+        <p class="it-panel-text">
+          It restarts the live session, so every other screen follows the
+          same run. The attack and the restore happen by themselves.
+        </p>
+        {% endif %}
+        {% if can_start %}
+        <form method="post" action="{{ url_for('showcase_start') }}">
+          <button type="submit" class="btn btn-primary btn-demo-run">{{ t("Start guided demo") }}</button>
+        </form>
+        {% else %}
+        <button type="button" class="btn btn-primary btn-demo-run" disabled>{{ t("Guided demo running") }}</button>
+        <p class="it-panel-text">Reloading this page will not start a second run.</p>
+        {% endif %}
+      </div>
+    </section>
+
+    {% if live is not none %}
+    <!-- Step by step: the judge picks the moment, the surge and the attack -->
+    <section class="panel-block session-controls" aria-labelledby="session-controls-heading">
+      <div class="panel-header">
+        <h2 id="session-controls-heading">{{ t("Step-by-step controls") }}</h2>
+      </div>
+      <div class="panel-body showcase-panel-body">
+        <p class="session-line" data-live="line" aria-live="polite">{{ live.line }}</p>
+
+        <form method="post" action="{{ url_for('live_harvest_surge') }}" class="session-row">
+          <input type="hidden" name="next" value="{{ here }}">
+          <input type="hidden" name="on" value="{{ '0' if live.surge_requested else '1' }}">
+          <button type="submit" class="btn btn-secondary surge-switch" aria-pressed="{{ 'true' if live.surge_requested else 'false' }}">
+            <span>{{ t("Harvest surge") }}: <strong>{{ t("On") if live.surge_requested else t("Off") }}</strong></span>
+          </button>
+          <span class="form-help-text"><span data-live="surge">{{ live.surge_line }}</span> Switches peak-season volumes on from the next simulated day.</span>
+        </form>
+
+        <form method="post" action="{{ url_for('live_attack') }}" class="session-attack">
+          <input type="hidden" name="next" value="{{ here }}">
+          <label for="demo-variant" class="form-label">{{ t("Simulated attack") }}</label>
+          <div class="session-attack-controls">
+            <select id="demo-variant" name="variant" class="form-control">
+              {% for value, label in live.variants %}
+              <option value="{{ value }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+            {% set guided = state == "running" and phase != "starting" %}
+            <button type="submit" class="btn btn-primary" data-live="attack"{% if guided %} data-live-hold{% endif %} {% if guided or not live.can_attack %}disabled{% endif %}>{{ t("Launch simulated attack") }}</button>
+          </div>
+          {% if guided %}
+          <span class="form-help-text">The guided demo launches the attack by itself.</span>
+          {% else %}
+          <span class="form-help-text" data-live="reason">{{ live.attack_reason }}</span>
+          {% endif %}
+        </form>
+
+        <form method="post" action="{{ url_for('live_reset') }}" class="session-reset" onsubmit="return confirm('Restart from day 1? The district is rebuilt and Nightkeep learns the night jobs again.');">
+          <input type="hidden" name="next" value="{{ here }}">
+          <button type="submit" class="btn btn-secondary">{{ t("Restart from day 1") }}</button>
+          <span class="form-help-text">Rebuilds the district and starts learning again.</span>
+        </form>
+      </div>
+    </section>
+    {% endif %}
+  </div>
+
+  <!-- Live progress through the stages -->
+  <section class="panel-block" aria-labelledby="demo-progress-heading">
     <div class="panel-header">
-      <h2 id="demo-start-heading">{{ t("Run the demonstration") }}</h2>
+      <h2 id="demo-progress-heading">{{ t("Demonstration progress") }}</h2>
     </div>
     <div class="panel-body">
-      <p class="it-panel-text">
-        One click runs the full end-to-end demonstration: NightKeep learns the
-        office's normal night work over seven days, watches three more days,
-        faces a safe simulated ransomware attack, stops it, protects the
-        backups, and restores every record.
-      </p>
-      {% if restarts_live_session %}
-      <p class="it-panel-text">
-        It runs on the same live session as every other screen: starting it
-        begins a fresh run, and the attack and the restore then happen by
-        themselves.
-      </p>
-      {% endif %}
-      {% if can_start %}
-      <form method="post" action="{{ url_for('showcase_start') }}">
-        <button type="submit" class="btn btn-primary btn-demo-run">{{ t("Run Full MVP Demo") }}</button>
-      </form>
-      {% else %}
-      <button type="button" class="btn btn-primary" disabled>
-        {% if state == "running" %}Demo already running{% else %}Demo finished{% endif %}
-      </button>
-      <p class="it-panel-text">
-        A demonstration is already running. Reloading this page will not start
-        a second one.
-      </p>
-      {% endif %}
+      <ol class="showcase-progress-list">
+        {% for step in steps if step.key != "ready" %}
+        {% set is_current = step.key == phase %}
+        <li class="showcase-progress-step {% if is_current %}showcase-progress-current{% elif step.done %}showcase-progress-done{% else %}showcase-progress-waiting{% endif %}">
+          <span class="showcase-progress-marker" aria-hidden="true">
+            {% if step.done %}&#10003;{% elif is_current %}&#9654;{% else %}&#9675;{% endif %}
+          </span>
+          <span class="showcase-progress-label">{{ t(step.title) }}</span>
+          <span class="visually-hidden">
+            {% if is_current %}(current stage){% elif step.done %}(complete){% else %}(not started){% endif %}
+          </span>
+        </li>
+        {% endfor %}
+      </ol>
     </div>
   </section>
 
@@ -73,21 +136,21 @@
           <span class="showcase-story-stage" aria-hidden="true">1</span>
           <div class="showcase-story-text">
             <p class="showcase-story-title">Learn</p>
-            <p class="showcase-story-detail">NightKeep studies seven days of normal office activity to learn what ordinary looks like.</p>
+            <p class="showcase-story-detail">Nightkeep studies seven days of normal office activity to learn what ordinary looks like.</p>
           </div>
         </li>
         <li class="showcase-story-item">
           <span class="showcase-story-stage" aria-hidden="true">2</span>
           <div class="showcase-story-text">
             <p class="showcase-story-title">Guard</p>
-            <p class="showcase-story-detail">Three more days of real but unusual office activity are checked against what was learned. Nothing is flagged.</p>
+            <p class="showcase-story-detail">Three more days of real, messy office activity are checked against what was learned. Odd nights are noted, never blocked.</p>
           </div>
         </li>
         <li class="showcase-story-item">
           <span class="showcase-story-stage" aria-hidden="true">3</span>
           <div class="showcase-story-text">
             <p class="showcase-story-title">Attack</p>
-            <p class="showcase-story-detail">A safe simulated ransomware attack runs. NightKeep watches and only declares an incident when the evidence is clear.</p>
+            <p class="showcase-story-detail">A safe simulated ransomware attack runs. Nightkeep watches and only declares an incident when the evidence is clear.</p>
           </div>
         </li>
         <li class="showcase-story-item">
@@ -115,29 +178,6 @@
     </div>
   </section>
 
-  <!-- Live progress through the stages -->
-  <section class="panel-block" aria-labelledby="demo-progress-heading">
-    <div class="panel-header">
-      <h2 id="demo-progress-heading">{{ t("Demonstration progress") }}</h2>
-    </div>
-    <div class="panel-body">
-      <ol class="showcase-progress-list">
-        {% for step in steps %}
-        {% set is_current = step.key == phase %}
-        <li class="showcase-progress-step {% if is_current %}showcase-progress-current{% elif step.done %}showcase-progress-done{% else %}showcase-progress-waiting{% endif %}">
-          <span class="showcase-progress-marker" aria-hidden="true">
-            {% if step.done %}&#10003;{% elif is_current %}&#9654;{% else %}&#9675;{% endif %}
-          </span>
-          <span class="showcase-progress-label">{{ t(step.title) }}</span>
-          <span class="visually-hidden">
-            {% if is_current %}(current stage){% elif step.done %}(complete){% else %}(not started){% endif %}
-          </span>
-        </li>
-        {% endfor %}
-      </ol>
-    </div>
-  </section>
-
   {% if figures %}
   <!-- Real figures from the run's own report -->
   <section class="panel-block showcase-figures" aria-labelledby="demo-figures-heading">
@@ -147,7 +187,7 @@
     <div class="panel-body">
       {% if figures.records_verified is defined and figures.records_expected is defined %}
       <div class="figure-hero">
-        <span class="figure-hero-value tabular-number">{{ figures.records_verified }} / {{ figures.records_expected }}</span>
+        <span class="figure-hero-value tabular-number">{{ '{:,}'.format(figures.records_verified) }} / {{ '{:,}'.format(figures.records_expected) }}</span>
         <span class="figure-hero-label">records recovered and verified</span>
       </div>
       {% endif %}
@@ -190,7 +230,7 @@
       <ul class="showcase-destinations-list">
         <li class="showcase-destination showcase-destination-primary">
           <a href="{{ url_for('nightkeep_alert') }}" class="btn btn-primary">{{ t("Incident Report") }}</a>
-          <p class="showcase-destination-detail">See what happened, when it was detected, and what NightKeep did.</p>
+          <p class="showcase-destination-detail">See what happened, when it was detected, and what Nightkeep did.</p>
         </li>
         <li class="showcase-destination">
           <a href="{{ url_for('restore_wizard') }}" class="btn btn-secondary">{{ t("Restore") }}</a>

@@ -116,6 +116,15 @@ class SafetyHomePresentation:
     clean_point: str
     tasks: tuple[NightTaskPresentation, ...]
 
+    @property
+    def tone(self) -> str:
+        """The one semantic colour this status earns: safe, review or incident."""
+        if "ATTACK" in self.status_badge:
+            return "incident"
+        if self.status_badge in ("STATUS: NORMAL", "STATUS: RECOVERED"):
+            return "safe"
+        return "review"
+
 
 @dataclass(frozen=True)
 class IncidentFigurePresentation:
@@ -152,7 +161,7 @@ class RestoreStepPresentation:
     step_number: int
     title: str
     description: str
-    status: str  # "completed" | "active"
+    status: str  # "completed" | "active" | "waiting"
 
 
 @dataclass(frozen=True)
@@ -171,6 +180,9 @@ class RestoreWizardPresentation:
     loss_window_detail: str
     steps: tuple[RestoreStepPresentation, ...]
     checks: tuple[VerificationCheckPresentation, ...]
+    # False when nothing has gone wrong: the screen then says there is
+    # nothing to restore instead of talking about an attack.
+    has_incident: bool = True
 
 
 @dataclass(frozen=True)
@@ -248,7 +260,7 @@ DEFAULT_SAFETY_HOME_DATA: SafetyHomePresentation = SafetyHomePresentation(
     status_badge="STATUS: NORMAL",
     protection_status="No safe copies yet",
     protection_detail=(
-        "The Vault has not taken a clean backup yet. Run the full demo "
+        "The Vault has not taken a clean backup yet. Start the live demo "
         "to see live protection data."
     ),
     protected_cards_count="?",
@@ -282,13 +294,13 @@ DEFAULT_RESTORE_DATA: RestoreWizardPresentation = RestoreWizardPresentation(
             step_number=2,
             title="Verify records",
             description="Waiting for a clean backup.",
-            status="active",
+            status="waiting",
         ),
         RestoreStepPresentation(
             step_number=3,
             title="Confirm and restore",
-            description="Enter supervisor PIN to restore records to the office computer.",
-            status="active",
+            description="Enter the supervisor PIN to restore the records to the office computer.",
+            status="waiting",
         ),
     ),
     checks=tuple(
@@ -299,6 +311,7 @@ DEFAULT_RESTORE_DATA: RestoreWizardPresentation = RestoreWizardPresentation(
         )
         for index, statement in enumerate(RESTORE_CHECK_STATEMENTS, start=1)
     ),
+    has_incident=False,
 )
 
 
@@ -637,6 +650,10 @@ def create_app(
         if console_settings is not None else (0.875, 1.0, 1.125, 1.25)
     )
     normal_step = text_steps.index(1.0) if 1.0 in text_steps else 0
+    page_size = (
+        console_settings.search_page_size
+        if console_settings is not None else 25
+    )
 
     def text_step() -> int:
         """The reader's text size, as an index into the configured steps."""
@@ -761,6 +778,10 @@ def create_app(
         fps = request.args.get("fps", "").strip()
         scheme = request.args.get("scheme", "").strip()
         status = request.args.get("status", "").strip()
+        try:
+            page = max(int(request.args.get("page", "1")), 1)
+        except ValueError:
+            page = 1
 
         filtered = list(records_pool)
 
@@ -820,11 +841,26 @@ def create_app(
             records = filtered
             page_figures = figures
 
+        total = len(records)
+        pages = max((total + page_size - 1) // page_size, 1)
+        page = min(page, pages)
+        first = (page - 1) * page_size
+        shown = records[first:first + page_size]
+        filters = {key: value for key, value in query.items() if value}
         return render_template(
             "search.html",
-            records=records,
+            records=shown,
+            total=total,
+            page=page,
+            pages=pages,
+            first_shown=first + 1 if shown else 0,
+            last_shown=first + len(shown),
+            page_url=lambda number: url_for(
+                "search_cards", **filters, page=number
+            ),
             query=query,
             district_figures=page_figures,
+            safety=refreshed_pool("safety_home_data", safety_pool),
             talukas=c.TALUKAS,
             schemes=c.SCHEMES,
             statuses=c.CARD_STATUSES,
@@ -1020,7 +1056,11 @@ def create_app(
             refresh=state == "running" and session is None,
             restarts_live_session=session is not None,
             active_page="showcase",
-            live_scope="all",
+            # Reload per simulated day, not per status write: this page holds
+            # the step-by-step controls, and a reload every two seconds would
+            # pull the page out from under the person using them. The status
+            # line and the attack button update in place in between.
+            live_scope="day",
         )
 
     @app.route("/showcase/start", methods=["POST"])

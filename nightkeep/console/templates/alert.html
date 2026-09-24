@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 
-{% block title %}{{ t("Data Safety Alert") }}{% endblock %}
-{% block page_heading %}{{ t("Data Safety") }}{% endblock %}
+{% block title %}{{ t("Incident Report") }}{% endblock %}
+{% block page_heading %}{{ t("Incident Report") }}{% endblock %}
 
 {% block breadcrumb_items %}
 <li><a href="/">{{ t("Home") }}</a></li>
 <li class="breadcrumb-separator" aria-hidden="true">/</li>
 <li><a href="{{ url_for('nightkeep_home') }}">{{ t("Data Safety") }}</a></li>
 <li class="breadcrumb-separator" aria-hidden="true">/</li>
-<li aria-current="page">{{ t("Incident Alert") }}</li>
+<li aria-current="page">{{ t("Incident Report") }}</li>
 {% endblock %}
 
 {% block content %}
@@ -20,11 +20,11 @@
       <h2 class="alert-incident-title">{{ t(alert.headline) }}</h2>
       {% if alert.timeline %}
       <p class="alert-incident-description">
-        NightKeep detected abnormal activity and protected your database. Safe copies are preserved on the isolated Vault.
+        Nightkeep detected abnormal activity and protected your database. Safe copies are preserved on the isolated Vault.
       </p>
       {% else %}
       <p class="alert-incident-description">
-        NightKeep is watching the office computer. If something abnormal happens, it will be described here.
+        Nightkeep is watching the office computer. If something abnormal happens, it will be described here.
       </p>
       {% endif %}
     </div>
@@ -37,12 +37,13 @@
     </div>
     <div class="panel-body">
       {% if alert.timeline %}
-        {% set first = alert.timeline[0] %}
+        {% set began = alert.timeline | selectattr("title", "equalto", "Suspicious activity began") | list %}
+        {% set first = began[0] if began else alert.timeline[0] %}
         <p class="alert-event-line">
           <strong>{{ first.title }}</strong>
           <span class="tabular-number">{{ first.time }}</span>
         </p>
-        <p class="it-panel-text">{{ first.detail }}</p>
+        <p class="it-panel-text">{{ (first.detail[:1]|upper) ~ first.detail[1:] }}</p>
       {% else %}
         <p class="it-panel-text">Nothing abnormal has been detected. When an incident occurs, what happened will be written here in plain language.</p>
       {% endif %}
@@ -51,17 +52,17 @@
 
   {% for item in alert.timeline %}
   {% if item.title == "Attack stopped" or item.title == "Flagged for review" %}
-  <!-- What NightKeep did -->
+  <!-- What Nightkeep did -->
   <section class="panel-block" aria-labelledby="what-did-heading">
     <div class="panel-header">
-      <h2 id="what-did-heading">{{ t("What NightKeep did") }}</h2>
+      <h2 id="what-did-heading">{{ t("What Nightkeep did") }}</h2>
     </div>
     <div class="panel-body">
       <p class="alert-event-line">
         <strong>{{ item.title }}</strong>
         <span class="tabular-number">{{ item.time }}</span>
       </p>
-      <p class="it-panel-text">{{ item.detail }}</p>
+      <p class="it-panel-text">{{ (item.detail[:1]|upper) ~ item.detail[1:] }}</p>
     </div>
   </section>
   {% endif %}
@@ -124,7 +125,7 @@
             <div class="timeline-time tabular-number">{{ item.time }}</div>
             <div class="timeline-content">
               <p class="timeline-title">{{ item.title }}</p>
-              <p class="timeline-detail">{{ item.detail }}</p>
+              <p class="timeline-detail">{{ (item.detail[:1]|upper) ~ item.detail[1:] }}</p>
             </div>
           </li>
         {% endfor %}

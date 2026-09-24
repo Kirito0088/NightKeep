@@ -319,6 +319,7 @@ class Console:
     attack_variants: tuple[str, ...]
     full_demo_variant: str
     text_scale_steps: tuple[float, ...]
+    search_page_size: int
 
 
 @dataclass(frozen=True)
@@ -551,8 +552,11 @@ def _read_console(reader: _Reader) -> Console:
         attack_variants=reader.texts("attack_variants"),
         full_demo_variant=reader.text("full_demo_variant"),
         text_scale_steps=reader.numbers("text_scale_steps"),
+        search_page_size=reader.integer("search_page_size"),
     )
     reader.done()
+    if console.search_page_size < 1:
+        raise ConfigError("config.yaml: console.search_page_size must be at least 1")
     if not console.attack_variants:
         raise ConfigError("config.yaml: console.attack_variants must not be empty")
     if 1.0 not in console.text_scale_steps:

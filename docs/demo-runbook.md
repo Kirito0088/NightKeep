@@ -125,42 +125,37 @@ Open `http://127.0.0.1:5000` on the Vault machine. Walk the screens:
    Vault alert records. With no run loaded it says so honestly instead
    of fabricating diagnostics.
 
-### One-click showcase (recommended for the recorded demo)
+### Live Demo page (recommended for the recorded demo)
 
-Instead of driving the CLI, the showcase page runs the whole story from
-one button:
+The **Live Demo** tab runs the whole story from one button, on the same live
+session every other screen reads:
 
 1. **Install:** `python -m pip install -e ".[dev]"` (Python 3.11).
-2. **Start the console wired to the run directory:**
-   `python -m nightkeep --console --out-dir demo/demo_run` and open
-   `http://127.0.0.1:5000/showcase` (click **Full MVP Demo** in the nav).
-3. **Click "Run Full MVP Demo".** The button launches the real runner
-   (`python -m nightkeep --demo-run --variant recovery-killer`) as a
-   subprocess with the current interpreter. The button disables while
-   the run is active; a second click cannot start a second run.
-4. **What the operator sees:** a step-by-step story — READY, LEARNING
-   NORMAL BEHAVIOUR, GUARD / WEIRD BUT SAFE, THREAT DETECTED, ATTACK
-   STOPPED, BACKUP PROTECTED, RECOVERY, DEMO COMPLETE — each phase read
-   from the demo's own output lines, with the live log below. The page
-   refreshes itself while the run is active.
-5. **During the attack:** when the INCIDENT verdict is decided, dismiss
-   the native Windows security pop-up on the demo machine; the run
-   waits for dismissal before continuing (detection latency is stamped
-   before the pop-up, so dismissal cannot inflate it).
-6. **Where the final proof appears:** on DEMO COMPLETE the page shows
-   the run's own report figures (records recovered, detection latency,
-   files affected before the incident) — only figures the report
-   actually contains — and links to the existing screens: Incident
-   Report (`/alert`), Restore (`/restore`), Locked Screen (`/locked`),
-   IT View (`/it-view`).
-7. **After the run:** those screens rebuild from the fresh on-disk
-   state on every request, so they show the completed demo without
-   restarting the console.
+2. **Start the console:** `python -m nightkeep --console` and open
+   `http://127.0.0.1:5000/showcase` (click **Live Demo** in the nav).
+3. **Click "Start guided demo".** It restarts the live session on autopilot:
+   seven learning days, three guard days, then the `recovery-killer`
+   simulator (`console.full_demo_variant`), containment, the Vault pull and
+   the restore, all by themselves. The button disables while the run is
+   active; a second click cannot start a second run.
+4. **What the operator sees:** the guided demo status (Ready, Learn, Guard,
+   Attack, Contain, Protect, Recover, Demo complete), each stage read from
+   the engine's own status, with the run log below. The page refreshes
+   itself once per simulated day.
+5. **During the attack:** the native Windows security pop-up appears on the
+   demo machine. It is a warning, never a gate: containment, the Vault pull
+   and the restore carry on whether or not anyone clicks OK (ADR-0011).
+6. **Where the final proof appears:** on Demo complete the page shows the
+   run's own report figures (records recovered, detection latency, files
+   affected before the incident) and links to the Incident Report
+   (`/alert`), Restore (`/restore`), Locked Screen (`/locked`) and IT View
+   (`/it-view`).
 
-The showcase writes only `demo/showcase_status.json` (run state) and
-`demo/showcase_demo.log` (the demo's own output), both outside
-`demo/demo_run/` and outside `logs/_truth`. It never judges, never
-touches the Vault, and never sets backend state.
+**Step by step instead:** the same page carries the **Step-by-step
+controls** (ADR-0013): the harvest surge switch, the simulated attack
+picker with **Launch simulated attack** (unlocks after day 1), and
+**Restart from day 1**. After an attack, restore from **Data Safety** with
+the supervisor PIN.
 
 ### What the unwired console does
 

@@ -15,10 +15,10 @@ from typing import Mapping
 from nightkeep import live_protocol as lp
 
 VARIANT_LABELS = {
-    "fast": "Fast scrambler",
-    "impersonator": "Impersonator",
-    "recovery-killer": "Recovery-killer",
-    "watcher-killer": "Agent-stopper",
+    "fast": "Fast scrambler: locks files as fast as it can",
+    "impersonator": "Impersonator: hides behind a night job's name",
+    "recovery-killer": "Recovery-killer: also tries to wipe the backups",
+    "watcher-killer": "Agent-stopper: tries to switch Nightkeep off",
 }
 
 _READINESS_TEXT = {
@@ -29,9 +29,9 @@ _READINESS_TEXT = {
     ),
     lp.ATTACK_BUSY: "An attack is already being handled.",
     lp.ATTACK_ALREADY_RAN: (
-        "This run has had its attack. Start a fresh run to try another."
+        "This run has had its attack. Restart from day 1 to try another."
     ),
-    lp.ATTACK_NOT_RUNNING: "Start a fresh run first.",
+    lp.ATTACK_NOT_RUNNING: "Restart from day 1 first.",
 }
 
 
@@ -91,6 +91,9 @@ def live_controls(status: Mapping, variants: tuple[str, ...]) -> LiveControlsPre
     readiness = status.get("attack_readiness", lp.ATTACK_NOT_RUNNING)
     if not status:
         readiness = lp.ATTACK_NOT_RUNNING
+    elif status.get("phase") == lp.STARTING:
+        # A run is being prepared, not missing: the attack unlocks after day 1.
+        readiness = lp.ATTACK_WAIT_FOR_CLEAN_COPY
     return LiveControlsPresentation(
         line=session_line(status),
         can_attack=readiness == lp.ATTACK_READY,
@@ -113,13 +116,13 @@ _SCOPES = {
     # Search and card detail: only the lock matters.
     "calm": lambda s: (s.get("phase"), s.get("lock_held"),
                        (s.get("restore") or {}).get("ok")),
-    # Data Safety, alert, restore, IT view: each finished day moves the
-    # safe copies and the night-task table.
+    # Data Safety, alert, restore, IT view, Live Demo: each finished day
+    # moves the safe copies, the night-task table and the demo's progress.
     "day": lambda s: (s.get("phase"), s.get("lock_held"),
                       (s.get("day") or {}).get("done"),
                       (s.get("attack") or {}).get("state"),
                       (s.get("restore") or {}).get("ok")),
-    # Night Jobs and the Full MVP Demo: every change.
+    # Night Jobs: every change.
     "all": lambda s: s.get("version"),
 }
 
@@ -234,7 +237,8 @@ def _headline(status: Mapping) -> tuple[str, str, str, str]:
                 "incident", "STATUS: ATTACK STOPPED")
     if phase == lp.RECOVERED:
         return ("Night jobs are stopped. The records were restored.",
-                "Start a fresh run to watch the office learn again.",
+                "Restart from day 1 on the Live Demo page to watch the office "
+                "learn again.",
                 "safe", "STATUS: RECOVERED")
     if phase == lp.COMPLETE:
         return ("The full demonstration is complete.",
@@ -243,10 +247,11 @@ def _headline(status: Mapping) -> tuple[str, str, str, str]:
     if phase == lp.FAILED:
         return ("The live session stopped with a problem.",
                 str(status.get("error") or status.get("note")
-                    or "Start a fresh run to try again."),
+                    or "Restart from day 1 on the Live Demo page to try again."),
                 "review", "STATUS: STOPPED")
     return ("The live session has stopped.",
-            "Start a fresh run to watch the night jobs again.",
+            "Restart from day 1 on the Live Demo page to watch the night "
+            "jobs again.",
             "review", "STATUS: STOPPED")
 
 

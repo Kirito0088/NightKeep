@@ -54,7 +54,7 @@ def _common_arguments(parser: argparse.ArgumentParser) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="NightKeep safe ransomware simulator (rehearsal only)."
+        description="Nightkeep safe ransomware simulator (rehearsal only)."
     )
     parser.add_argument(
         "--variant",

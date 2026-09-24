@@ -27,15 +27,6 @@
         <span aria-hidden="true">/</span>
         <button type="submit" name="lang" value="mr" lang="mr" aria-pressed="{{ 'true' if lang == 'mr' else 'false' }}">मराठी</button>
       </form>
-      {% if live is not none %}
-      <form method="post" action="{{ url_for('live_harvest_surge') }}" class="surge-toggle">
-        <input type="hidden" name="next" value="{{ here }}">
-        <input type="hidden" name="on" value="{{ '0' if live.surge_requested else '1' }}">
-        <button type="submit" aria-pressed="{{ 'true' if live.surge_requested else 'false' }}">
-          {{ t("Harvest surge") }}: <strong>{{ t("On") if live.surge_requested else t("Off") }}</strong>
-        </button>
-      </form>
-      {% endif %}
     </div>
     <div class="utility-strip-right">
       <span class="utility-disclaimer">Prototype on invented data. Not a live government system.</span>
@@ -51,9 +42,13 @@
 
   <!-- Chrome 3: Header with Dept Seal and Bilingual Titles -->
   <header class="site-header">
-    <div class="dept-seal-placeholder" aria-label="Department Seal Placeholder" role="img">
-      [DEPT SEAL]
-    </div>
+    <!-- A generic office roundel, deliberately not the State Emblem (mockup-log v1 to v2). -->
+    <svg class="dept-seal" viewBox="0 0 56 56" role="img" aria-label="District Supply Office seal (prototype)">
+      <circle cx="28" cy="28" r="26.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <circle cx="28" cy="28" r="21.5" fill="none" stroke="currentColor" stroke-width="0.75"/>
+      <text x="28" y="27" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">DSO</text>
+      <text x="28" y="37" text-anchor="middle" font-size="6.5" font-weight="600" letter-spacing="0.6" fill="currentColor">THANE</text>
+    </svg>
     <div class="header-title-block">
       <div class="office-title-marathi" lang="mr">जिल्हा पुरवठा कार्यालय, ठाणे</div>
       <div class="office-title-english">District Supply Office, Thane</div>
@@ -73,7 +68,7 @@
         <a href="{{ url_for('night_jobs') }}" class="nav-link {% if active_page == 'night_jobs' %}active{% endif %}" {% if active_page == 'night_jobs' %}aria-current="page"{% endif %}>{{ t("Night Jobs") }}</a>
       </li>
       <li class="nav-item">
-        <a href="{{ url_for('showcase_page') }}" class="nav-link {% if active_page == 'showcase' %}active{% endif %}" {% if active_page == 'showcase' %}aria-current="page"{% endif %}>{{ t("Full MVP Demo") }}</a>
+        <a href="{{ url_for('showcase_page') }}" class="nav-link {% if active_page == 'showcase' %}active{% endif %}" {% if active_page == 'showcase' %}aria-current="page"{% endif %}>{{ t("Live Demo") }}</a>
       </li>
     </ul>
   </nav>
@@ -100,36 +95,11 @@
   </div>
 
   <!-- Main Semantic Content -->
-  <main id="main-content" class="main-content{% if live is not none %} has-demo-dock{% endif %}">
+  <main id="main-content" class="main-content">
     {% block content %}{% endblock %}
   </main>
 
   {% if live is not none %}
-  <!-- Demo controls: the judge's menu (MVP.md section 6), not part of Nightkeep -->
-  <aside class="demo-dock" aria-label="Demo controls">
-    <details class="demo-dock-details" open>
-    <summary class="demo-dock-title">{{ t("Demo controls") }}</summary>
-    <div class="demo-dock-body">
-    <p class="demo-dock-line" data-dock="line" aria-live="polite">{{ live.line }}</p>
-    <p class="demo-dock-line" data-dock="surge">{{ live.surge_line }}</p>
-    <form method="post" action="{{ url_for('live_attack') }}" class="demo-dock-form">
-      <input type="hidden" name="next" value="{{ here }}">
-      <label for="demo-variant" class="demo-dock-label">{{ t("Simulated attack") }}</label>
-      <select id="demo-variant" name="variant" class="form-control demo-dock-select">
-        {% for value, label in live.variants %}
-        <option value="{{ value }}">{{ label }}</option>
-        {% endfor %}
-      </select>
-      <button type="submit" class="btn btn-primary demo-dock-attack" data-dock="attack" {% if not live.can_attack %}disabled{% endif %}>{{ t("Run simulated attack") }}</button>
-    </form>
-    <p class="demo-dock-hint" data-dock="reason">{{ live.attack_reason }}</p>
-    <form method="post" action="{{ url_for('live_reset') }}" class="demo-dock-form" onsubmit="return confirm('Start a fresh run? The district is rebuilt and Nightkeep learns the night jobs again.');">
-      <input type="hidden" name="next" value="{{ here }}">
-      <button type="submit" class="btn btn-secondary demo-dock-reset">{{ t("Start a fresh run") }}</button>
-    </form>
-    </div>
-    </details>
-  </aside>
   <script src="{{ url_for('static', filename='live.js') }}"></script>
   {% endif %}
 </body>

@@ -1,6 +1,6 @@
-"""The Full MVP Demo, driven through the console's live session.
+"""The Live Demo, driven through the console's live session.
 
-With a live session, "Run Full MVP Demo" restarts that same session on
+With a live session, "Start guided demo" restarts that same session on
 autopilot, so the showcase and every other screen show one run. The page
 words the engine's status; the figures come from the engine's report.
 """
@@ -42,8 +42,8 @@ def test_run_full_demo_restarts_the_live_session_on_autopilot(tmp_path):
     session = ReportingSession(tmp_path / "live", learning_status(mode="manual"))
     client = client_for(session)
     html = client.get("/showcase").get_data(as_text=True)
-    assert "Run Full MVP Demo" in html
-    assert "starting it" in html and "begins a fresh run" in html
+    assert "Start guided demo" in html
+    assert "It restarts the live session" in html
 
     client.post("/showcase/start")
     assert session.starts == [{"autopilot": True,
@@ -90,8 +90,8 @@ def test_completed_autopilot_shows_the_engines_own_figures(tmp_path):
         report=report, log="--- proof PASSED ---",
     )
     html = client_for(session).get("/showcase").get_data(as_text=True)
-    assert "DEMO COMPLETE" in html
-    assert "5000 / 5000" in html
+    assert "Demo complete" in html
+    assert "5,000 / 5,000" in html
     assert "1.7s" in html
     assert "--- proof PASSED ---" in html
     assert '<meta http-equiv="refresh"' not in html
@@ -105,5 +105,5 @@ def test_a_failed_autopilot_says_so(tmp_path):
         report={"learning_days": [{"day": 1}]},
     )
     html = client_for(session).get("/showcase").get_data(as_text=True)
-    assert "DEMO FAILED" in html
+    assert "Demo failed" in html
     assert "a simulated day failed" in html

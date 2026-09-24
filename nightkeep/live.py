@@ -18,7 +18,7 @@ a live office needs and writes down what happened, for the console to read:
    damage (SUSPECT) with its clean pin held.
 5. Manual mode: wait for the console to report that the supervisor
    restored from the Vault, then release the lock. Autopilot mode (the
-   Full MVP Demo): after the guard days, attack by itself, restore by
+   Live Demo's guided demo): after the guard days, attack by itself, restore by
    itself, and write the same proof lines demo_run prints.
 
 The two sides only share files (nightkeep.live_protocol). The jobs are
