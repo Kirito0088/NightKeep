@@ -153,7 +153,7 @@ def _share_with_backup(district_dir: Path, cards: int = 120) -> Path:
     return share
 
 
-def _vault(tmp_path: Path, share: Path) -> Vault:
+def _vault(tmp_path: Path, share: Path, **liveness) -> Vault:
     return Vault(
         tmp_path / "vault",
         share,
@@ -161,6 +161,25 @@ def _vault(tmp_path: Path, share: Path) -> Vault:
         suspect_changed_fraction=0.5,
         suspect_record_drop_fraction=0.02,
         restore_folder_name="restored",
+        **liveness,
+    )
+
+
+# S6 on a test clock, as in test_vault_protect_mode: a short silence limit
+# and check cadence. With the production 30 s / 10 s the monitor only calls
+# a heartbeat silent once real time has aged it past 30 s, which lands its
+# deciding check on the wait's own deadline and made these tests flaky.
+_SILENCE = 0.6
+_LIVENESS = {"watcher_silence_seconds": _SILENCE,
+             "liveness_check_interval_seconds": 0.1}
+
+
+def _write_stale_heartbeat(share: Path) -> None:
+    """A heartbeat already well past the silence limit: S6 on the first check."""
+    stale = datetime.now(timezone.utc) - timedelta(seconds=_SILENCE * 10)
+    (share / HEARTBEAT_FILENAME).write_text(
+        json.dumps({"written_at": stale.isoformat(), "pid": 99999}),
+        encoding="utf-8",
     )
 
 
@@ -796,7 +815,7 @@ def test_safety_home_shows_protect_mode_without_touching_snapshot_health(
 ):
     district_dir = _district(tmp_path)
     share = _share_with_backup(district_dir)
-    vault = _vault(tmp_path, share)
+    vault = _vault(tmp_path, share, **_LIVENESS)
     baseline = vault.pull(taken_at=DAY)
     assert baseline.health == CLEAN
     habit = _habit(tmp_path)
@@ -806,10 +825,7 @@ def test_safety_home_shows_protect_mode_without_touching_snapshot_health(
     health_before = [(s.snapshot_id, s.health) for s in vault.snapshots()]
 
     # S6 without a subprocess: a stale heartbeat the monitor reads as silence.
-    stale = (datetime.now(timezone.utc) - timedelta(seconds=10)).isoformat()
-    (share / HEARTBEAT_FILENAME).write_text(
-        json.dumps({"written_at": stale, "pid": 99999}), encoding="utf-8"
-    )
+    _write_stale_heartbeat(share)
     vault.start_liveness_monitor()
     try:
         _wait_for(
@@ -834,16 +850,13 @@ def test_safety_home_shows_protect_mode_without_touching_snapshot_health(
 def test_safety_route_renders_protect_mode(tmp_path):
     district_dir = _district(tmp_path)
     share = _share_with_backup(district_dir)
-    vault = _vault(tmp_path, share)
+    vault = _vault(tmp_path, share, **_LIVENESS)
     vault.pull(taken_at=DAY)
     habit = _habit(tmp_path)
     _teach(habit)
     pds = PdsProvider(district_dir / "data" / "district.db")
 
-    stale = (datetime.now(timezone.utc) - timedelta(seconds=10)).isoformat()
-    (share / HEARTBEAT_FILENAME).write_text(
-        json.dumps({"written_at": stale, "pid": 99999}), encoding="utf-8"
-    )
+    _write_stale_heartbeat(share)
     vault.start_liveness_monitor()
     try:
         _wait_for(
