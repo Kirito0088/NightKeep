@@ -654,9 +654,14 @@ class Vault:
             return 0, expected
         db_path = target / backups[-1]
         try:
-            with sqlite3.connect(db_path) as conn:
+            # Closed, not just committed: an open handle would keep the
+            # restored database locked on Windows.
+            conn = sqlite3.connect(db_path)
+            try:
                 integrity = conn.execute("PRAGMA integrity_check").fetchone()[0]
                 count = conn.execute("SELECT COUNT(*) FROM cards").fetchone()[0]
+            finally:
+                conn.close()
         except Exception:
             checks.append(Check("the database backup opens cleanly", False))
             return 0, expected

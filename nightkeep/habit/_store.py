@@ -10,6 +10,8 @@ do change and a card built on the old script is no longer about this job.
 
 import json
 import sqlite3
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -61,10 +63,22 @@ class Store:
         with self._connect() as conn:
             conn.executescript(_DDL)
 
-    def _connect(self) -> sqlite3.Connection:
+    @contextmanager
+    def _connect(self) -> Iterator[sqlite3.Connection]:
+        """One connection for one call: committed, then closed.
+
+        sqlite3's own `with conn:` only commits; it never closes. A
+        connection left for the garbage collector keeps habit.db open, and
+        on Windows an open file cannot be deleted, so the console's fresh
+        run could not clear the old session's folder.
+        """
         conn = sqlite3.connect(self.path)
         conn.row_factory = sqlite3.Row
-        return conn
+        try:
+            with conn:
+                yield conn
+        finally:
+            conn.close()
 
     # --- card versions ----------------------------------------------------
 

@@ -231,6 +231,23 @@ def test_open_habit_puts_the_database_beside_the_district(tmp_path):
     assert (tmp_path / "data" / "habit.db").exists()
 
 
+def test_it_holds_no_handle_on_its_database_between_calls(tmp_path, habit):
+    """The console reads cards from a live session's folder, which a fresh
+    start deletes. A handle left open makes that delete fail on Windows."""
+    import gc
+
+    gc.disable()  # a leaked connection must not be rescued by the collector
+    try:
+        teach(habit, [run(day=d, created=240) for d in range(1, 5)])
+        habit.cards()
+        habit.score(run(day=5, created=240))
+        habit.seen_extensions()
+        (tmp_path / "habit.db").unlink()
+    finally:
+        gc.enable()
+    assert not (tmp_path / "habit.db").exists()
+
+
 # --- rule 1 ----------------------------------------------------------------
 
 
