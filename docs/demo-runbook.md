@@ -75,7 +75,7 @@ What the runner does, in order (`nightkeep/demo_run.py`):
 4. **Vault after the attack:** post-attack pull, snapshot health recorded.
 5. **Recovery:** the pinned clean snapshot is restored; all 5,000 records
    verified.
-6. The report lands at `demo/demo_run/reports/demo_run.json`, and the
+6. The report lands at `demo/demo_run/district/reports/demo_run.json`, and the
    console's verdicts are read from it.
 
 One simulated day takes `clock.simulated_day_seconds` (10 s in

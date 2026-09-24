@@ -44,7 +44,7 @@ claimed. The numbers below come from one seeded 5,000-card run
 | **P3** | The backup **survives** | The scrambled copy is quarantined **SUSPECT**; the last clean copy stays **pinned** |
 | **P4** | Recovery is **proven**, not assumed | **5,000 / 5,000** ration cards verified from the clean copy, all five checks passed |
 
-Run it yourself and the numbers land in `demo/pds/reports/run.json`, which is
+Run it yourself and the numbers land in `demo/demo_run/district/reports/demo_run.json`, which is
 exactly what the console then renders. No screen shows an invented figure.
 
 ---
