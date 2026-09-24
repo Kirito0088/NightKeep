@@ -42,10 +42,10 @@ Prototype on invented data. Not a live government system.
    heartbeat writer would mask a real S6 story.
 4. **Start from a clean demo directory:** delete `demo/demo_run/` from any
    previous attempt. The runner writes the whole run there.
-5. **Decide the console target now:** after the run you must launch the
-   console with `--out-dir demo/demo_run`. The `--console` flag defaults
-   `--out-dir` to `demo/erratic_week/`; omitting the flag shows the wrong
-   runtime state.
+5. **Keep the two runs apart:** `--demo-run` writes to `demo/demo_run/`;
+   `--console` runs its own live session in `demo/live/` and wipes that
+   folder on every start. Never point `--console --out-dir` at
+   `demo/demo_run/`, or it deletes the proof.
 
 ## 3. Main demo sequence
 
@@ -75,8 +75,7 @@ What the runner does, in order (`nightkeep/demo_run.py`):
 4. **Vault after the attack:** post-attack pull, snapshot health recorded.
 5. **Recovery:** the pinned clean snapshot is restored; all 5,000 records
    verified.
-6. The report lands at `demo/demo_run/district/reports/demo_run.json`, and the
-   console's verdicts are read from it.
+6. The report lands at `demo/demo_run/district/reports/demo_run.json`.
 
 One simulated day takes `clock.simulated_day_seconds` (10 s in
 `nightkeep/config.yaml`, ADR-0012); `--day-seconds` overrides it.
@@ -96,13 +95,15 @@ pop-up (`nightkeep/server_alert.py`):
 
 ### Step 3 — the console
 
-In a second terminal, once the run has written its report:
+The console runs its own live session (ADR-0011) and does not read the
+`--demo-run` report. Start it with the default folder:
 
 ```bash
-python -m nightkeep --console --out-dir demo/demo_run
+python -m nightkeep --console
 ```
 
-Open `http://127.0.0.1:5000` on the Vault machine. Walk the screens:
+Open `http://127.0.0.1:5000` on the Vault machine, run an attack from the
+**Live Demo** tab (below), then walk the screens:
 
 1. **`/safety`** — Data Safety Home. `STATUS: NORMAL`, "Your records are
    safe", the night-tasks table, the clean point.
